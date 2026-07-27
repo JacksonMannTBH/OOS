@@ -6,9 +6,16 @@ import type { StatusState } from "@/lib/status";
 type Props = {
   status: StatusState;
   lastSampleMs?: number | null;
+  showPill?: boolean;
+  frameless?: boolean;
 };
 
-export function StatusHero({ status, lastSampleMs }: Props) {
+export function StatusHero({
+  status,
+  lastSampleMs,
+  showPill = true,
+  frameless = false,
+}: Props) {
   const isAlert = status.kind === "alert";
   const sampleTime = lastSampleMs ? formatTsBare(lastSampleMs, "hour-min") : null;
 
@@ -18,29 +25,35 @@ export function StatusHero({ status, lastSampleMs }: Props) {
       style={{
         position: "relative",
         overflow: "hidden",
-        minHeight: "clamp(304px, 82vw, 370px)",
-        padding: "clamp(18px, 4.8vw, 24px)",
+        minHeight: frameless ? "clamp(240px, 66vw, 310px)" : "clamp(304px, 82vw, 370px)",
+        padding: frameless ? "clamp(8px, 2.8vw, 12px) 4px" : "clamp(18px, 4.8vw, 24px)",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
         color: SS_TOKENS.fg0,
-        background:
-          "linear-gradient(145deg, rgba(20, 19, 13, 0.98), rgba(5, 6, 7, 0.98) 64%)",
-        border: "1px solid rgba(246, 196, 49, 0.44)",
-        borderRadius: 18,
-        boxShadow:
-          "inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 24px 60px rgba(0, 0, 0, 0.42)",
+        background: frameless
+          ? "transparent"
+          : "linear-gradient(145deg, rgba(20, 19, 13, 0.98), rgba(5, 6, 7, 0.98) 64%)",
+        border: frameless ? 0 : "1px solid rgba(246, 196, 49, 0.44)",
+        borderRadius: frameless ? 0 : 18,
+        boxShadow: frameless
+          ? "none"
+          : "inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 24px 60px rgba(0, 0, 0, 0.42)",
       }}
     >
-      <RadarLineArt />
-
-      <div style={{ position: "relative", zIndex: 1 }}>
-        <StatusPill label={status.pill} alert={isAlert} />
+      <div
+        style={{
+          position: "relative",
+          zIndex: 1,
+          marginTop: frameless ? "clamp(28px, 6vw, 40px)" : 0,
+        }}
+      >
+        {showPill && <StatusPill label={status.pill} alert={isAlert} />}
 
         <h1
           style={{
             maxWidth: 330,
-            margin: "clamp(26px, 7.2vw, 44px) 0 0",
+            margin: showPill ? "clamp(26px, 7.2vw, 44px) 0 0" : "0",
             color: "#ffe49a",
             fontFamily: "var(--font-brand)",
             fontSize: "clamp(48px, 13vw, 74px)",
@@ -53,24 +66,27 @@ export function StatusHero({ status, lastSampleMs }: Props) {
           {status.headline}
         </h1>
 
-        <div
-          aria-hidden
-          style={{
-            width: "72%",
-            height: 1,
-            marginTop: 18,
-            background:
-              "linear-gradient(90deg, rgba(246, 196, 49, 0.95), rgba(246, 196, 49, 0.25) 16%, rgba(255, 255, 255, 0.10) 100%)",
-          }}
-        />
+        {!frameless && (
+          <div
+            aria-hidden
+            style={{
+              width: "72%",
+              height: 1,
+              marginTop: 18,
+              background:
+                "linear-gradient(90deg, rgba(246, 196, 49, 0.95), rgba(246, 196, 49, 0.25) 16%, rgba(255, 255, 255, 0.10) 100%)",
+            }}
+          />
+        )}
 
         <p
           style={{
             maxWidth: 330,
             margin: "14px 0 0",
+            paddingTop: "clamp(32px, 7vw, 44px)",
             color: SS_TOKENS.fg1,
-            fontSize: "clamp(16px, 4.1vw, 18px)",
-            fontWeight: 500,
+            fontSize: "clamp(20px, 5vw, 22px)",
+            fontWeight: 700,
             lineHeight: 1.45,
           }}
         >
@@ -103,10 +119,16 @@ export function StatusHero({ status, lastSampleMs }: Props) {
               }}
             >
               {status.lead.aircraft.time_aloft_min != null && (
-                <HeroMetricPill label={fmtAloft(status.lead.aircraft.time_aloft_min)} />
+                <HeroMetricPill
+                  label={fmtAloft(status.lead.aircraft.time_aloft_min)}
+                  frameless={frameless}
+                />
               )}
               {status.lead.aircraft.ground_speed_kt != null && (
-                <HeroMetricPill label={`${status.lead.aircraft.ground_speed_kt} kt`} />
+                <HeroMetricPill
+                  label={`${status.lead.aircraft.ground_speed_kt} kt`}
+                  frameless={frameless}
+                />
               )}
             </div>
             <LeadIdentity
@@ -193,7 +215,13 @@ function StatusPill({ label, alert }: { label: string; alert: boolean }) {
   );
 }
 
-function HeroMetricPill({ label }: { label: string }) {
+function HeroMetricPill({
+  label,
+  frameless = false,
+}: {
+  label: string;
+  frameless?: boolean;
+}) {
   return (
     <span
       className="ss-mono"
@@ -201,10 +229,10 @@ function HeroMetricPill({ label }: { label: string }) {
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
-        padding: "6px 10px",
-        borderRadius: 999,
-        background: "rgba(246, 196, 49, 0.10)",
-        border: "1px solid rgba(246, 196, 49, 0.26)",
+        padding: frameless ? "0" : "6px 10px",
+        borderRadius: frameless ? 0 : 999,
+        background: frameless ? "transparent" : "rgba(246, 196, 49, 0.10)",
+        border: frameless ? 0 : "1px solid rgba(246, 196, 49, 0.26)",
         color: SS_TOKENS.fg0,
         fontSize: 11,
         fontWeight: 800,
@@ -255,51 +283,6 @@ function LeadIdentity({
       {middle}
       {operator}
     </Link>
-  );
-}
-
-function RadarLineArt() {
-  return (
-    <svg
-      aria-hidden
-      viewBox="0 0 260 360"
-      preserveAspectRatio="xMidYMid meet"
-      style={{
-        position: "absolute",
-        top: 34,
-        right: "clamp(-70px, -12vw, -48px)",
-        width: "clamp(220px, 62%, 300px)",
-        height: "76%",
-        color: SS_TOKENS.alert,
-        opacity: 0.18,
-        zIndex: 0,
-      }}
-    >
-      <circle cx="152" cy="176" r="38" fill="none" stroke="currentColor" strokeWidth="1" />
-      <circle cx="152" cy="176" r="72" fill="none" stroke="currentColor" strokeWidth="1" />
-      <circle cx="152" cy="176" r="108" fill="none" stroke="currentColor" strokeWidth="1" />
-      <circle cx="152" cy="176" r="142" fill="none" stroke="currentColor" strokeWidth="1" />
-      <path
-        d="M152 176 71 89c22-20 52-32 86-32 35 0 67 14 91 37L152 176Z"
-        fill="currentColor"
-        opacity="0.20"
-      />
-      <path
-        d="M76 115c19-28 52-49 89-51m37 18c24 13 43 35 52 62M52 172c0 58 47 105 105 105 41 0 77-24 94-58"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.3"
-        strokeLinecap="round"
-      />
-      <path
-        d="M41 132c18-8 24 9 39 6 18-4 16-25 37-26 17-1 22 13 37 7 15-6 14-24 31-28 19-4 33 13 48 4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1"
-        opacity="0.65"
-      />
-      <circle cx="152" cy="176" r="8" fill="currentColor" />
-    </svg>
   );
 }
 

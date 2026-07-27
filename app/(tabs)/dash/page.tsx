@@ -1,5 +1,5 @@
 import { DashShell } from "@/components/DashShell";
-import { DEFAULT_APP_STATE_ID } from "@/lib/app-regions";
+import { DEFAULT_APP_STATE_ID } from "@/lib/app-states";
 import { getSnapshotForRender } from "@/lib/snapshot";
 import { getRecentActivity } from "@/lib/activity";
 import { applyMockState, parseMockState } from "@/lib/mock-state";

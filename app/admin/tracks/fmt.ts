@@ -48,7 +48,7 @@ export function fmtDuration(spanSec: number): string {
   return fmtDurationMs(spanSec);
 }
 
-/** m/s → mph helper. KV stores spd in knots (we wrote ground_speed_kt) — */
+/** Knots to mph helper for stored ground-speed observations. */
 /** but the value we end up storing in TrackPoint.spd is whatever logTracks */
 /** captured (ground_speed_kt). Convert kt → mph for display. */
 export function ktToMph(kt: number | null): number | null {

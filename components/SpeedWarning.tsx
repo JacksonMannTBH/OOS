@@ -20,7 +20,7 @@ const EMPTY_SNAPSHOT: Snapshot = {
 
 // Only the rider-facing screens with location should drive this; / never
 // asks for geo, so we never mount the inner hooks there.
-const ELIGIBLE_PATHS = new Set(["/radar", "/dash"]);
+const ELIGIBLE_PATHS = new Set(["/map", "/dash"]);
 
 export function SpeedWarning({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();

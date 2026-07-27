@@ -1,7 +1,7 @@
 "use client";
 
 // Sets the PWA app icon badge to the count of currently-airborne
-// alert-class fleet members (smokey + patrol + unknown). SAR /
+// alert-class fleet members (fixed_wing + patrol + unknown). SAR /
 // transport are explicitly NOT counted — riders care about
 // enforcement, not rescues. Pure browser API, no server changes.
 // Fails silently on browsers that don't support the Badging API
@@ -15,7 +15,7 @@ type BadgeNavigator = Navigator & {
 };
 
 const POLL_INTERVAL_MS = 30_000;
-const ALERT_ROLES: ReadonlySet<string> = new Set(["smokey", "patrol", "unknown"]);
+const ALERT_ROLES: ReadonlySet<string> = new Set(["fixed_wing", "patrol", "unknown"]);
 
 export function AppBadge() {
   useEffect(() => {

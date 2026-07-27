@@ -3,7 +3,7 @@
 // programmatic findings (tap targets, horizontal overflow). Output
 // goes to /tmp/p23-audit/. Run via:
 //
-//   cd tests/visual && SS_VISUAL_BASE_URL=https://www.smokysignal.app \
+//   cd tests/visual && OOS_VISUAL_BASE_URL=http://localhost:3000 \
 //     npx playwright test audits/p23-mobile-audit.spec.ts \
 //     --project=chromium-mobile
 //
@@ -20,8 +20,8 @@ import * as path from "node:path";
 const ROUTES: Array<{ name: string; path: string; settleMs?: number }> = [
   { name: "01-home", path: "/", settleMs: 2000 },
   { name: "02-home-mock-up", path: "/?mock=up", settleMs: 2000 },
-  { name: "03-radar", path: "/radar", settleMs: 4000 },
-  { name: "04-radar-mock-up", path: "/radar?mock=up", settleMs: 4000 },
+  { name: "03-map", path: "/map", settleMs: 4000 },
+  { name: "04-map-mock-up", path: "/map?mock=up", settleMs: 4000 },
   { name: "05-forecast", path: "/forecast", settleMs: 1500 },
   { name: "06-activity", path: "/activity", settleMs: 1500 },
   { name: "07-about", path: "/about", settleMs: 1500 },
@@ -29,7 +29,6 @@ const ROUTES: Array<{ name: string; path: string; settleMs?: number }> = [
   { name: "09-legal", path: "/legal", settleMs: 1500 },
   { name: "10-plane-N305DK", path: "/plane/N305DK", settleMs: 2000 },
   { name: "11-settings-alerts", path: "/settings/alerts", settleMs: 1500 },
-  { name: "12-settings-zones", path: "/settings/zones", settleMs: 1500 },
 ];
 
 const OUT_DIR = "/tmp/p23-audit";

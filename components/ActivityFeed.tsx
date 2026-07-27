@@ -8,9 +8,11 @@ import { fmtAgoTs, formatTsBare } from "@/lib/time";
 export function ActivityEventsSection({
   entries,
   id,
+  frameless = false,
 }: {
   entries: ActivityEntry[];
   id?: string;
+  frameless?: boolean;
 }) {
   const headingId = id ? `${id}-heading` : undefined;
   return (
@@ -37,27 +39,37 @@ export function ActivityEventsSection({
       >
         Recent events
       </h2>
-      <ActivityEventsList entries={entries} />
+      <ActivityEventsList entries={entries} frameless={frameless} />
     </section>
   );
 }
 
-export function ActivityEventsList({ entries }: { entries: ActivityEntry[] }) {
-  return entries.length === 0 ? <Empty /> : <List entries={entries} />;
+export function ActivityEventsList({
+  entries,
+  frameless = false,
+}: {
+  entries: ActivityEntry[];
+  frameless?: boolean;
+}) {
+  return entries.length === 0 ? (
+    <Empty frameless={frameless} />
+  ) : (
+    <List entries={entries} frameless={frameless} />
+  );
 }
 
-function Empty() {
+function Empty({ frameless }: { frameless: boolean }) {
   return (
     <div
       style={{
-        marginTop: 24,
-        padding: "32px 16px",
-        background: SS_TOKENS.bg1,
-        border: `.5px solid ${SS_TOKENS.hairline}`,
-        borderRadius: 24,
-        boxShadow: SS_TOKENS.shadowSm,
-        backdropFilter: "blur(18px)",
-        WebkitBackdropFilter: "blur(18px)",
+        marginTop: frameless ? 10 : 24,
+        padding: frameless ? "20px 4px" : "32px 16px",
+        background: frameless ? "transparent" : SS_TOKENS.bg1,
+        border: frameless ? 0 : `.5px solid ${SS_TOKENS.hairline}`,
+        borderRadius: frameless ? 0 : 24,
+        boxShadow: frameless ? "none" : SS_TOKENS.shadowSm,
+        backdropFilter: frameless ? undefined : "blur(18px)",
+        WebkitBackdropFilter: frameless ? undefined : "blur(18px)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -75,27 +87,46 @@ function Empty() {
   );
 }
 
-function List({ entries }: { entries: ActivityEntry[] }) {
+function List({
+  entries,
+  frameless,
+}: {
+  entries: ActivityEntry[];
+  frameless: boolean;
+}) {
   return (
     <div
       style={{
-        background: SS_TOKENS.bg1,
-        border: `.5px solid ${SS_TOKENS.hairline}`,
-        borderRadius: 24,
-        boxShadow: SS_TOKENS.shadowSm,
-        backdropFilter: "blur(18px)",
-        WebkitBackdropFilter: "blur(18px)",
+        background: frameless ? "transparent" : SS_TOKENS.bg1,
+        border: frameless ? 0 : `.5px solid ${SS_TOKENS.hairline}`,
+        borderRadius: frameless ? 0 : 24,
+        boxShadow: frameless ? "none" : SS_TOKENS.shadowSm,
+        backdropFilter: frameless ? undefined : "blur(18px)",
+        WebkitBackdropFilter: frameless ? undefined : "blur(18px)",
         overflow: "hidden",
       }}
     >
       {entries.map((e, i) => (
-        <Row key={`${e.tail}-${e.ts}-${i}`} entry={e} first={i === 0} />
+        <Row
+          key={`${e.tail}-${e.ts}-${i}`}
+          entry={e}
+          first={i === 0}
+          frameless={frameless}
+        />
       ))}
     </div>
   );
 }
 
-function Row({ entry, first }: { entry: ActivityEntry; first: boolean }) {
+function Row({
+  entry,
+  first,
+  frameless,
+}: {
+  entry: ActivityEntry;
+  first: boolean;
+  frameless: boolean;
+}) {
   const isEmergency = entry.kind === "squawk_emergency";
   return (
     <Link
@@ -111,7 +142,7 @@ function Row({ entry, first }: { entry: ActivityEntry; first: boolean }) {
         background: isEmergency
           ? "rgba(220,38,38,0.06)"
           : "transparent",
-        borderTop: first ? 0 : `.5px solid ${SS_TOKENS.hairline}`,
+        borderTop: frameless || first ? 0 : `.5px solid ${SS_TOKENS.hairline}`,
       }}
     >
       <KindIcon kind={entry.kind} />

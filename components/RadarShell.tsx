@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import nextDynamic from "next/dynamic";
@@ -14,23 +14,16 @@ import {
 import { computeStatus } from "@/lib/status";
 import { StatusPill } from "./StatusPill";
 import { RadarLayerControls } from "./RadarLayerControls";
-import { UserZoneLayer } from "./UserZoneLayer";
 import { AircraftTrailLayer } from "./AircraftTrailLayer";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
 import { haversineNm } from "@/lib/geo";
 import { Tooltip } from "./Tooltip";
 import {
-  REGION_CHANGE_EVENT,
-  getRegion,
-  hasExplicitRegion,
-  setRegion,
-} from "@/lib/region-pref";
-import {
-  DEFAULT_REGION,
-  REGIONS,
-  regionForPoint,
-  type RegionId,
-} from "@/lib/regions";
+  STATE_CHANGE_EVENT,
+  getAppState,
+  getSelectedStateCode,
+  type StateCode,
+} from "@/lib/app-states";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
 export type RiderPos = { lat: number; lon: number };
@@ -84,19 +77,24 @@ export function RadarShell({
   const [map, setMap] = useState<MaplibreMap | null>(null);
   const [showRings, setShowRings] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
-  const [regionId, setRegionId] = useState<RegionId>(DEFAULT_REGION);
+  const [stateCode, setStateCode] = useState<StateCode>(
+    () => getSelectedStateCode(),
+  );
   const [focusRequest, setFocusRequest] = useState<{
     tail: string;
     seq: number;
   } | null>(null);
   const focusSeqRef = useRef(0);
   const bubbleAircraft = useMemo(() => {
-    const region = REGIONS[regionId] ?? REGIONS[DEFAULT_REGION];
-    const origin = rider ?? { lat: region.centerLat, lon: region.centerLon };
+    const selectedState = getAppState(stateCode);
+    const origin = rider ?? {
+      lat: selectedState.centerLat,
+      lon: selectedState.centerLon,
+    };
     return [...airborne]
       .sort((a, b) => distanceFrom(origin, a) - distanceFrom(origin, b))
       .slice(0, AIRBORNE_BUBBLE_LIMIT);
-  }, [airborne, rider, regionId]);
+  }, [airborne, rider, stateCode]);
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.dataset.radarMode = "true";
@@ -104,15 +102,15 @@ export function RadarShell({
       delete document.body.dataset.radarMode;
     };
   }, []);
-  // Hydrate the rings pref + region from localStorage on mount.
+  // Hydrate the rings preference and selected state on mount.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setShowRings(window.localStorage.getItem("ss_distance_rings_visible") === "1");
+    setShowRings(window.localStorage.getItem("oos_distance_rings_visible") === "1");
     setDarkMode(readStoredDarkTheme());
-    setRegionId(getRegion());
+    setStateCode(getSelectedStateCode());
     const onChange = (e: Event) => {
-      const detail = (e as CustomEvent<{ id: RegionId }>).detail;
-      setRegionId(detail?.id ?? getRegion());
+      const detail = (e as CustomEvent<{ code?: StateCode }>).detail;
+      setStateCode(detail?.code ?? getSelectedStateCode());
     };
     const onThemeChange = (e: Event) => {
       const detail = (e as CustomEvent<{ dark?: boolean }>).detail;
@@ -123,11 +121,11 @@ export function RadarShell({
         setDarkMode(readStoredDarkTheme());
       }
     };
-    window.addEventListener(REGION_CHANGE_EVENT, onChange);
+    window.addEventListener(STATE_CHANGE_EVENT, onChange);
     window.addEventListener(THEME_CHANGE_EVENT, onThemeChange);
     window.addEventListener("storage", onStorage);
     return () => {
-      window.removeEventListener(REGION_CHANGE_EVENT, onChange);
+      window.removeEventListener(STATE_CHANGE_EVENT, onChange);
       window.removeEventListener(THEME_CHANGE_EVENT, onThemeChange);
       window.removeEventListener("storage", onStorage);
     };
@@ -135,15 +133,15 @@ export function RadarShell({
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(
-      "ss_distance_rings_visible",
+      "oos_distance_rings_visible",
       showRings ? "1" : "0",
     );
   }, [showRings]);
   // Geolocation only kicks in when this component mounts â€” i.e. when the user
-  // actually visits /radar. The home page never asks.
+  // actually visits /map. The home page never asks.
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      flashToast(setToast, "Location off Â· radar still works");
+      flashToast(setToast, "Location off · map still works");
       return;
     }
     const watchId = navigator.geolocation.watchPosition(
@@ -151,33 +149,12 @@ export function RadarShell({
         setRider({ lat: pos.coords.latitude, lon: pos.coords.longitude });
       },
       () => {
-        flashToast(setToast, "Location off Â· radar still works");
+        flashToast(setToast, "Location off · map still works");
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
     );
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
-
-  // First-resolve geolocation auto-pick: if the rider has never picked a
-  // region explicitly, auto-pick the bbox-containing region from their
-  // position. Returning riders with an explicit pick keep their choice
-  // even if a different bbox would otherwise match.
-  const didAutoPickRegionRef = useRef(false);
-  useEffect(() => {
-    if (didAutoPickRegionRef.current) return;
-    if (!rider) return;
-    if (hasExplicitRegion()) {
-      didAutoPickRegionRef.current = true;
-      return;
-    }
-    const picked = regionForPoint(rider.lat, rider.lon);
-    if (picked && picked !== regionId) {
-      didAutoPickRegionRef.current = true;
-      setRegion(picked);
-    } else {
-      didAutoPickRegionRef.current = true;
-    }
-  }, [rider, regionId]);
 
   return (
     <main
@@ -194,7 +171,7 @@ export function RadarShell({
         showDistanceRings={showRings}
         showFuelEstimate
         darkMode={darkMode}
-        regionId={regionId}
+        stateCode={stateCode}
         focusRequest={focusRequest}
         onMapReady={setMap}
       />
@@ -203,7 +180,6 @@ export function RadarShell({
         onToggleRings={() => setShowRings((v) => !v)}
         ringsDisabled={!rider}
       />
-      <UserZoneLayer map={map} />
       <AircraftTrailLayer map={map} airborne={airborne} />
 
       <header
@@ -225,7 +201,17 @@ export function RadarShell({
           sub={status.pillSub}
           big
           tooltip={pillTooltip}
-          style={{ marginLeft: 26 }}
+          style={{
+            minHeight: 42,
+            padding: "0 12px",
+            borderRadius: 10,
+            background: "rgba(5, 6, 7, 0.88)",
+            border: `1px solid color-mix(in srgb, ${
+              pillKind === "alert" ? "var(--ss-alert)" : "var(--ss-clear)"
+            } 58%, transparent)`,
+            boxShadow: "0 6px 18px rgba(0, 0, 0, 0.35)",
+            letterSpacing: "0.02em",
+          }}
         />
       </header>
 

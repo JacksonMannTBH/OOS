@@ -5,7 +5,7 @@ import {
   APP_STATES,
   DEFAULT_APP_STATE_ID,
   type AppStateId,
-} from "@/lib/app-regions";
+} from "@/lib/app-states";
 import { OPS_AIRCRAFT } from "@/lib/aircraft-directory";
 import { SS_TOKENS } from "@/lib/tokens";
 

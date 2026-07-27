@@ -24,10 +24,10 @@ const TABS: TabItem[] = [
     icon: <HomeIcon />,
   },
   {
-    id: "radar",
-    label: "Radar",
-    href: "/radar",
-    activePaths: ["/radar"],
+    id: "map",
+    label: "Map",
+    href: "/map",
+    activePaths: ["/map"],
     icon: <RadarIcon />,
   },
   {
@@ -92,8 +92,8 @@ export function TabBar() {
           gap: 6,
           background: "rgba(9, 10, 10, 0.96)",
           border: "1px solid rgba(255, 255, 255, 0.18)",
-          borderRadius: "clamp(18px, 5vw, 22px)",
-          boxShadow: "0 14px 38px rgba(0, 0, 0, 0.52)",
+          borderRadius: 0,
+          boxShadow: "0 6px 16px rgba(0, 0, 0, 0.34)",
           backdropFilter: "blur(18px) saturate(1.1)",
           WebkitBackdropFilter: "blur(18px) saturate(1.1)",
           zIndex: 50,
@@ -135,7 +135,9 @@ export function TabBar() {
                   height: 5,
                   borderRadius: "50%",
                   background: active ? SS_TOKENS.alert : "transparent",
-                  boxShadow: active ? `0 0 10px ${SS_TOKENS.alert}` : undefined,
+                  boxShadow: active
+                    ? "0 0 3px rgba(246, 196, 49, 0.42)"
+                    : undefined,
                 }}
               />
               <span

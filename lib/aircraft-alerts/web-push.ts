@@ -1,7 +1,6 @@
 import webpush, { type PushSubscription } from "web-push";
+import { readServerEnv } from "@/lib/supabase/server";
 import type { AircraftAlertPushSubscription } from "./types";
-
-const DEFAULT_SUBJECT = "mailto:feedback@smokysignal.app";
 
 let configured = false;
 
@@ -18,7 +17,7 @@ export type AircraftAlertPushResult =
   | { ok: false; reason: "not_configured" | "expired" | "failed"; statusCode?: number };
 
 export function isAircraftAlertPushConfigured(): boolean {
-  return Boolean(getPublicKey() && getPrivateKey());
+  return Boolean(getPublicKey() && getPrivateKey() && getVapidSubject());
 }
 
 export function getAircraftAlertPublicKey(): string {
@@ -61,20 +60,41 @@ function configureWebPush(): boolean {
   if (configured) return true;
   const publicKey = getPublicKey();
   const privateKey = getPrivateKey();
-  if (!publicKey || !privateKey) return false;
-  webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || DEFAULT_SUBJECT,
-    publicKey,
-    privateKey,
-  );
+  const subject = getVapidSubject();
+  if (!publicKey || !privateKey || !subject) return false;
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+  } catch (error) {
+    console.warn("[aircraft-alerts] invalid VAPID configuration:", error);
+    return false;
+  }
   configured = true;
   return true;
 }
 
 function getPublicKey(): string {
-  return process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+  return (
+    readServerEnv("VAPID_PUBLIC_KEY") ??
+    readServerEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY") ??
+    ""
+  );
 }
 
 function getPrivateKey(): string {
-  return process.env.VAPID_PRIVATE_KEY ?? "";
+  return readServerEnv("VAPID_PRIVATE_KEY") ?? "";
+}
+
+function getVapidSubject(): string {
+  return normalizeVapidSubject(readServerEnv("VAPID_SUBJECT") ?? "");
+}
+
+function normalizeVapidSubject(value: string): string {
+  const subject = value.trim();
+  if (/^https?:\/\//i.test(subject) || /^mailto:/i.test(subject)) {
+    return subject;
+  }
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(subject)) {
+    return `mailto:${subject}`;
+  }
+  return "";
 }

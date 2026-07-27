@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { SS_TOKENS } from "@/lib/tokens";
-import { STALE_MS } from "@/lib/freshness";
 import { formatTsBare } from "@/lib/time";
+
+const STALE_MS = 15 * 60 * 1000;
 
 type Props = {
   /** ms-since-epoch of the last successful track sample. null = unknown. */

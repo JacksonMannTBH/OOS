@@ -1,6 +1,5 @@
-// One-shot (idempotent) migration that imports seed tails missing from the
-// KV registry and merges seed role / roleConfidence / roleNote into any
-// existing KV rows missing them. Safe to re-run.
+// Idempotent catalog sync that imports seed tails missing from Supabase and
+// merges seed role metadata into existing catalog rows.
 //
 // Auth: same admin cookie as the rest of /admin. Returns a small JSON
 // summary of what changed so it's easy to confirm in the deploy log.

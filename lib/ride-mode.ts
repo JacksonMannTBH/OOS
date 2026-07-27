@@ -18,7 +18,7 @@ export type RideContact = {
 };
 
 export const RIDE_ALERT_ROLES: ReadonlySet<FleetRole> = new Set([
-  "smokey",
+  "fixed_wing",
   "patrol",
   "unknown",
 ]);

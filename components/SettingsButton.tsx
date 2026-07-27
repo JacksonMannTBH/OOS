@@ -5,40 +5,43 @@ import type { CSSProperties } from "react";
 type Props = {
   href?: string;
   label?: string;
+  variant?: "solid" | "plain";
   style?: CSSProperties;
 };
 
 export function SettingsButton({
   href = "/settings",
   label = "Settings",
+  variant = "solid",
   style,
 }: Props) {
+  const plain = variant === "plain";
   return (
     <Link
       href={href}
       prefetch={false}
       style={{
         boxSizing: "border-box",
-        width: "min(100%, 360px)",
-        minHeight: "clamp(50px, 13vw, 56px)",
-        padding: "0 22px",
+        width: plain ? "auto" : "min(100%, 360px)",
+        minHeight: plain ? 44 : "clamp(50px, 13vw, 56px)",
+        padding: plain ? "0 6px" : "0 22px",
         alignSelf: "center",
-        marginTop: -6,
+        marginTop: plain ? -10 : -6,
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
         gap: 10,
         color: SS_TOKENS.alert,
-        background: "#050505",
-        border: "1px solid rgba(246, 196, 49, 0.44)",
-        borderRadius: 16,
+        background: plain ? "transparent" : "#050505",
+        border: plain ? 0 : "1px solid rgba(246, 196, 49, 0.44)",
+        borderRadius: plain ? 0 : 16,
         textDecoration: "none",
         fontSize: 16,
         fontWeight: 800,
         letterSpacing: 0,
-        backdropFilter: "blur(18px)",
-        WebkitBackdropFilter: "blur(18px)",
-        boxShadow: "0 12px 28px rgba(0, 0, 0, 0.32)",
+        backdropFilter: plain ? undefined : "blur(18px)",
+        WebkitBackdropFilter: plain ? undefined : "blur(18px)",
+        boxShadow: plain ? "none" : "0 12px 28px rgba(0, 0, 0, 0.32)",
         ...style,
       }}
     >

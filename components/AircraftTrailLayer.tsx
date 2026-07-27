@@ -1,7 +1,7 @@
 "use client";
 
 // Polls /api/trails for the currently-airborne tail set and renders a
-// polyline + endpoint dots behind each plane on /radar.
+// polyline + endpoint dots behind each plane on /map.
 //
 // PROMPT_22 rebuild on the confirmed-working PROMPT_19C strip-back
 // (PR #119) — the data path was proven; this brings back halo +

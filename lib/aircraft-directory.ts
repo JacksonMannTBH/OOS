@@ -1,4 +1,4 @@
-import type { AppStateId } from "./app-regions";
+import type { AppStateId } from "./app-states";
 import type { FleetEntry, FleetRole } from "./types";
 
 export type OpsAircraft = {
@@ -476,5 +476,5 @@ function roleForModel(model: string): FleetRole {
     model,
   )
     ? "patrol"
-    : "smokey";
+    : "fixed_wing";
 }

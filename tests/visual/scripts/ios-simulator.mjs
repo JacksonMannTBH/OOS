@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
-const BASE = process.env.SS_VISUAL_BASE_URL ?? "https://smokysignal.app";
+const BASE = process.env.OOS_VISUAL_BASE_URL ?? "http://localhost:3000";
 const OUT = path.join(ROOT, "out/ios-simulator");
 
 function skip(reason) {
@@ -70,7 +70,7 @@ if (fs.existsSync(ROUTES_JSON)) {
   // Fallback inline list mirrored from specs/routes.ts
   ROUTES = [
     { name: "home-default", path: "/", settleMs: 1500 },
-    { name: "radar", path: "/radar", settleMs: 3500 },
+    { name: "map", path: "/map", settleMs: 3500 },
     { name: "forecast", path: "/forecast", settleMs: 1500 },
     { name: "activity", path: "/activity", settleMs: 1500 },
     { name: "about", path: "/about", settleMs: 1000 },

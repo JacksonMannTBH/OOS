@@ -3,7 +3,7 @@ import { ResetPreferencesButton } from "@/components/ResetPreferencesButton";
 
 export const metadata = {
   title: "Settings",
-  description: "Tune Out Of Sight alerts, zones, and device preferences.",
+  description: "Tune Out Of Sight state alerts and device preferences.",
 };
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ const SECTION_WRAP = {
 } as const;
 
 const PAGE_WRAP = {
-  minHeight: "calc(100dvh + 1228px)",
+  minHeight: "calc(100dvh + 764px)",
 } as const;
 
 export default async function AlertsPage() {

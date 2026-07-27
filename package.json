@@ -1,5 +1,5 @@
 {
-  "name": "smokysignal",
+  "name": "out-of-sight",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,19 +9,13 @@
     "build": "node scripts/clean-build-state.mjs && next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "env:pull": "vercel env pull .env.local --environment=development --yes",
-    "verify-prod": "./scripts/verify-prod.zsh",
-    "backfill:first-sample": "tsx --env-file=.env.local scripts/backfill-first-sample.ts",
-    "backfill": "tsx --env-file=.env.local scripts/backfill.ts",
-    "backfill:dry": "tsx --env-file=.env.local scripts/backfill.ts --dry",
-    "backfill:resume": "tsx --env-file=.env.local scripts/backfill.ts --resume --yes"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@netlify/functions": "^5.3.0",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@supabase/supabase-js": "^2.110.9",
     "@types/web-push": "^3.6.4",
-    "@upstash/redis": "^1.37.0",
-    "@vercel/analytics": "^2.0.1",
     "maplibre-gl": "^5.24.0",
     "next": "^14.2.16",
     "react": "^18.3.1",

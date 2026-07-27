@@ -1,7 +1,7 @@
 // Canonical time-display formatter. One source of truth so per-page
 // helpers don't drift on tz, format, or 24-hour invariants.
 //
-// SmokySignal's audience is Pacific-time only. Every displayed time is
+// The initial audience is Pacific-time only. Every displayed time is
 // rendered in PT; time-bearing styles get an explicit "PT" suffix so a
 // rider in any tz can read the value without guessing. Date-only styles
 // don't get the suffix — a date is a date.

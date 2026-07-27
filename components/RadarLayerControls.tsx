@@ -92,7 +92,7 @@ export function RadarLayerControls({
         align="start"
         content={
           ringsDisabled
-            ? "Distance rings need your location. Allow location access on /radar."
+            ? "Distance rings need your location. Allow location access on /map."
             : "1 / 3 / 5 nm rings around your position. Tap to toggle."
         }
       >

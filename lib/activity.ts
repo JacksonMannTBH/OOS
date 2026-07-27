@@ -1,57 +1,20 @@
-// Activity feed: state-change events derived from successive snapshots.
-// Stored as a Redis list at activity:feed (last 500 entries, 35-day TTL).
-// Surfaced on /activity, on the Glanceable home as a one-line strip,
-// and via /api/activity.
-//
-// Event kinds:
-//   takeoff           — was grounded (or absent), now airborne
-//   landing           — was airborne, now grounded
-//   first_seen        — no prev entry for this tail and now airborne
-//                       (effectively "newly added to the registry and
-//                        already in the air on first observation")
-//   squawk_emergency  — current squawk is 7500/7600/7700 AND prev
-//                       squawk differed (so we only fire on transitions,
-//                       not continuously while the alert is active)
-//
-// `altitude_change` is preserved as a tolerated kind on read for any
-// pre-existing entries written by the previous activity-detection
-// implementation; we no longer emit it.
-
-import {
-  filterOpsAircraftByState,
-  stateIdForOpsAircraftTail,
-} from "./aircraft-directory";
-import { APP_STATES, type AppStateId } from "./app-regions";
-import { getRedis, cacheGet, cacheSet } from "./cache";
-import { DEFAULT_REGION, stateIdForRegion, type RegionId } from "./regions";
-import type { Aircraft, FleetRole, Snapshot } from "./types";
-
-const FEED_KEY = "activity:feed";
-const PREV_KEY = "aircraft:prev";
-const FEED_LIMIT = 500;
-const FEED_TTL_SECONDS = 35 * 24 * 60 * 60;
-const PREV_TTL_SECONDS = 24 * 60 * 60;
-const READ_CACHE_TTL = 8;
-
-const EMERGENCY_SQUAWKS = new Set(["7500", "7600", "7700"]);
-const APP_STATE_IDS = new Set<string>(APP_STATES.map((state) => state.id));
+import { filterOpsAircraftByState } from "./aircraft-directory";
+import { type AppStateId } from "./app-states";
+import { getSupabaseAdmin, isSupabaseConfigured } from "./supabase/server";
+import type { FleetRole, Snapshot } from "./types";
 
 export type ActivityKind =
   | "takeoff"
   | "landing"
   | "first_seen"
   | "squawk_emergency"
-  | "altitude_change"; // tolerated for read-back; never emitted by current code
+  | "altitude_change";
 
 export type ActivityEntry = {
-  /** ms since epoch (Date.now()) */
   ts: number;
   tail: string;
   icao24?: string;
-  /** FleetRole at the time the event was recorded — used to color the
-   *  event icon in the activity feed. Older entries may not have this. */
   role?: FleetRole;
-  /** App state containing this tail. Older entries may not have this. */
   stateId?: AppStateId;
   kind: ActivityKind;
   squawk?: string | null;
@@ -61,12 +24,6 @@ export type ActivityEntry = {
   description: string;
 };
 
-/**
- * Generates the human-readable description for an event. Branches on
- * fleet role so SAR / transport events read calmer than smokey / patrol
- * events ("on a run" vs "off the deck"). Older callers without the role
- * arg get the conservative default behavior.
- */
 export function describeEvent(
   tail: string,
   nickname: string | null | undefined,
@@ -75,34 +32,13 @@ export function describeEvent(
   role: FleetRole = "unknown",
 ): string {
   const name = nickname ?? tail;
-
   if (kind === "takeoff") {
-    if (role === "smokey") {
-      if (nickname === "Bird 4") return "Bird off the deck";
-      return `${name} off the deck`;
-    }
-    if (role === "patrol") {
-      return `${name} up`;
-    }
-    if (role === "sar") {
-      return `${name} on a run`;
-    }
-    if (role === "transport") {
-      return `${name} up`;
-    }
+    if (role === "fixed_wing") return `${name} off the deck`;
+    if (role === "sar") return `${name} on a run`;
     return `${name} up`;
   }
-
-  if (kind === "landing") {
-    if (role === "sar") return `${name} back on the ground`;
-    if (role === "smokey" && nickname === "Bird 4") return "Bird down";
-    return `${name} down`;
-  }
-
-  if (kind === "first_seen") {
-    return `${name} on watch`;
-  }
-
+  if (kind === "landing") return `${name} down`;
+  if (kind === "first_seen") return `${name} on watch`;
   if (kind === "squawk_emergency") {
     const meaning =
       squawk === "7700"
@@ -114,269 +50,85 @@ export function describeEvent(
             : "alert";
     return `${name} squawking ${meaning}`;
   }
-
-  // altitude_change (legacy) or unknown
   return `${tail} ${kind}`;
 }
 
-function readPrev(snap: Snapshot | null): Map<string, Aircraft> {
-  const m = new Map<string, Aircraft>();
-  if (!snap) return m;
-  for (const a of snap.aircraft) m.set(a.tail, a);
-  return m;
+/** Activity is produced by confirmed flight-session transitions during ingestion. */
+export async function recordActivity(
+  _snapshot: Snapshot,
+  _state?: string,
+): Promise<void> {
+  return;
 }
 
-function diffEvents(prev: Snapshot | null, curr: Snapshot): ActivityEntry[] {
-  const prevByTail = readPrev(prev);
-  const ts = Date.now();
-  const out: ActivityEntry[] = [];
+export async function getRecentActivity(
+  limit = 50,
+  stateId?: AppStateId,
+): Promise<ActivityEntry[]> {
+  if (!isSupabaseConfigured()) return [];
+  const readLimit = Math.max(limit * 2, 50);
+  const { data, error } = await getSupabaseAdmin()
+    .from("flight_sessions")
+    .select(
+      "detected_takeoff_at,detected_landing_at,aircraft(tail,icao24,nickname,role)",
+    )
+    .or("detected_takeoff_at.not.is.null,detected_landing_at.not.is.null")
+    .order("last_seen_at", { ascending: false })
+    .limit(readLimit);
+  if (error) {
+    console.warn("[activity] read failed:", error.message);
+    return [];
+  }
 
-  for (const a of curr.aircraft) {
-    const p = prevByTail.get(a.tail);
-    const currentPos = {
-      lat: a.lat ?? null,
-      lon: a.lon ?? null,
-      alt_ft: a.altitude_ft ?? null,
-    };
-    // For landings the current snapshot has the plane at on_ground=true
-    // (or absent), so its lat/lon are stale or null. The previous
-    // snapshot is when we last saw it airborne — that's the position
-    // worth recording.
-    const lastAirbornePos = {
-      lat: p?.lat ?? currentPos.lat,
-      lon: p?.lon ?? currentPos.lon,
-      alt_ft: p?.altitude_ft ?? currentPos.alt_ft,
-    };
-
-    const role: FleetRole = a.role ?? "unknown";
-
-    // first_seen: tail wasn't in prev snapshot at all and is currently
-    // airborne. Fires once per registry add for any tail that's already
-    // up when it joins.
-    if (!p && a.airborne) {
-      out.push({
-        ts,
-        tail: a.tail,
-        icao24: a.icao24,
-        role,
-        ...currentPos,
-        kind: "first_seen",
-        squawk: a.squawk ?? null,
-        description: describeEvent(a.tail, a.nickname, "first_seen", null, role),
-      });
-      // intentional: don't also emit takeoff for the same instant
+  const entries: ActivityEntry[] = [];
+  for (const row of data ?? []) {
+    const aircraft = Array.isArray(row.aircraft) ? row.aircraft[0] : row.aircraft;
+    if (!aircraft) continue;
+    const tail = String(aircraft.tail);
+    const role = aircraft.role as FleetRole;
+    if (
+      stateId &&
+      filterOpsAircraftByState([{ tail }], stateId).length === 0
+    ) {
       continue;
     }
-
-    // takeoff — current position is the moment of liftoff
-    if (p && !p.airborne && a.airborne) {
-      out.push({
-        ts,
-        tail: a.tail,
-        icao24: a.icao24,
+    if (row.detected_takeoff_at) {
+      entries.push({
+        ts: Date.parse(String(row.detected_takeoff_at)),
+        tail,
+        icao24: String(aircraft.icao24),
         role,
-        ...currentPos,
+        stateId,
         kind: "takeoff",
-        squawk: a.squawk ?? null,
-        description: describeEvent(a.tail, a.nickname, "takeoff", null, role),
-      });
-    }
-
-    // landing — use the LAST airborne position (prev snapshot), since
-    // the current one is on the ground with stale coords or missing.
-    if (p && p.airborne && !a.airborne) {
-      out.push({
-        ts,
-        tail: a.tail,
-        icao24: a.icao24,
-        role,
-        ...lastAirbornePos,
-        kind: "landing",
-        squawk: a.squawk ?? null,
-        description: describeEvent(a.tail, a.nickname, "landing", null, role),
-      });
-    }
-
-    // squawk transition into emergency code
-    const cs = a.squawk ?? null;
-    const ps = p?.squawk ?? null;
-    if (cs && EMERGENCY_SQUAWKS.has(cs) && cs !== ps) {
-      out.push({
-        ts,
-        tail: a.tail,
-        icao24: a.icao24,
-        role,
-        ...currentPos,
-        kind: "squawk_emergency",
-        squawk: cs,
         description: describeEvent(
-          a.tail,
-          a.nickname,
-          "squawk_emergency",
-          cs,
+          tail,
+          aircraft.nickname ? String(aircraft.nickname) : null,
+          "takeoff",
+          null,
+          role,
+        ),
+      });
+    }
+    if (row.detected_landing_at) {
+      entries.push({
+        ts: Date.parse(String(row.detected_landing_at)),
+        tail,
+        icao24: String(aircraft.icao24),
+        role,
+        stateId,
+        kind: "landing",
+        description: describeEvent(
+          tail,
+          aircraft.nickname ? String(aircraft.nickname) : null,
+          "landing",
+          null,
           role,
         ),
       });
     }
   }
-
-  return out;
-}
-
-/**
- * Diff current snapshot vs previous, append events to the feed, persist
- * current as the new "previous" for next call. Best-effort; never throws.
- */
-export async function recordActivity(
-  curr: Snapshot,
-  regionId: RegionId = DEFAULT_REGION,
-): Promise<void> {
-  const redis = await getRedis();
-  const prevKey = previousSnapshotKey(regionId);
-
-  let prev: Snapshot | null = null;
-  if (redis) {
-    try {
-      const raw = await redis.get(prevKey);
-      if (raw) {
-        prev =
-          typeof raw === "string"
-            ? (JSON.parse(raw) as Snapshot)
-            : (raw as Snapshot);
-      }
-    } catch (e) {
-      console.warn("[activity] read prev failed:", e);
-    }
-  } else {
-    prev = await cacheGet<Snapshot>(prevKey);
-  }
-
-  const fallbackStateId = stateIdForRegion(regionId);
-  const events = diffEvents(prev, curr).map((entry) => ({
-    ...entry,
-    stateId: stateIdForOpsAircraftTail(entry.tail) ?? fallbackStateId,
-  }));
-  if (events.length > 0) {
-    if (redis) {
-      try {
-        const payload = events.map((e) => JSON.stringify(e));
-        await redis.rpush(FEED_KEY, ...payload);
-        await redis.ltrim(FEED_KEY, -FEED_LIMIT, -1);
-        await redis.expire(FEED_KEY, FEED_TTL_SECONDS);
-      } catch (e) {
-        console.warn("[activity] rpush failed:", e);
-      }
-    } else {
-      const feed = (await cacheGet<ActivityEntry[]>(FEED_KEY)) ?? [];
-      await cacheSet(
-        FEED_KEY,
-        [...feed, ...events].slice(-FEED_LIMIT),
-        FEED_TTL_SECONDS,
-      );
-    }
-  }
-
-  try {
-    if (redis) {
-      await redis.set(prevKey, JSON.stringify(curr), { ex: PREV_TTL_SECONDS });
-    } else {
-      await cacheSet(prevKey, curr, PREV_TTL_SECONDS);
-    }
-  } catch (e) {
-    console.warn("[activity] write prev failed:", e);
-  }
-}
-
-function previousSnapshotKey(regionId: RegionId): string {
-  return regionId === DEFAULT_REGION ? PREV_KEY : `${PREV_KEY}:${regionId}`;
-}
-
-/**
- * Most recent N events, newest-first. Tolerates the older feed-entry
- * shape (no icao24/squawk/lat/lon/alt_ft, ts in seconds) by leaving
- * those fields undefined.
- */
-export async function getRecentActivity(
-  limit = 50,
-  stateId?: AppStateId,
-): Promise<ActivityEntry[]> {
-  const cacheKey = `ss:activity-recent:${stateId ?? "all"}:${limit}`;
-  const redis = await getRedis();
-  const readLimit = stateId ? FEED_LIMIT : limit;
-  if (!redis) {
-    const feed = (await cacheGet<ActivityEntry[]>(FEED_KEY)) ?? [];
-    return filterActivityByState(
-      normalizeActivityEntries(feed.slice(-readLimit)),
-      stateId,
-    ).slice(0, limit);
-  }
-
-  const cached = await cacheGet<ActivityEntry[]>(cacheKey);
-  if (cached) return cached;
-
-  let raw: unknown[] = [];
-  try {
-    raw = (await redis.lrange(FEED_KEY, -readLimit, -1)) as unknown[];
-  } catch {
-    return [];
-  }
-
-  const entries = filterActivityByState(
-    normalizeActivityEntries(raw),
-    stateId,
-  ).slice(0, limit);
-
-  await cacheSet(cacheKey, entries, READ_CACHE_TTL);
-  return entries;
-}
-
-function filterActivityByState(
-  entries: ActivityEntry[],
-  stateId?: AppStateId,
-): ActivityEntry[] {
-  if (!stateId) return entries;
-  return entries.filter((entry) => {
-    const entryStateId = normalizeActivityStateId(
-      (entry as { stateId?: string }).stateId,
-    );
-    if (entryStateId) return entryStateId === stateId;
-    return filterOpsAircraftByState([entry], stateId).length === 1;
-  });
-}
-
-function normalizeActivityStateId(
-  stateId: string | null | undefined,
-): AppStateId | null {
-  if (stateId === "north_california" || stateId === "south_california") {
-    return "california";
-  }
-  if (stateId && APP_STATE_IDS.has(stateId)) return stateId as AppStateId;
-  return null;
-}
-
-function normalizeActivityEntries(raw: unknown[]): ActivityEntry[] {
-  return raw
-    .map((s) => {
-      if (typeof s === "string") {
-        try {
-          return JSON.parse(s) as ActivityEntry;
-        } catch {
-          return null;
-        }
-      }
-      if (s && typeof s === "object") return s as ActivityEntry;
-      return null;
-    })
-    .filter((e): e is ActivityEntry => e !== null)
-    // Normalize: if ts looks like seconds (10-digit unix), promote to ms.
-    .map((e) => (e.ts < 1e12 ? { ...e, ts: e.ts * 1000 } : e))
-    .map((entry) => {
-      const stateId = normalizeActivityStateId(
-        (entry as { stateId?: string }).stateId,
-      );
-      return stateId && stateId !== entry.stateId
-        ? { ...entry, stateId }
-        : entry;
-    })
-    .reverse(); // newest first
+  return entries
+    .filter((entry) => Number.isFinite(entry.ts))
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, limit);
 }

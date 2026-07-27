@@ -1,6 +1,6 @@
 "use client";
 
-// Ambient amber flash overlay rendered on /dash when a smokey or patrol
+// Ambient amber flash overlay rendered on /dash when a fixed_wing or patrol
 // aircraft is within PROXIMITY_NM nautical miles of the rider. Pulses
 // gently via CSS keyframes so it's noticeable in peripheral vision
 // without strobing — sits as a fixed-position overlay above the page

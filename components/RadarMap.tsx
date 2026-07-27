@@ -21,7 +21,7 @@ import {
   aircraftColorForTail,
   aircraftColorIndex,
 } from "@/lib/aircraft-colors";
-import { REGIONS, type RegionId } from "@/lib/regions";
+import { getAppState, type StateCode } from "@/lib/app-states";
 import {
   estimateFuelRemaining,
 } from "@/lib/fuel-estimate";
@@ -34,7 +34,7 @@ const NORTH_AMERICA_BOUNDS: [[number, number], [number, number]] = [
 ];
 // Street-level zoom used the first time the rider's geolocation resolves
 // — opens the map on the rider's actual neighborhood instead of the
-// whole Puget Sound region.
+// whole selected-state overview.
 const RIDER_ZOOM = 11;
 
 // 1 nautical mile in degrees latitude (constant). Longitude varies with
@@ -62,7 +62,7 @@ function circleRingCoords(
 }
 
 const AIRCRAFT_ICON_SIZE = 40; // bitmap raster size; layer `icon-size` scales it
-const GLYPH_ROLES: GlyphRole[] = ["smokey", "patrol", "sar", "transport"];
+const GLYPH_ROLES: GlyphRole[] = ["fixed_wing", "patrol", "sar", "transport"];
 
 function iconKeyFor(role: GlyphRole, colorIndex: number): string {
   return `aircraft-${role}-${colorIndex}`;
@@ -105,7 +105,6 @@ const CUSTOM_LAYER_PREFIXES = [
   "rider",
   "distance-rings",
   "flight-paths",
-  "user-zones",
 ];
 const ROAD_HIGHLIGHT_COLOR = "#f6c431";
 
@@ -345,7 +344,7 @@ export default function RadarMap({
   showDistanceRings = false,
   darkMode = false,
   showFuelEstimate = false,
-  regionId,
+  stateCode,
   focusRequest,
   onMapReady,
 }: {
@@ -354,10 +353,8 @@ export default function RadarMap({
   showDistanceRings?: boolean;
   showFuelEstimate?: boolean;
   darkMode?: boolean;
-  /** Pivots the map view between Puget Sound / counties / All-WA.
-   *  When undefined or "puget_sound", no flyTo — preserves the
-   *  existing rider-zoom + auto-recenter behavior. */
-  regionId?: RegionId;
+  /** Selected catalog state. Used for the default map center. */
+  stateCode?: StateCode;
   focusRequest?: FocusRequest | null;
   onMapReady?: (map: MaplibreMap | null) => void;
 }) {
@@ -678,7 +675,7 @@ export default function RadarMap({
   // Apply rider position when it updates from the geolocation watch.
   // First time the rider resolves AND the map is ready, fly to their
   // position at street-level zoom so a Tacoma rider opens to Tacoma,
-  // not to the regional Puget Sound overview.
+  // not to the selected-state overview.
   useEffect(() => {
     riderRef.current = rider;
     if (readyRef.current) {
@@ -743,28 +740,20 @@ export default function RadarMap({
     focusTailOnMap(focusRequest.tail);
   }, [focusRequest]);
 
-  // When the rider changes region (Puget Sound → Spokane etc), fly the
-  // map to the region's centroid + default zoom. Skipped on initial
-  // mount where regionId starts at "puget_sound" — that's the existing
-  // default and a flyTo would feel like a flicker.
-  const lastRegionRef = useRef<RegionId | undefined>(regionId);
+  const lastStateRef = useRef<StateCode | undefined>(stateCode);
   useEffect(() => {
-    if (!regionId || regionId === lastRegionRef.current) return;
-    lastRegionRef.current = regionId;
+    if (!stateCode || stateCode === lastStateRef.current) return;
+    lastStateRef.current = stateCode;
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    const r = REGIONS[regionId];
-    if (!r) return;
+    const state = getAppState(stateCode);
     map.flyTo({
-      center: [r.centerLon, r.centerLat],
-      zoom: r.zoomLevel,
+      center: [state.centerLon, state.centerLat],
+      zoom: 6,
       duration: 800,
     });
-    // Mark that the user "interacted" so the auto-recenter loop pauses
-    // for 15s — otherwise the next 5s tick would yank them back to
-    // their geolocation and undo the region pivot.
     userInteractedAtRef.current = Date.now();
-  }, [regionId]);
+  }, [stateCode]);
 
   // Auto-recenter every 5s, paused for 15s after the user pans or zooms.
   // Also paused while a plane is being followed — applyAircraft handles
@@ -796,6 +785,7 @@ export default function RadarMap({
     const meta = stateRef.current.metaByTail.get(tail);
     const label = meta?.nickname ?? tail;
     const popup = new maplibregl.Popup({
+      anchor: "top",
       closeButton: true,
       closeOnClick: false,
       closeOnMove: false,
@@ -961,7 +951,7 @@ export default function RadarMap({
     // Follow-mode recenter — once per snapshot, when the plane has drifted
     // either >FOLLOW_RECENTER_PX from center OR within FOLLOW_EDGE_MARGIN
     // of any viewport edge. If the plane has dropped out of the snapshot
-    // (left the region, went offline), exit follow mode silently.
+    // (left the feed, went offline), exit follow mode silently.
     const followedTail = followedTailRef.current;
     if (followedTail) {
       const pos = newTo.get(followedTail);

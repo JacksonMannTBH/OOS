@@ -15,6 +15,10 @@ export type FuelEstimateAircraft = {
   ground_speed_kt?: number | null;
   heading?: number | null;
   time_aloft_min?: number | null;
+  starting_fuel_estimate_gal?: number | null;
+  usable_fuel_gallons?: number | null;
+  nominal_endurance_min?: number | null;
+  reserve_min?: number | null;
 };
 
 export type FuelEstimateResult = {
@@ -73,13 +77,17 @@ export function formatFuelRemaining(totalMinutes: number): string {
   const minutes = safeMinutes % 60;
   const hourLabel = hours === 1 ? "Hour" : "Hours";
   const minuteLabel = minutes === 1 ? "Minute" : "Minutes";
-  return `Fuel Remaining - ${hours} ${hourLabel} ${minutes} ${minuteLabel}`;
+  return `Est. Endurance - ${hours} ${hourLabel} ${minutes} ${minuteLabel}`;
 }
 
 export function estimateFuelRemaining(
   aircraft: FuelEstimateAircraft,
 ): FuelEstimateResult | null {
-  const profile = getAircraftFuelProfile(aircraft.tail);
+  const databaseDuration = safeNumber(aircraft.nominal_endurance_min);
+  const profile =
+    databaseDuration && databaseDuration > 0
+      ? { meanMaxDurationMin: databaseDuration }
+      : getAircraftFuelProfile(aircraft.tail);
   if (!profile) return null;
   if (!isAircraftAirborne(aircraft)) return null;
 

@@ -12,7 +12,7 @@ export const ROUTES: Route[] = [
   { name: "home-default", path: "/", settleMs: 1500, riderFacing: true, a11y: true, pwa: true, testsTz: true },
   { name: "home-mock-up", path: "/?mock=up", settleMs: 1500, riderFacing: true, a11y: true },
   { name: "home-mock-down", path: "/?mock=down", settleMs: 1500, riderFacing: true, a11y: true },
-  { name: "radar", path: "/radar", settleMs: 3500, riderFacing: true, a11y: true, testsTz: true },
+  { name: "map", path: "/map", settleMs: 3500, riderFacing: true, a11y: true, testsTz: true },
   { name: "forecast", path: "/forecast", settleMs: 1500, riderFacing: true, a11y: true, testsTz: true },
   { name: "activity", path: "/activity", settleMs: 1500, riderFacing: true, a11y: true, testsTz: true },
   { name: "about", path: "/about", settleMs: 1000, riderFacing: true, a11y: true },

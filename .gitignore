@@ -26,8 +26,8 @@ yarn-error.log*
 .env.local
 .env.*.local
 
-# vercel
-.vercel
+# netlify local state
+.netlify
 
 # ts
 *.tsbuildinfo

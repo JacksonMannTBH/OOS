@@ -1,12 +1,11 @@
 // OpenSky Network adapter — OAuth2 client_credentials + authenticated state fetch.
 //
 // Auth: OpenSky deprecated basic auth in March 2025; access tokens come from the
-// Keycloak realm and live ~30 minutes. Tokens are cached in KV (or in-memory
-// fallback) keyed by `opensky:token`. Anonymous requests still work — when the
-// env vars are missing, getOpenskyToken() returns null and fetchOpenSky() drops
-// the Authorization header (heavier rate limits, useful for dev).
+// Keycloak realm and live about 30 minutes. Tokens are cached in Supabase.
+// When credentials are absent, requests use the anonymous, rate-limited path.
 
 import { cacheGet, cacheSet } from "./cache";
+import { readServerEnv } from "./supabase/server";
 import type { NormalizedAc } from "./types";
 
 const AUTH_URL =
@@ -16,7 +15,7 @@ const STATES_URL = "https://opensky-network.org/api/states/all";
 const TOKEN_KEY = "opensky:token";
 const CREDITS_KEY = "opensky:credits_remaining";
 
-const UA = "OutOfSight/0.1 (+https://www.smokysignal.app)";
+const UA = "OutOfSight/0.1";
 
 type CachedToken = { access_token: string; expires_at: number };
 
@@ -26,8 +25,8 @@ type CachedToken = { access_token: string; expires_at: number };
  * has no credentials (signals: fall back to anonymous requests).
  */
 export async function getOpenskyToken(): Promise<string | null> {
-  const id = process.env.OPENSKY_CLIENT_ID;
-  const secret = process.env.OPENSKY_CLIENT_SECRET;
+  const id = readServerEnv("OPENSKY_CLIENT_ID");
+  const secret = readServerEnv("OPENSKY_CLIENT_SECRET");
   if (!id || !secret) return null;
 
   const cached = await cacheGet<CachedToken>(TOKEN_KEY);
@@ -59,9 +58,9 @@ export async function getOpenskyToken(): Promise<string | null> {
     access_token: j.access_token,
     expires_at: Date.now() + expiresIn * 1000,
   };
-  // Keep the entry in KV for 24h so the health check can use its presence as
-  // evidence that auth has worked recently — Vercel→Keycloak is slow enough
-  // (>8s sometimes) that re-authing on each health hit isn't viable. The
+  // Keep the entry for 24h so health checks can use its presence as evidence
+  // that authentication has worked recently. Token refresh can be slow enough
+  // that re-authing on each health hit is not viable. The
   // inner `expires_at` still drives refresh when fetchOpenSky actually needs
   // a usable token.
   const cacheSeconds = 24 * 60 * 60;
@@ -76,7 +75,7 @@ export async function peekOpenskyToken(): Promise<CachedToken | null> {
 
 /**
  * Force-expires the cached token so the next caller fetches a fresh one. The
- * cache wrapper has no delete primitive, so we write a sentinel with a 1s TTL.
+ * A short-lived sentinel keeps refresh behavior deterministic.
  */
 async function clearOpenskyToken(): Promise<void> {
   await cacheSet(TOKEN_KEY, { access_token: "", expires_at: 0 }, 1);

@@ -99,8 +99,8 @@ function PasscodeMissing() {
       </h1>
       <p>
         <code className="ss-mono">ADMIN_PASSCODE</code> isn&rsquo;t set in this
-        environment. Add it via the Vercel dashboard (sensitive on, all three
-        environments) and redeploy.
+        environment. Add it in Netlify environment variables as a secret and
+        redeploy.
       </p>
     </main>
   );

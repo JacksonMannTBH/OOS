@@ -10,7 +10,7 @@ import { ADDITIONAL_FLEET } from "./aircraft-directory";
 // `role` drives the home + radar status pill via lib/status.ts. All three
 // alert-tier roles surface as BIRD UP under the rider-facing umbrella;
 // the granular role taxonomy still drives body copy and badge tooltips.
-//   smokey    → BIRD UP                  (alert / amber)
+//   fixed_wing    → BIRD UP                  (alert / amber)
 //   patrol    → BIRD UP                  (alert / amber)
 //   unknown   → BIRD UP                  (alert / amber, conservative)
 //   sar       → ALL CLEAR + footnote       (clear / green)
@@ -22,12 +22,12 @@ import { ADDITIONAL_FLEET } from "./aircraft-directory";
 // The free-text `roleDescription` field (formerly `role`) is the human-
 // readable mission summary shown on /about and /plane/[tail].
 export const FLEET: FleetEntry[] = [
-  // Washington State Patrol — Olympia (all WSP fixed-wing are smokey)
-  { tail: "N305DK", hex: "A3323A", operator: "WSP",          model: "Cessna 206H Stationair (FLIR)", nickname: "Bird 4",          roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "smokey",    roleConfidence: "confirmed", roleNote: "Bird 4 — WSP fixed-wing FLIR" },
-  { tail: "N305RC", hex: "A3335F", operator: "WSP",          model: "Cessna 182T Skylane",            nickname: null,                roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "smokey",    roleConfidence: "confirmed", roleNote: "WSP fixed-wing speed enforcement" },
-  { tail: "N2446X", hex: null,     operator: "WSP",          model: "Cessna 206H Stationair (FLIR)", nickname: "Bird 3",          roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "smokey",    roleConfidence: "confirmed", roleNote: "Bird 3 — WSP fixed-wing FLIR" },
-  { tail: "N102LP", hex: "A00D2A", operator: "WSP",          model: "Cessna 182T Skylane",            nickname: null,                roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "smokey",    roleConfidence: "confirmed", roleNote: "WSP fixed-wing speed enforcement" },
-  { tail: "N3532K", hex: null,     operator: "WSP",          model: "Cessna 182T Skylane",            nickname: null,                roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "smokey",    roleConfidence: "confirmed", roleNote: "WSP fixed-wing speed enforcement" },
+  // Washington State Patrol — Olympia (all WSP fixed-wing are fixed_wing)
+  { tail: "N305DK", hex: "A3323A", operator: "WSP",          model: "Cessna 206H Stationair (FLIR)", nickname: "Bird 4",          roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "Bird 4 — WSP fixed-wing FLIR" },
+  { tail: "N305RC", hex: "A3335F", operator: "WSP",          model: "Cessna 182T Skylane",            nickname: null,                roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "WSP fixed-wing speed enforcement" },
+  { tail: "N2446X", hex: null,     operator: "WSP",          model: "Cessna 206H Stationair (FLIR)", nickname: "Bird 3",          roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "Bird 3 — WSP fixed-wing FLIR" },
+  { tail: "N102LP", hex: "A00D2A", operator: "WSP",          model: "Cessna 182T Skylane",            nickname: null,                roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "WSP fixed-wing speed enforcement" },
+  { tail: "N3532K", hex: null,     operator: "WSP",          model: "Cessna 182T Skylane",            nickname: null,                roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "WSP fixed-wing speed enforcement" },
 
   // State of Washington (multi-mission, shared with WSP/WSDOT)
   // Owner of record per FAA registry is State of Washington / Olympia, but
@@ -51,7 +51,7 @@ export const FLEET: FleetEntry[] = [
   // grant in cooperation with the Port of Tacoma. Pierce Two (older
   // Cessna 206 from 1980s drug seizure) operates as backup but no
   // confirmed tail number publicly — omitted here.
-  { tail: "N9446P", hex: null,     operator: "Pierce SO",    model: "Cessna T206H Stationair (FLIR)", nickname: "Pierce One",        roleDescription: "Patrol / SAR / port security", base: "KPLU Thun Field, Puyallup",             role: "smokey",    roleConfidence: "confirmed", roleNote: "Pierce One — Cessna T206H FLIR (2012)" },
+  { tail: "N9446P", hex: null,     operator: "Pierce SO",    model: "Cessna T206H Stationair (FLIR)", nickname: "Pierce One",        roleDescription: "Patrol / SAR / port security", base: "KPLU Thun Field, Puyallup",             role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "Pierce One — Cessna T206H FLIR (2012)" },
 
   // Snohomish County Sheriff
   { tail: "N815SC", hex: "AB1D82", operator: "Snohomish SO", model: "Bell UH-1H Iroquois Plus",       nickname: "SnoHawk 10",        roleDescription: "Mountain SAR / hoist / SWAT",  base: "Taylor's Landing",                      role: "sar",       roleConfidence: "tentative", roleNote: "SnoHawk 10 — likely SAR" },
@@ -159,7 +159,7 @@ export const SEED_VERSION = 6;
 //   - USCG Air Station Astoria (OR) MH-60Ts — operate over the WA
 //     southern coast but stationed in OR; out of WA-airspace scope.
 
-export const SMOKY_TAIL = "N305DK";
+export const FEATURED_TAIL = "N305DK";
 
 /** Resolve a fleet entry's effective ICAO24 hex (lowercase). */
 export function fleetHex(entry: FleetEntry): string {

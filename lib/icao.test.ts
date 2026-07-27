@@ -15,11 +15,11 @@ test("N99999 → adf7c7 (last US registration)", () => {
   assert.equal(nNumberToIcao("N99999"), "adf7c7");
 });
 
-test("N305DK → a3323a (Smoky)", () => {
+test("N305DK → a3323a", () => {
   assert.equal(nNumberToIcao("N305DK"), "a3323a");
 });
 
-test("N907SP → ac8acb (canonical Smoky tail per public knowledge)", () => {
+test("N907SP → ac8acb", () => {
   assert.equal(nNumberToIcao("N907SP"), "ac8acb");
 });
 

@@ -3,12 +3,11 @@
 import { useCallback, useState } from "react";
 import { SS_TOKENS } from "@/lib/tokens";
 import {
-  enableAircraftProximityAlerts,
-  getStoredAircraftAlertRangeNm,
+  enableAircraftAlerts,
 } from "@/lib/aircraft-alerts/client";
-import { getRegion } from "@/lib/region-pref";
+import { getSelectedStateCode } from "@/lib/app-states";
 
-const DISMISS_KEY = "ss_arm_alerts_dismissed_at";
+const DISMISS_KEY = "oos_arm_alerts_dismissed_at";
 const DISMISS_DAYS = 14;
 const DISMISS_MS = DISMISS_DAYS * 24 * 60 * 60 * 1000;
 
@@ -19,14 +18,13 @@ export function ArmAlertsCallout() {
     return Number.isFinite(dismissedAt) && Date.now() - dismissedAt < DISMISS_MS;
   });
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("Range alerts can work while the app is closed.");
+  const [message, setMessage] = useState("State takeoff alerts work while the app is closed.");
 
   const onArm = useCallback(async () => {
     setBusy(true);
     try {
-      await enableAircraftProximityAlerts({
-        regionId: getRegion(),
-        proximityRangeNm: getStoredAircraftAlertRangeNm(),
+      await enableAircraftAlerts({
+        stateCode: getSelectedStateCode(),
       });
       setMessage("Alerts armed.");
     } catch (error) {
@@ -73,7 +71,7 @@ export function ArmAlertsCallout() {
             lineHeight: 1.3,
           }}
         >
-          Get a ping when Bird&rsquo;s up.
+          Get a ping when tracked aircraft launch.
         </div>
         <div style={{ marginTop: 4, fontSize: 12, color: SS_TOKENS.fg2 }}>
           {message}

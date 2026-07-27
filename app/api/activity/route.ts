@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRecentActivity } from "@/lib/activity";
-import { getAppState } from "@/lib/app-regions";
+import { getAppState } from "@/lib/app-states";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

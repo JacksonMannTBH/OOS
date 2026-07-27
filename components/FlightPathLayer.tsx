@@ -8,14 +8,17 @@
 // broadcast so controls stay in sync.
 //
 // Source: /api/flight-paths returns one GeoJSON LineString per tail-day
-// with >= 5 points, filtered by the current region bbox.
+// with >= 5 points, filtered by the selected state.
 // Edge-cached for 5 min so flipping filters is cheap.
 
 import { useEffect, useRef, useState } from "react";
 import type { Map as MaplibreMap, GeoJSONSource } from "maplibre-gl";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
-import { REGION_CHANGE_EVENT, getRegion } from "@/lib/region-pref";
-import { DEFAULT_REGION, type RegionId } from "@/lib/regions";
+import {
+  STATE_CHANGE_EVENT,
+  getSelectedStateCode,
+  type StateCode,
+} from "@/lib/app-states";
 import {
   FLIGHT_PATHS_VISIBLE_KEY,
   LAYER_VISIBILITY_CHANGE_EVENT,
@@ -26,9 +29,9 @@ const SOURCE_ID = "flight-paths";
 const LAYER_ID = "flight-paths-line";
 const AIRCRAFT_LAYER_ID = "aircraft";
 
-function buildQueryString(regionId: RegionId, tails: string[]): string {
+function buildQueryString(stateCode: StateCode, tails: string[]): string {
   const p = new URLSearchParams();
-  p.set("region_id", regionId);
+  p.set("state", stateCode);
   if (tails.length > 0) p.set("tails", tails.join(","));
   return p.toString();
 }
@@ -54,7 +57,9 @@ function colorizeFeatures(features: GeoJSON.Feature[]): GeoJSON.Feature[] {
 
 export function FlightPathLayer({ map, airborneTails }: Props) {
   const [enabled, setEnabled] = useState<boolean>(false);
-  const [regionId, setRegionId] = useState<RegionId>(DEFAULT_REGION);
+  const [stateCode, setStateCode] = useState<StateCode>(
+    () => getSelectedStateCode(),
+  );
   const [features, setFeatures] = useState<GeoJSON.Feature[] | null>(null);
   const airborneTailKey = airborneTails
     .map((tail) => tail.trim().toUpperCase())
@@ -65,16 +70,16 @@ export function FlightPathLayer({ map, airborneTails }: Props) {
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
 
-  // Keep region / visibility changes in sync with radar controls.
+  // Keep state / visibility changes in sync with map controls.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const v = window.localStorage.getItem(VISIBLE_KEY);
     if (v === "0") setEnabled(false);
     else if (v === "1") setEnabled(true);
-    setRegionId(getRegion());
-    const onRegionChange = (e: Event) => {
-      const detail = (e as CustomEvent<{ id: RegionId }>).detail;
-      setRegionId(detail?.id ?? getRegion());
+    setStateCode(getSelectedStateCode());
+    const onStateChange = (e: Event) => {
+      const detail = (e as CustomEvent<{ code?: StateCode }>).detail;
+      setStateCode(detail?.code ?? getSelectedStateCode());
     };
     // Same-tab broadcast from the flight-path toggle — sync
     // visibility instantly when the rider taps the bottom-left pill or
@@ -85,17 +90,17 @@ export function FlightPathLayer({ map, airborneTails }: Props) {
       ).detail;
       if (detail?.key === VISIBLE_KEY) setEnabled(detail.enabled);
     };
-    // Cross-tab visibility sync (rider has /radar open in two tabs).
+    // Cross-tab visibility sync (rider has /map open in two tabs).
     const onStorage = (e: StorageEvent) => {
       if (e.key === VISIBLE_KEY) {
         setEnabled(e.newValue === "1");
       }
     };
-    window.addEventListener(REGION_CHANGE_EVENT, onRegionChange);
+    window.addEventListener(STATE_CHANGE_EVENT, onStateChange);
     window.addEventListener(LAYER_VISIBILITY_CHANGE_EVENT, onLayerVisChange);
     window.addEventListener("storage", onStorage);
     return () => {
-      window.removeEventListener(REGION_CHANGE_EVENT, onRegionChange);
+      window.removeEventListener(STATE_CHANGE_EVENT, onStateChange);
       window.removeEventListener(
         LAYER_VISIBILITY_CHANGE_EVENT,
         onLayerVisChange,
@@ -104,14 +109,14 @@ export function FlightPathLayer({ map, airborneTails }: Props) {
     };
   }, []);
 
-  // Fetch the polyline FeatureCollection on filter / region change.
+  // Fetch the polyline FeatureCollection on filter / state change.
   useEffect(() => {
     let cancelled = false;
     if (filteredAirborneTails.length === 0) {
       setFeatures([]);
       return;
     }
-    const qs = buildQueryString(regionId, filteredAirborneTails);
+    const qs = buildQueryString(stateCode, filteredAirborneTails);
     (async () => {
       try {
         const r = await fetch(`/api/flight-paths?${qs}`, {
@@ -128,7 +133,7 @@ export function FlightPathLayer({ map, airborneTails }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [regionId, airborneTailKey]);
+  }, [stateCode, airborneTailKey]);
 
   // Add the source + layer once the map is ready. Same retry-on-data
   // pattern used by sibling layers because MapLibre's isStyleLoaded() is

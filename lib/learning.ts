@@ -1,4 +1,4 @@
-// Single source of truth for "how long has SmokySignal been listening to
+// Single source of truth for how long Out Of Sight has been listening to
 // the sky?" Hot zones, takeoff forecasts, and the home prediction card all
 // read from getLearningState() so the "Learning your sky" panel says the
 // same thing wherever it appears.
@@ -13,7 +13,7 @@
 //     starts at deploy day and riders see "Learning your sky" even though
 //     we've been collecting data for weeks.
 
-import { cacheGet, cacheSet, getRedis } from "./cache";
+import { cacheGet, cacheSet, cacheSetIfAbsent } from "./cache";
 
 export const LEARNING_THRESHOLD_DAYS = 30;
 
@@ -77,18 +77,9 @@ export async function getLearningState(): Promise<LearningState> {
   const cached = await cacheGet<LearningState>(READ_CACHE_KEY);
   if (cached) return cached;
 
-  const redis = await getRedis();
-  let firstSampleIso: string | null = null;
-  if (redis) {
-    try {
-      const raw = await redis.get(META_KEY);
-      if (typeof raw === "string" && raw.length > 0) {
-        firstSampleIso = raw;
-      }
-    } catch {
-      /* fall through with null */
-    }
-  }
+  const raw = await cacheGet<string>(META_KEY);
+  const firstSampleIso =
+    typeof raw === "string" && raw.length > 0 ? raw : null;
   const state = deriveLearningState(firstSampleIso);
   await cacheSet(READ_CACHE_KEY, state, READ_CACHE_TTL_SECONDS);
   return state;
@@ -101,12 +92,8 @@ export async function getLearningState(): Promise<LearningState> {
  * payload).
  */
 export async function recordFirstSampleIfMissing(now: Date = new Date()): Promise<void> {
-  const redis = await getRedis();
-  if (!redis) return;
   try {
-    // Upstash Redis client supports SET with `nx: true` — only writes if
-    // the key doesn't exist. No payload guard needed; the call is cheap.
-    await redis.set(META_KEY, now.toISOString(), { nx: true });
+    await cacheSetIfAbsent(META_KEY, now.toISOString());
   } catch {
     /* best-effort — non-fatal */
   }
@@ -114,8 +101,6 @@ export async function recordFirstSampleIfMissing(now: Date = new Date()): Promis
 
 /** Test/operator helper: force a value (e.g. from the backfill script). */
 export async function setFirstSampleTs(iso: string): Promise<void> {
-  const redis = await getRedis();
-  if (!redis) throw new Error("KV not configured");
-  await redis.set(META_KEY, iso);
+  await cacheSet(META_KEY, iso, 10 * 365 * 24 * 60 * 60);
   await cacheSet(READ_CACHE_KEY, deriveLearningState(iso), READ_CACHE_TTL_SECONDS);
 }

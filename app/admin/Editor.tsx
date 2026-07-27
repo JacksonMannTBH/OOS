@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -876,7 +876,7 @@ function Field({
 }
 
 const ROLE_OPTIONS: Array<{ value: import("@/lib/types").FleetRole; label: string }> = [
-  { value: "smokey", label: "bird â€” fixed-wing speed enforcement" },
+  { value: "fixed_wing", label: "bird â€” fixed-wing speed enforcement" },
   { value: "patrol", label: "patrol â€” multi-role helicopter" },
   { value: "sar", label: "sar â€” search & rescue" },
   { value: "transport", label: "transport â€” exec / multi-mission" },

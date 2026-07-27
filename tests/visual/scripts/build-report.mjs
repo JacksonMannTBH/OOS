@@ -83,8 +83,8 @@ ${formatBugs(bugs.bugs.filter((b) => b.severity === "P2"))}
 ## How this was generated
 
 \`\`\`bash
-cd ~/Dev/SmokySignal/tests/visual
-SS_VISUAL_BASE_URL=https://smokysignal.app npm test
+cd ~/Dev/Out Of Sight/tests/visual
+OOS_VISUAL_BASE_URL=http://localhost:3000 npm test
 node scripts/ios-simulator.mjs       # auto-skipped if Xcode absent
 node scripts/categorize-bugs.mjs     # → bugs.json
 node scripts/autofix.mjs             # apply allow-listed fixes only

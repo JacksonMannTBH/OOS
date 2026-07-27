@@ -24,7 +24,7 @@ const DENY = [
   /^lib\/brand\//,
   /^app\/admin\//,
   /^\.git\//,
-  /^\.vercel\//,
+  /^\.netlify\//,
   /^\.next\//,
   /^node_modules\//,
   /push/i,

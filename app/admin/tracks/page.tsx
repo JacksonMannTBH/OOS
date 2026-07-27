@@ -66,9 +66,9 @@ export default async function TracksOverviewPage({
           marginBottom: 16,
         }}
       >
-        Position-history time-series — one Redis list per tail per UTC day,
-        35-day TTL, written by getSnapshot every cache regen while a tail is
-        airborne. Tails with no samples are dimmed.
+        Position-history time-series — sampled every 30 seconds and retained
+        in Supabase for one hour while a tail is airborne. Tails with no
+        retained samples are dimmed.
       </p>
 
       <div style={{ overflowX: "auto" }}>

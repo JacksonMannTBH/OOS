@@ -1,4 +1,5 @@
 import { SS_TOKENS } from "@/lib/tokens";
+import Image from "next/image";
 import type { CSSProperties } from "react";
 
 type LogoProps = {
@@ -22,13 +23,54 @@ type LogoProps = {
 type LogoMarkProps = {
   height: number | string;
   width?: number | string;
+  variant?: "open" | "closed";
   className?: string;
   style?: CSSProperties;
 };
 
-export function LogoMark({ height, width, className, style }: LogoMarkProps) {
+export function LogoMark({
+  height,
+  width,
+  variant = "open",
+  className,
+  style,
+}: LogoMarkProps) {
   const renderedWidth =
     width ?? (typeof height === "number" ? Math.round(height * 1.5) : undefined);
+  const frameStyle: CSSProperties = {
+    display: "block",
+    width: renderedWidth,
+    height,
+    flexShrink: 0,
+    ...style,
+  };
+
+  if (variant === "closed") {
+    return (
+      <span
+        className={className}
+        aria-hidden="true"
+        style={{
+          ...frameStyle,
+          position: "relative",
+          overflow: "hidden",
+          background: "#000000",
+        }}
+      >
+        <Image
+          src="/icons/no-aircraft-logo.png"
+          alt=""
+          fill
+          sizes="63px"
+          priority
+          style={{
+            objectFit: "cover",
+            transform: "scale(1.35)",
+          }}
+        />
+      </span>
+    );
+  }
 
   return (
     <svg
@@ -36,13 +78,7 @@ export function LogoMark({ height, width, className, style }: LogoMarkProps) {
       viewBox="8 16 48 32"
       aria-hidden="true"
       focusable="false"
-      style={{
-        display: "block",
-        width: renderedWidth,
-        height,
-        flexShrink: 0,
-        ...style,
-      }}
+      style={frameStyle}
     >
       <path
         d="M 8 32 C 14 21 23 16 32 16 C 41 16 50 21 56 32 C 50 43 41 48 32 48 C 23 48 14 43 8 32 Z"

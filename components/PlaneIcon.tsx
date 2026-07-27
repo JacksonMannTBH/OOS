@@ -22,7 +22,7 @@ type Props = {
   heading?: number;
 };
 
-export function PlaneIcon({ size = 16, role = "smokey", heading = 0 }: Props) {
+export function PlaneIcon({ size = 16, role = "fixed_wing", heading = 0 }: Props) {
   return (
     <span
       role="img"

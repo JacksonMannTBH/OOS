@@ -1,227 +1,155 @@
-import { stateIdForOpsAircraftTail } from "@/lib/aircraft-directory";
-import { haversineNm } from "@/lib/geo";
-import { nmToStatuteMiles } from "@/lib/proximity-limits";
-import { REGIONS, stateIdForRegion, type RegionId } from "@/lib/regions";
-import type { Aircraft, Snapshot } from "@/lib/types";
-import {
-  deleteAircraftAlertSubscriber,
-  getAircraftAlertDedupeState,
-  listEnabledAircraftAlertSubscribersForRegion,
-  recordAircraftAlertSent,
-  setAircraftAlertDedupeState,
-} from "./store";
-import type {
-  AircraftAlertDedupeState,
-  AircraftAlertSubscriber,
-} from "./types";
-import {
-  isAircraftAlertPushConfigured,
-  sendAircraftAlertPush,
-} from "./web-push";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { sendAircraftAlertPush } from "./web-push";
 
-const OUTSIDE_RESET_MS = 10 * 60 * 1000;
-const LONG_COOLDOWN_MS = 60 * 60 * 1000;
+const MAX_DELIVERIES_PER_RUN = 100;
 
-export type AircraftAlertDispatchSummary = {
-  regionId: RegionId;
-  subscribers: number;
-  checked: number;
+export type NotificationDispatchSummary = {
+  claimed: number;
   sent: number;
-  expiredSubscriptions: number;
-  skippedReason?: "not_configured" | "no_region" | "no_subscribers";
+  failed: number;
+  expired: number;
 };
 
-export async function dispatchAircraftProximityAlerts(
-  snapshot: Snapshot,
-  regionId: RegionId,
-): Promise<AircraftAlertDispatchSummary> {
-  const subscribers = await listEnabledAircraftAlertSubscribersForRegion(regionId);
-  const summary: AircraftAlertDispatchSummary = {
-    regionId,
-    subscribers: subscribers.length,
-    checked: 0,
+export async function dispatchPendingTakeoffNotifications(): Promise<NotificationDispatchSummary> {
+  const db = getSupabaseAdmin();
+  const now = new Date().toISOString();
+  const { data: deliveries, error } = await db
+    .from("notification_deliveries")
+    .select(
+      "id,attempt_count,notification_events(payload,occurred_at),push_endpoints(id,endpoint,p256dh,auth)",
+    )
+    .in("status", ["pending", "failed"])
+    .lte("next_attempt_at", now)
+    .order("created_at")
+    .limit(MAX_DELIVERIES_PER_RUN);
+  if (error) throw new Error(`Notification queue read failed: ${error.message}`);
+
+  const summary: NotificationDispatchSummary = {
+    claimed: deliveries?.length ?? 0,
     sent: 0,
-    expiredSubscriptions: 0,
+    failed: 0,
+    expired: 0,
   };
-  if (subscribers.length === 0) {
-    summary.skippedReason = "no_subscribers";
-    return summary;
-  }
-  if (!REGIONS[regionId]) {
-    summary.skippedReason = "no_region";
-    return summary;
-  }
-  if (!isAircraftAlertPushConfigured()) {
-    summary.skippedReason = "not_configured";
-    return summary;
-  }
 
-  for (const subscriber of subscribers) {
-    for (const aircraft of snapshot.aircraft) {
-      summary.checked += 1;
-      const sent = await checkAircraftForSubscriber(
-        subscriber,
-        aircraft,
-        regionId,
-      );
-      if (sent === "sent") summary.sent += 1;
-      if (sent === "expired") summary.expiredSubscriptions += 1;
+  for (const delivery of deliveries ?? []) {
+    const claimToken = crypto.randomUUID();
+    const { data: claimed } = await db
+      .from("notification_deliveries")
+      .update({
+        status: "processing",
+        claimed_at: now,
+        claim_token: claimToken,
+        attempt_count: Number(delivery.attempt_count ?? 0) + 1,
+        updated_at: now,
+      })
+      .eq("id", delivery.id)
+      .in("status", ["pending", "failed"])
+      .select("id")
+      .maybeSingle();
+    if (!claimed) continue;
+
+    const event = Array.isArray(delivery.notification_events)
+      ? delivery.notification_events[0]
+      : delivery.notification_events;
+    const endpoint = Array.isArray(delivery.push_endpoints)
+      ? delivery.push_endpoints[0]
+      : delivery.push_endpoints;
+    if (!event || !endpoint) {
+      await markFailed(String(delivery.id), claimToken, "missing_related_record", 15);
+      summary.failed += 1;
+      continue;
     }
-  }
+    const payload = (event.payload ?? {}) as Record<string, unknown>;
+    const tail = String(payload.tail ?? "Aircraft");
+    const label = String(payload.nickname ?? tail);
+    const result = await sendAircraftAlertPush(
+      {
+        endpoint: String(endpoint.endpoint),
+        keys: {
+          p256dh: String(endpoint.p256dh),
+          auth: String(endpoint.auth),
+        },
+      },
+      {
+        title: `${label} took off`,
+        body: `${tail} began a tracked flight.`,
+        url: `/plane/${encodeURIComponent(tail)}`,
+        tag: `takeoff-${String(delivery.id)}`,
+        aircraftTail: tail,
+      },
+    );
 
+    if (result.ok) {
+      await db
+        .from("notification_deliveries")
+        .update({
+          status: "sent",
+          sent_at: new Date().toISOString(),
+          response_status: 201,
+          failure_reason: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", delivery.id)
+        .eq("claim_token", claimToken);
+      await db
+        .from("push_endpoints")
+        .update({ last_success_at: new Date().toISOString() })
+        .eq("id", endpoint.id);
+      summary.sent += 1;
+      continue;
+    }
+
+    if (result.reason === "expired") {
+      await db
+        .from("notification_deliveries")
+        .update({
+          status: "expired",
+          response_status: result.statusCode ?? null,
+          failure_reason: "expired_subscription",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", delivery.id)
+        .eq("claim_token", claimToken);
+      await db
+        .from("push_endpoints")
+        .update({
+          enabled: false,
+          disabled_at: new Date().toISOString(),
+          last_failure_at: new Date().toISOString(),
+        })
+        .eq("id", endpoint.id);
+      summary.expired += 1;
+      continue;
+    }
+
+    await markFailed(
+      String(delivery.id),
+      claimToken,
+      result.reason,
+      Math.min(60, 2 ** (Number(delivery.attempt_count ?? 0) + 1)),
+      result.statusCode,
+    );
+    summary.failed += 1;
+  }
   return summary;
 }
 
-async function checkAircraftForSubscriber(
-  subscriber: AircraftAlertSubscriber,
-  aircraft: Aircraft,
-  regionId: RegionId,
-): Promise<"sent" | "expired" | "none"> {
-  if (subscriber.regionId !== regionId) return "none";
-  if (!aircraftMatchesSubscriberState(subscriber, aircraft, regionId)) {
-    await markAircraftInactiveOrOutside(subscriber.userId, aircraft.tail, false);
-    return "none";
-  }
-
-  const active = aircraft.airborne && isFiniteCoord(aircraft.lat) && isFiniteCoord(aircraft.lon);
-  if (!active) {
-    await markAircraftInactiveOrOutside(subscriber.userId, aircraft.tail, false);
-    return "none";
-  }
-
-  const region = REGIONS[subscriber.regionId];
-  const distanceNm = haversineNm(
-    region.centerLat,
-    region.centerLon,
-    aircraft.lat!,
-    aircraft.lon!,
-  );
-  const insideRange = distanceNm <= subscriber.proximityRangeNm;
-  if (!insideRange) {
-    await markAircraftInactiveOrOutside(subscriber.userId, aircraft.tail, true);
-    return "none";
-  }
-
-  const recent = await getAircraftAlertDedupeState(
-    subscriber.userId,
-    aircraft.tail,
-  );
-  if (!canSendAgainForAircraftAlert(recent)) {
-    await setAircraftAlertDedupeState({
-      ...(recent ?? baseDedupeState(subscriber.userId, aircraft.tail)),
-      active: true,
-      insideRange: true,
-      lastSeenInsideRangeAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    return "none";
-  }
-
-  const aircraftLabel =
-    aircraft.nickname || aircraft.tail || aircraft.icao24 || "Aircraft";
-  const result = await sendAircraftAlertPush(subscriber.subscription, {
-    title: "Aircraft nearby",
-    body: `${aircraftLabel} is ${nmToStatuteMiles(distanceNm).toFixed(1)} miles from your alert region.`,
-    url: `/plane/${encodeURIComponent(aircraft.tail)}`,
-    tag: `aircraft-alert-${aircraft.tail}`,
-    aircraftTail: aircraft.tail,
-  });
-
-  if (!result.ok) {
-    if (result.reason === "expired") {
-      await deleteAircraftAlertSubscriber(subscriber.userId);
-      return "expired";
-    }
-    return "none";
-  }
-
-  const now = new Date().toISOString();
-  await setAircraftAlertDedupeState({
-    userId: subscriber.userId,
-    aircraftTail: aircraft.tail,
-    active: true,
-    insideRange: true,
-    sentAt: now,
-    lastSeenInsideRangeAt: now,
-    updatedAt: now,
-  });
-  await recordAircraftAlertSent({
-    userId: subscriber.userId,
-    aircraftTail: aircraft.tail,
-    aircraftLabel,
-    stateId: subscriber.stateId,
-    regionId: subscriber.regionId,
-    distanceNm,
-    proximityRangeNm: subscriber.proximityRangeNm,
-    sentAt: now,
-  });
-  return "sent";
-}
-
-function aircraftMatchesSubscriberState(
-  subscriber: AircraftAlertSubscriber,
-  aircraft: Aircraft,
-  regionId: RegionId,
-): boolean {
-  const aircraftStateId =
-    stateIdForOpsAircraftTail(aircraft.tail) ?? stateIdForRegion(regionId);
-  return aircraftStateId === subscriber.stateId;
-}
-
-function canSendAgainForAircraftAlert(
-  recent: AircraftAlertDedupeState | null,
-): boolean {
-  if (!recent?.sentAt) return true;
-  if (!recent.active) return true;
-
-  const now = Date.now();
-  const sentAt = Date.parse(recent.sentAt);
-  const outsideAt = recent.lastSeenOutsideRangeAt
-    ? Date.parse(recent.lastSeenOutsideRangeAt)
-    : null;
-
-  if (!recent.insideRange && outsideAt && now - outsideAt >= OUTSIDE_RESET_MS) {
-    return true;
-  }
-  if (Number.isFinite(sentAt) && now - sentAt >= LONG_COOLDOWN_MS) {
-    return true;
-  }
-  return false;
-}
-
-async function markAircraftInactiveOrOutside(
-  userId: string,
-  aircraftTail: string,
-  active: boolean,
+async function markFailed(
+  deliveryId: string,
+  claimToken: string,
+  reason: string,
+  retryMinutes: number,
+  statusCode?: number,
 ): Promise<void> {
-  const recent = await getAircraftAlertDedupeState(userId, aircraftTail);
-  if (!recent?.sentAt) return;
-  const now = new Date().toISOString();
-  await setAircraftAlertDedupeState({
-    ...recent,
-    active,
-    insideRange: false,
-    lastSeenOutsideRangeAt:
-      recent.insideRange === false && recent.lastSeenOutsideRangeAt
-        ? recent.lastSeenOutsideRangeAt
-        : now,
-    updatedAt: now,
-  });
-}
-
-function baseDedupeState(
-  userId: string,
-  aircraftTail: string,
-): AircraftAlertDedupeState {
-  return {
-    userId,
-    aircraftTail,
-    active: true,
-    insideRange: false,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-function isFiniteCoord(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
+  await getSupabaseAdmin()
+    .from("notification_deliveries")
+    .update({
+      status: "failed",
+      next_attempt_at: new Date(Date.now() + retryMinutes * 60_000).toISOString(),
+      response_status: statusCode ?? null,
+      failure_reason: reason,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", deliveryId)
+    .eq("claim_token", claimToken);
 }

@@ -74,7 +74,7 @@ export async function logoutAction() {
 }
 
 const VALID_ROLES: readonly FleetRole[] = [
-  "smokey",
+  "fixed_wing",
   "patrol",
   "sar",
   "transport",

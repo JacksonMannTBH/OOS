@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { SS_TOKENS } from "@/lib/tokens";
 
-const ORIGIN = "https://www.smokysignal.app";
-
 export function ShareLinkButton({
   path,
   label = "Copy link",
@@ -25,7 +23,8 @@ export function ShareLinkButton({
   );
 
   const onClick = async () => {
-    const url = `${ORIGIN}${path.startsWith("/") ? path : `/${path}`}`;
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    const url = new URL(normalizedPath, window.location.origin).toString();
     try {
       // Prefer native share sheet on mobile; fall back to clipboard.
       const navAny = navigator as Navigator & {

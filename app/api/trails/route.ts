@@ -1,5 +1,5 @@
 // /api/trails — recent track-history slice for currently-airborne tails.
-// Powers the polyline trail layer on /radar (components/AircraftTrailLayer).
+// Powers the polyline trail layer on /map (components/AircraftTrailLayer).
 //
 // Query: GET /api/trails?tails=N305DK,N2446X
 // Response: { trails: { [tail]: [{ lat, lon, ts }] } }
@@ -8,7 +8,6 @@
 //   - Sorted ascending by ts so a polyline reads from oldest → newest.
 
 import { NextResponse } from "next/server";
-import { getSnapshotForRender } from "@/lib/snapshot";
 import { getCurrentFlightTrack, getLiveTrackWindow } from "@/lib/tracks";
 
 export const runtime = "nodejs";
@@ -21,7 +20,7 @@ function parseTails(raw: string | null): string[] {
   return raw
     .split(",")
     .map((s) => s.trim().toUpperCase())
-    .filter((s) => /^N[0-9A-Z]{1,5}$/.test(s))
+    .filter((s) => /^[A-Z0-9]{2,12}$/.test(s))
     .slice(0, MAX_TAILS);
 }
 
@@ -47,20 +46,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ trails: {} });
   }
 
-  const snap = await getSnapshotForRender();
-  const activeTails = new Set(
-    snap.aircraft
-      .filter((a) => a.airborne)
-      .map((a) => a.tail.trim().toUpperCase()),
-  );
-  const activeRequestedTails = tails.filter((tail) => activeTails.has(tail));
-  if (activeRequestedTails.length === 0) {
-    return NextResponse.json({ trails: {} });
-  }
-
+  const nowMs = Date.now();
   const entries = await Promise.all(
-    activeRequestedTails.map(
-      async (t) => [t, await trailFor(t, snap.fetched_at)] as const,
+    tails.map(
+      async (t) => [t, await trailFor(t, nowMs)] as const,
     ),
   );
   const trails: Record<string, TrailPoint[]> = {};
@@ -72,7 +61,7 @@ export async function GET(req: Request) {
     {
       headers: {
         // Trails update every ~10s on the client; cache for half that
-        // at the edge so two simultaneous radar viewers share a fetch
+        // at the edge so two simultaneous map viewers share a fetch
         // but never see stale-by-more-than-a-poll data.
         "Cache-Control":
           "public, max-age=0, s-maxage=5, stale-while-revalidate=30",

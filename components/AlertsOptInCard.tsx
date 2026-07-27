@@ -4,17 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { SS_TOKENS } from "@/lib/tokens";
 import {
-  enableAircraftProximityAlerts,
-  getStoredAircraftAlertRangeNm,
+  enableAircraftAlerts,
   readAircraftAlertStatus,
 } from "@/lib/aircraft-alerts/client";
-import { getRegion } from "@/lib/region-pref";
+import { getSelectedStateCode } from "@/lib/app-states";
 
-const DISMISS_KEY = "ss_alerts_promo_dismissed_at";
+const DISMISS_KEY = "oos_alerts_promo_dismissed_at";
 const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 type Phase = "checking" | "show" | "hidden";
 
-export function AlertsOptInCard() {
+export function AlertsOptInCard({ frameless = false }: { frameless?: boolean }) {
   const [phase, setPhase] = useState<Phase>("checking");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -42,9 +41,8 @@ export function AlertsOptInCard() {
     setBusy(true);
     setMessage(null);
     try {
-      await enableAircraftProximityAlerts({
-        regionId: getRegion(),
-        proximityRangeNm: getStoredAircraftAlertRangeNm(),
+      await enableAircraftAlerts({
+        stateCode: getSelectedStateCode(),
       });
       setMessage("Alerts armed.");
     } catch (error) {
@@ -57,7 +55,7 @@ export function AlertsOptInCard() {
   if (phase === "checking" || phase === "hidden") return null;
 
   return (
-    <Wrapper>
+    <Wrapper frameless={frameless}>
       <div
         className="ss-mono"
         style={{
@@ -77,7 +75,7 @@ export function AlertsOptInCard() {
           margin: 0,
         }}
       >
-        Want a ping when Bird&rsquo;s up?
+        Want a ping when tracked aircraft launch?
       </h3>
       <p
         style={{
@@ -87,8 +85,8 @@ export function AlertsOptInCard() {
           lineHeight: 1.45,
         }}
       >
-        Notification controls are staying in place while the delivery system is
-        rebuilt. Settings remain at{" "}
+        Receive one takeoff notification for tracked aircraft assigned to your
+        selected state. Settings are available at{" "}
         <Link
           href="/settings/alerts"
           style={{ color: SS_TOKENS.alert, textDecoration: "underline" }}
@@ -117,10 +115,10 @@ export function AlertsOptInCard() {
           disabled={busy}
           style={{
             padding: "8px 14px",
-            borderRadius: 999,
+            borderRadius: frameless ? 0 : 999,
             border: 0,
-            background: SS_TOKENS.alert,
-            color: "#fffdf8",
+            background: frameless ? "transparent" : SS_TOKENS.alert,
+            color: frameless ? SS_TOKENS.alert : "#fffdf8",
             fontFamily: "var(--font-brand)",
             fontSize: 12.5,
             fontWeight: 700,
@@ -138,8 +136,8 @@ export function AlertsOptInCard() {
           onClick={onDismiss}
           style={{
             padding: "8px 14px",
-            borderRadius: 999,
-            border: `.5px solid ${SS_TOKENS.hairline2}`,
+            borderRadius: frameless ? 0 : 999,
+            border: frameless ? 0 : `.5px solid ${SS_TOKENS.hairline2}`,
             background: "transparent",
             color: SS_TOKENS.fg1,
             fontFamily: "var(--font-brand)",
@@ -166,15 +164,21 @@ function messageForArmError(error: unknown): string {
   return "Could not arm alerts. Try again from Settings.";
 }
 
-function Wrapper({ children }: { children: ReactNode }) {
+function Wrapper({
+  children,
+  frameless,
+}: {
+  children: ReactNode;
+  frameless: boolean;
+}) {
   return (
     <section
       style={{
-        background: SS_TOKENS.bg1,
-        border: `.5px solid ${SS_TOKENS.hairline}`,
-        borderRadius: 22,
-        boxShadow: SS_TOKENS.shadowSm,
-        padding: "14px 16px",
+        background: frameless ? "transparent" : SS_TOKENS.bg1,
+        border: frameless ? 0 : `.5px solid ${SS_TOKENS.hairline}`,
+        borderRadius: frameless ? 0 : 22,
+        boxShadow: frameless ? "none" : SS_TOKENS.shadowSm,
+        padding: frameless ? "4px" : "14px 16px",
       }}
     >
       {children}

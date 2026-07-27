@@ -81,8 +81,8 @@ export default async function ForecastPage({
 
       {liveStatus.kind === "alert" && (
         <Link
-          href="/radar"
-          aria-label={`Live now: ${liveStatus.pill}. Open radar.`}
+          href="/map"
+          aria-label={`Live now: ${liveStatus.pill}. Open map.`}
           style={{
             display: "flex",
             alignItems: "center",

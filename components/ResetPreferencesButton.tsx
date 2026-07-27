@@ -1,6 +1,6 @@
 ﻿"use client";
 
-// Wipes rider-side display, region, zone, and install-prompt preferences.
+// Wipes rider-side display, state, and install-prompt preferences.
 // Server cookie clear runs through the imported server action; localStorage
 // is cleared inline so a server failure does not leave the rider half-reset.
 
@@ -11,13 +11,14 @@ import { resetPreferenceCookiesAction } from "@/app/(tabs)/settings/alerts/actio
 const LOCAL_STORAGE_KEYS = [
   "ss_wake_lock",
   "ss_ride_status_thresholds",
-  "ss_user_zones",
-  "ss_region_pref",
   "ss_flight_paths_visible",
   "ss_install_dismissed",
   "ss_post_install_dismissed",
   "ss_first_standalone_visit",
   "ss_distance_rings_visible",
+  "oos_state_code",
+  "oos_distance_rings_visible",
+  "oos_aircraft_alert_device_id",
 ] as const;
 
 function clearLocalStorage(): void {
@@ -79,8 +80,7 @@ export function ResetPreferencesButton() {
             marginBottom: 0,
           }}
         >
-          Clears every preference on this device â€” display, alert UI,
-          zones, and region.
+          Clears every preference on this device — display, alert UI, and state.
         </p>
       </div>
 

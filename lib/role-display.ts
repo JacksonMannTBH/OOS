@@ -2,7 +2,7 @@
 // so the role taxonomy reads consistently across the app.
 //
 // Rider mental model: any law-enforcement aircraft is "Bird". The
-// backend role taxonomy stays granular (smokey vs patrol vs unknown)
+// backend role taxonomy stays granular (fixed_wing vs patrol vs unknown)
 // for plane-detail accuracy, but every rider-visible badge collapses
 // LE-tier roles to the single "BIRD" label. Tooltip body preserves
 // the airframe-specific detail for curious riders who hover.
@@ -12,7 +12,7 @@ import { SS_TOKENS } from "./tokens";
 
 export function roleBadgeText(role: FleetRole): string {
   switch (role) {
-    case "smokey":
+    case "fixed_wing":
     case "patrol":
     case "unknown":
       return "BIRD";
@@ -25,7 +25,7 @@ export function roleBadgeText(role: FleetRole): string {
 
 export function roleTooltip(role: FleetRole): string {
   switch (role) {
-    case "smokey":
+    case "fixed_wing":
       return "Bird. Fixed-wing speed enforcement plane. Up = ease off.";
     case "patrol":
       return "Bird. Multi-role helicopter — traffic enforcement, pursuit, or SAR. We err on alert.";
@@ -43,7 +43,7 @@ export function roleTooltip(role: FleetRole): string {
  * amber tint; sar / transport / unknown get a neutral fg2 tint.
  */
 export function roleBadgeStyle(role: FleetRole): React.CSSProperties {
-  const isAlert = role === "smokey" || role === "patrol" || role === "unknown";
+  const isAlert = role === "fixed_wing" || role === "patrol" || role === "unknown";
   return {
     display: "inline-flex",
     alignItems: "center",

@@ -1,15 +1,15 @@
-// aircraft-glyphs.ts — top-down map icons for SmokySignal radar.
+// aircraft-glyphs.ts — top-down map icons for the Out Of Sight map.
 //
 // Vendored 1:1 from design/brand/aircraft-glyphs.js. Geometry is byte-
 // identical to the source — every test render in
 // design/brand/aircraft-glyphs-*.png was generated from those paths.
 //
 // FOUR ROLE VARIANTS, TWO FAMILIES:
-//   Family A — PLANE      → smokey, transport
+//   Family A — PLANE      → fixed_wing, transport
 //   Family B — HELICOPTER → patrol, sar
 //
 // COLOR STRATEGY (rationale doc, design/brand/aircraft-glyphs.md):
-//   alert     (smokey, patrol)    fill #F2F4F7, stroke #f4c430 1.0px
+//   alert     (fixed_wing, patrol)    fill #F2F4F7, stroke #f4c430 1.0px
 //   non-alert (sar, transport)    fill #6B7380, stroke none
 //
 // White fill + amber stroke borrows ATC display convention so alert
@@ -51,10 +51,10 @@ const RADAR_BLIP = AIRCRAFT_COLORS.RADAR_BLIP;
 type GlyphFamily = "plane" | "heli";
 
 const ROLES: Record<
-  "smokey" | "patrol" | "sar" | "transport",
+  "fixed_wing" | "patrol" | "sar" | "transport",
   { family: GlyphFamily; alert: boolean }
 > = {
-  smokey: { family: "plane", alert: true },
+  fixed_wing: { family: "plane", alert: true },
   transport: { family: "plane", alert: false },
   patrol: { family: "heli", alert: true },
   sar: { family: "heli", alert: false },
@@ -161,19 +161,19 @@ export function pathHeliMuted(): string {
 
 /**
  * The aircraft-glyphs file recognizes four roles. The fifth FleetRole
- * value, `unknown`, has no glyph of its own — we render it as `smokey`,
+ * value, `unknown`, has no glyph of its own — we render it as `fixed_wing`,
  * matching computeStatus()'s alert-on-unknown stance. A new tail with
  * unconfirmed classification should err toward visible alert until the
  * admin classifies it.
  */
-export type GlyphRole = "smokey" | "patrol" | "sar" | "transport";
+export type GlyphRole = "fixed_wing" | "patrol" | "sar" | "transport";
 
 export function glyphRoleFor(role: FleetRole | undefined | null): GlyphRole {
-  if (role === "smokey" || role === "patrol" || role === "sar" || role === "transport") {
+  if (role === "fixed_wing" || role === "patrol" || role === "sar" || role === "transport") {
     return role;
   }
   // 'unknown' or missing → conservative alert.
-  return "smokey";
+  return "fixed_wing";
 }
 
 export type AircraftSvgOpts = {
@@ -215,10 +215,10 @@ export function aircraftSvg(
 /**
  * Conservative legacy fallback when a call site has only a model string and
  * no role. Used by surfaces that haven't been migrated to role-aware data
- * yet. Picks 'smokey' for fixed-wing, 'patrol' for rotors — both alert
+ * yet. Picks 'fixed_wing' for fixed-wing, 'patrol' for rotors — both alert
  * variants. Once every consumer passes role this can go away.
  */
 export function roleFromModel(model: string | null | undefined): GlyphRole {
-  if (!model) return "smokey";
-  return /Bell|UH-1|Hughes|407|206|505|MD/i.test(model) ? "patrol" : "smokey";
+  if (!model) return "fixed_wing";
+  return /Bell|UH-1|Hughes|407|206|505|MD/i.test(model) ? "patrol" : "fixed_wing";
 }

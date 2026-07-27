@@ -6,8 +6,6 @@ export const metadata = {
   description: "Disclaimers and data attribution.",
 };
 
-const GITHUB_URL = "https://github.com/adavenport-ops/SmokySignal";
-
 export default function LegalPage() {
   return (
     <main
@@ -101,33 +99,14 @@ export default function LegalPage() {
           provided here and in the app footer.
         </p>
         <p>
-          The tail registry is built from publicly available state and county
-          fleet records. If you spot a wrong tail or a misclassified aircraft,
-          email{" "}
-          <a
-            href="mailto:feedback@smokysignal.app"
-            style={{ color: SS_TOKENS.fg0, textDecoration: "underline" }}
-          >
-            feedback@smokysignal.app
-          </a>
-          .
+          The aircraft catalog is built from publicly available state and
+          county fleet records. Catalog corrections are reviewed before they
+          are published.
         </p>
         <p>
           No warranty. Don&rsquo;t use this app to evade enforcement — that
           isn&rsquo;t the point. Knowing the bird is up is the same as seeing a
           marked patrol car ahead: ride within the limit and ride well.
-        </p>
-        <p>
-          Source:{" "}
-          <a
-            href={GITHUB_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: SS_TOKENS.fg0, textDecoration: "underline" }}
-          >
-            project repository
-          </a>
-          .
         </p>
       </section>
     </main>
@@ -206,20 +185,7 @@ function DataFlowSection() {
           "We don't send your location, your speed, or anything you do in the app to any agency.",
           "We don't have rider accounts, sign-ins, or per-rider analytics.",
           "We don't sell, share, or resell rider data — we don't have rider data to sell.",
-          <>
-            We don&rsquo;t run a back channel to anyone. The repository is
-            open at{" "}
-            <a
-              href={GITHUB_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ss-mono"
-              style={{ color: SS_TOKENS.fg0, textDecoration: "underline" }}
-            >
-              project repository
-            </a>
-            {" "}— read it, run your own fork if you&rsquo;d rather.
-          </>,
+          "We don't run a back channel to an agency or operator.",
         ]}
       />
 

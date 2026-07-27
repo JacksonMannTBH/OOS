@@ -17,6 +17,7 @@ import { SS_TOKENS } from "@/lib/tokens";
 import { ShareLinkButton } from "@/components/ShareLinkButton";
 import { fmtDurationHuman, formatTs } from "@/lib/time";
 import { getTimeFormatPref, isHour12 } from "@/lib/user-prefs";
+import { BASE_URL } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ export async function generateMetadata({ params }: Props) {
     openGraph: {
       title: `${tail}${niceName} · Flight ${params.flightId}`,
       description: `Flight track captured by Out Of Sight.`,
-      url: `https://www.smokysignal.app/flight/${tail}/${params.flightId}`,
+      url: `${BASE_URL}/flight/${tail}/${params.flightId}`,
       type: "article",
     },
   };

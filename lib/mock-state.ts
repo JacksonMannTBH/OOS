@@ -79,7 +79,7 @@ function liftAirborne(
 
 export function parseMockState(value: string | null | undefined): MockState | null {
   if (!value) return null;
-  if (value === "smokey") return "up";
+  if (value === "fixed_wing") return "up";
   return (MOCK_STATES as readonly string[]).includes(value) ? (value as MockState) : null;
 }
 
@@ -99,22 +99,22 @@ export function applyMockState(snap: Snapshot, state: MockState | null): Snapsho
         aircraft: snap.aircraft.map((a) => ({ ...a, airborne: false })),
       };
     case "up":
-      // At least one smokey-class up. The original mock=up behavior.
-      return liftAirborne(snap, (r) => r === "smokey");
+      // At least one fixed_wing-class up. The original mock=up behavior.
+      return liftAirborne(snap, (r) => r === "fixed_wing");
     case "eyes-up": {
-      // Patrol or unknown airborne, no smokey. Drives the alert-tier
+      // Patrol or unknown airborne, no fixed_wing. Drives the alert-tier
       // pill (which reads BIRD UP under the umbrella relabel) with
       // patrol/unknown body copy. State name kept for back-compat with
       // existing QA flows.
       //
-      // First ground every smokey-class so a live smokey doesn't bleed
+      // First ground every fixed_wing-class so a live fixed_wing doesn't bleed
       // through and contaminate the assertion that this state should
       // produce only patrol/unknown airborne.
       const grounded: Snapshot = {
         ...snap,
         source: "mock",
         aircraft: snap.aircraft.map((a) =>
-          a.role === "smokey" ? { ...a, airborne: false } : a,
+          a.role === "fixed_wing" ? { ...a, airborne: false } : a,
         ),
       };
       return liftAirborne(
@@ -123,10 +123,10 @@ export function applyMockState(snap: Snapshot, state: MockState | null): Snapsho
       );
     }
     case "multiple":
-      // 3 smokey-class + 1 patrol. Drives the "X up" pill sub and the
+      // 3 fixed_wing-class + 1 patrol. Drives the "X up" pill sub and the
       // others-also-up list.
       return liftAirborne(
-        liftAirborne(snap, (r) => r === "smokey", 3),
+        liftAirborne(snap, (r) => r === "fixed_wing", 3),
         (r) => r === "patrol",
         1,
       );

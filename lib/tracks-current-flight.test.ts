@@ -24,8 +24,10 @@ test("getCurrentFlightDurationFromPoints uses the latest continuous persisted se
   const nowSec = 10_000;
   const points = [
     point(nowSec - 8_000),
+    point(nowSec - 90),
+    point(nowSec - 60),
+    point(nowSec - 30),
     point(nowSec),
-    point(nowSec - 1_800),
   ];
   const estimate = getCurrentFlightDurationFromPoints(
     points,
@@ -33,12 +35,12 @@ test("getCurrentFlightDurationFromPoints uses the latest continuous persisted se
   );
   const track = getCurrentFlightTrackFromPoints(points, nowSec * 1000);
 
-  assert.equal(estimate?.elapsedMinutes, 30);
-  assert.equal(estimate?.startedAtMs, (nowSec - 1_800) * 1000);
-  assert.equal(estimate?.sampleCount, 2);
+  assert.equal(estimate?.elapsedMinutes, 1);
+  assert.equal(estimate?.startedAtMs, (nowSec - 90) * 1000);
+  assert.equal(estimate?.sampleCount, 4);
   assert.deepEqual(
     track?.points.map((p) => p.ts),
-    [nowSec - 1_800, nowSec],
+    [nowSec - 90, nowSec - 60, nowSec - 30, nowSec],
   );
 });
 

@@ -12,8 +12,8 @@ const HUB_LINKS = [
   {
     href: "/settings/alerts",
     eyebrow: "Alerts",
-    title: "Alerts, region, wake",
-    body: "Arm notifications, set your region, tune ride ranges, quiet hours, and device wake behavior.",
+    title: "Alerts, state, wake",
+    body: "Arm notifications, choose a state, tune ride ranges, and control device wake behavior.",
   },
   {
     href: "/about",
@@ -95,8 +95,8 @@ export default function SettingsHub() {
             lineHeight: 1.55,
           }}
         >
-          Display preferences stay on this device. Alert region and range sync
-          to your notification subscription.
+          Display preferences stay on this device. Your selected alert state
+          syncs to this device&rsquo;s notification subscription.
         </p>
       </header>
 

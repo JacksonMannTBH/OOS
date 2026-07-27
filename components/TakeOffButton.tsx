@@ -6,7 +6,7 @@ import { SS_TOKENS } from "@/lib/tokens";
 import { useRideLaunchPreflight } from "@/lib/hooks/useRideLaunchPreflight";
 
 type Props = {
-  variant?: "hero" | "compact";
+  variant?: "hero" | "compact" | "plain";
 };
 
 export function TakeOffButton({ variant = "hero" }: Props) {
@@ -15,7 +15,8 @@ export function TakeOffButton({ variant = "hero" }: Props) {
   const runRideLaunchPreflight = useRideLaunchPreflight();
   const [busy, setBusy] = useState(false);
   const compact = variant === "compact";
-  const iconSize = compact ? 18 : 23;
+  const plain = variant === "plain";
+  const iconSize = compact || plain ? 18 : 23;
 
   const onTakeOff = async () => {
     setBusy(true);
@@ -32,22 +33,26 @@ export function TakeOffButton({ variant = "hero" }: Props) {
       aria-label="Take Off and enter Riding Mode"
       style={{
         boxSizing: "border-box",
-        width: compact ? "auto" : "min(100%, 360px)",
-        minHeight: compact ? 48 : "clamp(60px, 16vw, 70px)",
-        padding: compact ? "0 18px" : "0 clamp(22px, 6vw, 28px)",
-        borderRadius: compact ? 999 : 16,
-        border: compact
+        width: compact || plain ? "auto" : "min(100%, 360px)",
+        minHeight: compact || plain ? 48 : "clamp(60px, 16vw, 70px)",
+        padding: compact ? "0 18px" : plain ? "0 6px" : "0 clamp(22px, 6vw, 28px)",
+        borderRadius: 0,
+        border: plain
+          ? 0
+          : compact
           ? "1px solid rgba(246, 196, 49, 0.34)"
           : "1px solid #ffe28a",
-        background: busy ? "#1b1608" : "#f6c431",
-        color: busy ? "#f6c431" : "#050505",
-        boxShadow: compact
-          ? SS_TOKENS.shadowSm
-          : `0 0 34px rgba(246, 196, 49, 0.24), 0 18px 36px rgba(0, 0, 0, 0.42)`,
+        background: plain ? "transparent" : busy ? "#1b1608" : "#f6c431",
+        color: plain ? SS_TOKENS.alert : busy ? "#f6c431" : "#050505",
+        boxShadow: plain
+          ? "none"
+          : compact
+          ? "0 3px 10px rgba(0, 0, 0, 0.26)"
+          : "0 8px 18px rgba(0, 0, 0, 0.30)",
         cursor: busy ? "wait" : "pointer",
         opacity: busy ? 0.72 : 1,
-        fontFamily: compact ? "inherit" : "var(--font-brand)",
-        fontSize: compact ? 14 : "clamp(24px, 6.7vw, 26px)",
+        fontFamily: compact || plain ? "inherit" : "var(--font-brand)",
+        fontSize: compact || plain ? 16 : "clamp(24px, 6.7vw, 26px)",
         fontWeight: 800,
         letterSpacing: 0,
         display: "inline-flex",

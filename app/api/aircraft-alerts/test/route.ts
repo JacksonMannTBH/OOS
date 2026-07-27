@@ -4,11 +4,15 @@ import {
   getAircraftAlertSubscriber,
 } from "@/lib/aircraft-alerts/store";
 import { sendAircraftAlertPush } from "@/lib/aircraft-alerts/web-push";
+import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json({ error: "not_configured" }, { status: 503 });
+  }
   const body = (await req.json().catch(() => null)) as { userId?: unknown } | null;
   const userId = typeof body?.userId === "string" ? body.userId : null;
   if (!userId || !/^[a-f0-9-]{20,80}$/i.test(userId)) {
@@ -20,9 +24,9 @@ export async function POST(req: Request) {
   }
 
   const result = await sendAircraftAlertPush(subscriber.subscription, {
-    title: "Aircraft nearby",
-    body: "Notification test. Aircraft proximity alerts are armed.",
-    url: "/radar",
+    title: "Aircraft alerts ready",
+    body: `Notification test. ${subscriber.stateCode} takeoff alerts are enabled.`,
+    url: "/map",
     tag: "aircraft-alert-test",
   });
 

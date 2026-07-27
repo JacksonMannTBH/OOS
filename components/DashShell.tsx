@@ -4,25 +4,24 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { filterOpsAircraftByState } from "@/lib/aircraft-directory";
 import { useAircraft } from "@/lib/hooks/useAircraft";
-import { useSelectedRegionStateId } from "@/lib/hooks/useSelectedRegionStateId";
+import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
 import { SS_TOKENS } from "@/lib/tokens";
-import { SMOKY_TAIL } from "@/lib/seed";
+import { FEATURED_TAIL } from "@/lib/seed";
 import { haversineNm } from "@/lib/geo";
 import { proximityBandForDistance } from "@/lib/proximity-display";
 import { computeStatus } from "@/lib/status";
-import { Card } from "./Card";
 import { AlertsOptInCard } from "./AlertsOptInCard";
 import { ProximityFlash } from "./ProximityFlash";
 import { TakeOffButton } from "./TakeOffButton";
 import { ActivityEventsSection } from "./ActivityFeed";
 import { StatusHero } from "./StatusHero";
-import { SettingsButton } from "./SettingsButton";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 import type { ActivityEntry } from "@/lib/activity";
 
 const TABBAR_HEIGHT = 66;
 const NEAR_NM = 5;
+const HOME_BACKGROUND_IMAGE = "/images/home-map-background.png";
 // Top-N airborne planes to surface in the watcher list. Three is enough
 // to convey crowdedness without dominating the screen.
 const NEAREST_LIST_LIMIT = 3;
@@ -36,7 +35,7 @@ type Props = {
 
 export function DashShell({ initial, initialActivity, mockOn = false }: Props) {
   const snap = useAircraft(initial, mockOn);
-  const stateId = useSelectedRegionStateId();
+  const stateId = useSelectedStateId();
   const { pos } = useRiderPos();
   const [activity, setActivity] = useState<ActivityEntry[]>(initialActivity);
   const stateActivity = useMemo(
@@ -64,8 +63,8 @@ export function DashShell({ initial, initialActivity, mockOn = false }: Props) {
     () => computeStatus(stateSnap, fleetMap),
     [stateSnap, fleetMap],
   );
-  const smoky = stateAircraft.find((a) => a.tail === SMOKY_TAIL);
-  const smokyUp = Boolean(smoky?.airborne);
+  const featuredAircraft = stateAircraft.find((a) => a.tail === FEATURED_TAIL);
+  const featuredAircraftUp = Boolean(featuredAircraft?.airborne);
 
   // Top-N airborne planes by Haversine distance — sorted ascending so
   // nearestList[0] is the single closest. Drives both the watcher list
@@ -124,72 +123,97 @@ export function DashShell({ initial, initialActivity, mockOn = false }: Props) {
   }, [stateId]);
 
   return (
-    <main
-      style={{
-        minHeight: "100dvh",
-        // Bottom padding = tab bar (66) + iOS install prompt overlay
-        // (~80) + breathing room. Without this the last dash card
-        // hides behind the fixed-position prompt on iOS Safari.
-        boxSizing: "border-box",
-        width: "100%",
-        padding: `clamp(16px, 4vw, 22px) clamp(14px, 5vw, 20px) ${TABBAR_HEIGHT + 136}px`,
-        maxWidth: 430,
-        margin: "0 auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: "clamp(14px, 4vw, 18px)",
-      }}
-    >
-      <StatusHero status={status} lastSampleMs={snap.fetched_at} />
-
-      <TakeOffButton />
-
-      <NearestCard
-        watcherList={watcherList}
-        riderHasFix={Boolean(pos)}
-        smokyUp={smokyUp}
-        airborneCount={airborne.length}
+    <>
+      <div
+        aria-hidden
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          backgroundColor: "#050607",
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.84)), url(${HOME_BACKGROUND_IMAGE})`,
+          backgroundPosition: "center top",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "cover",
+        }}
       />
-
-      {airborne.length > 0 && (
-        <ContextLine
-          airborneCount={airborne.length}
-          nearest={nearest}
+      <main
+        style={{
+          minHeight: "100dvh",
+          // Bottom padding = tab bar (66) + iOS install prompt overlay
+          // (~80) + breathing room. Without this the last dash card
+          // hides behind the fixed-position prompt on iOS Safari.
+          boxSizing: "border-box",
+          width: "100%",
+          padding: `clamp(16px, 4vw, 22px) clamp(14px, 5vw, 20px) ${TABBAR_HEIGHT + 136}px`,
+          maxWidth: 430,
+          margin: "0 auto",
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: "clamp(14px, 4vw, 18px)",
+        }}
+      >
+        <StatusHero
+          status={status}
+          lastSampleMs={snap.fetched_at}
+          showPill={false}
+          frameless
         />
-      )}
 
-      <SettingsButton />
+        <TakeOffButton />
 
-      <AlertsOptInCard />
+        <NearestCard
+          watcherList={watcherList}
+          riderHasFix={Boolean(pos)}
+          featuredAircraftUp={featuredAircraftUp}
+          airborneCount={airborne.length}
+        />
 
-      <ActivityEventsSection entries={stateActivity} id="recent-events" />
+        {airborne.length > 0 && (
+          <ContextLine
+            airborneCount={airborne.length}
+            nearest={nearest}
+          />
+        )}
 
-      <ProximityFlash
-        active={
-          nearest != null &&
-          nearest.distanceNm != null &&
-          nearest.distanceNm <= NEAR_NM &&
-          (nearest.plane.role === "smokey" || nearest.plane.role === "patrol")
-        }
-        color={nearestBand?.color}
-      />
-    </main>
+        <AlertsOptInCard frameless />
+
+        <ActivityEventsSection
+          entries={stateActivity}
+          id="recent-events"
+          frameless
+        />
+
+        <ProximityFlash
+          active={
+            nearest != null &&
+            nearest.distanceNm != null &&
+            nearest.distanceNm <= NEAR_NM &&
+            (nearest.plane.role === "fixed_wing" || nearest.plane.role === "patrol")
+          }
+          color={nearestBand?.color}
+        />
+      </main>
+    </>
   );
 }
 
 function NearestCard({
   watcherList,
   riderHasFix,
-  smokyUp,
+  featuredAircraftUp,
   airborneCount,
 }: {
   watcherList: WatcherEntry[];
   riderHasFix: boolean;
-  smokyUp: boolean;
+  featuredAircraftUp: boolean;
   airborneCount: number;
 }) {
   return (
-    <Card padded={false}>
+    <section>
       <div style={{ padding: "12px 14px 8px" }}>
         <span className="ss-eyebrow">
           {riderHasFix ? "Nearest watchers" : "Airborne now"}
@@ -202,11 +226,11 @@ function NearestCard({
       ) : (
         <NearestEmpty
           riderHasFix={riderHasFix}
-          smokyUp={smokyUp}
+          featuredAircraftUp={featuredAircraftUp}
           airborneCount={airborneCount}
         />
       )}
-    </Card>
+    </section>
   );
 }
 
@@ -230,7 +254,6 @@ function NearestRow({
         alignItems: "baseline",
         justifyContent: "space-between",
         padding: "10px 14px",
-        borderTop: `.5px solid ${SS_TOKENS.hairline}`,
         textDecoration: "none",
         color: "inherit",
       }}
@@ -281,16 +304,15 @@ function NearestRow({
 
 function NearestEmpty({
   riderHasFix,
-  smokyUp,
+  featuredAircraftUp,
   airborneCount,
 }: {
   riderHasFix: boolean;
-  smokyUp: boolean;
+  featuredAircraftUp: boolean;
   airborneCount: number;
 }) {
   const baseStyle: React.CSSProperties = {
     padding: "12px 14px 16px",
-    borderTop: `.5px solid ${SS_TOKENS.hairline}`,
   };
   if (!riderHasFix && airborneCount > 0) {
     return (
@@ -306,7 +328,7 @@ function NearestEmpty({
       </div>
     );
   }
-  if (!smokyUp) {
+  if (!featuredAircraftUp) {
     return (
       <div
         style={{ ...baseStyle, display: "flex", alignItems: "center", gap: 10 }}
@@ -321,7 +343,7 @@ function NearestEmpty({
           }}
         />
         <span style={{ fontSize: 14, color: SS_TOKENS.fg1 }}>
-          All clear · Bird&rsquo;s down
+          No watchers aloft
         </span>
       </div>
     );
@@ -347,7 +369,7 @@ function ContextLine({
     text = `Heads up · ${display} ${nearest.distanceNm.toFixed(1)}nm away`;
     color = SS_TOKENS.warn;
   } else if (airborneCount > 0) {
-    text = "Bird up but not nearby";
+    text = "Watchers aloft, not nearby";
     color = SS_TOKENS.fg1;
   } else {
     text = "Clear skies";
@@ -357,9 +379,6 @@ function ContextLine({
     <div
       style={{
         padding: "10px 14px",
-        borderRadius: 12,
-        background: SS_TOKENS.bg1,
-        border: `.5px solid ${SS_TOKENS.hairline}`,
         fontSize: 13,
         color,
         textAlign: "center",

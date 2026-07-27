@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 
 export function SkipLink() {
   const pathname = usePathname();
-  if (pathname === "/radar" || pathname === "/dash") return null;
+  if (pathname === "/map" || pathname === "/dash") return null;
   return (
     <a href="#main-content" className="ss-skip-link">
       Skip to main content

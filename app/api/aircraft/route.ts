@@ -1,33 +1,24 @@
 import { NextResponse } from "next/server";
-import {
-  getSnapshot,
-  getSnapshotForRender,
-  invalidateSnapshot,
-} from "@/lib/snapshot";
+import { DEFAULT_STATE_CODE, isStateCode, type StateCode } from "@/lib/app-states";
+import { getSnapshotForRender } from "@/lib/snapshot";
 import { applyMockState, getMockStateFromRequest } from "@/lib/mock-state";
-import { DEFAULT_REGION, isRegionId } from "@/lib/regions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const requestedRegion = url.searchParams.get("region_id");
-  const regionId = isRegionId(requestedRegion) ? requestedRegion : DEFAULT_REGION;
-  const fresh = url.searchParams.has("fresh");
-  if (fresh) {
-    await invalidateSnapshot(regionId);
-  }
-  const snap = fresh
-    ? await getSnapshot(regionId)
-    : await getSnapshotForRender(regionId);
-  const out = applyMockState(snap, getMockStateFromRequest(req));
-  return NextResponse.json(out, {
-    headers: {
-      // Browser won't cache; CDN can hold the same 10s the server does.
-      "Cache-Control": fresh
-        ? "no-store"
-        : "public, max-age=0, s-maxage=10, stale-while-revalidate=30",
+  const requested = new URL(req.url).searchParams.get("state");
+  const stateCode = isStateCode(requested)
+    ? requested.toUpperCase() as StateCode
+    : DEFAULT_STATE_CODE;
+  const snapshot = await getSnapshotForRender(stateCode);
+  return NextResponse.json(
+    applyMockState(snapshot, getMockStateFromRequest(req)),
+    {
+      headers: {
+        "Cache-Control":
+          "public, max-age=0, s-maxage=15, stale-while-revalidate=30",
+      },
     },
-  });
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 // Renders the most-recent-flight track for a single tail as a polyline
-// over the same OpenFreeMap dark base used on /radar. Native MapLibre
+// over the same OpenFreeMap dark base used on /map. Native MapLibre
 // interactions are enabled (pinch, drag, double-tap, +/- buttons) so
 // the user can dig into the route on the plane detail page.
 //

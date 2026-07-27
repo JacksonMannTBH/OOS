@@ -1,5 +1,5 @@
 {
-  "name": "smokysignal-visual-qa",
+  "name": "out-of-sight-visual-qa",
   "private": true,
   "scripts": {
     "test": "playwright test",
@@ -9,9 +9,7 @@
     "ios": "node scripts/ios-simulator.mjs"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.92.0",
     "@axe-core/playwright": "^4.11.3",
-    "@browserbasehq/stagehand": "^3.3.0",
     "@playwright/test": "^1.59.1",
     "glob": "^13.0.6",
     "lighthouse": "^12.8.2",

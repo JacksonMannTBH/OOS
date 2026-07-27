@@ -9,11 +9,11 @@ import {
   normalizeTailNumber,
 } from "./fuel-estimate";
 
-test("formatFuelRemaining preserves the required visible prefix and time format", () => {
-  assert.equal(formatFuelRemaining(125), "Fuel Remaining - 2 Hours 5 Minutes");
-  assert.equal(formatFuelRemaining(60), "Fuel Remaining - 1 Hour 0 Minutes");
-  assert.equal(formatFuelRemaining(1), "Fuel Remaining - 0 Hours 1 Minute");
-  assert.equal(formatFuelRemaining(0), "Fuel Remaining - 0 Hours 0 Minutes");
+test("formatFuelRemaining labels the value as an endurance estimate", () => {
+  assert.equal(formatFuelRemaining(125), "Est. Endurance - 2 Hours 5 Minutes");
+  assert.equal(formatFuelRemaining(60), "Est. Endurance - 1 Hour 0 Minutes");
+  assert.equal(formatFuelRemaining(1), "Est. Endurance - 0 Hours 1 Minute");
+  assert.equal(formatFuelRemaining(0), "Est. Endurance - 0 Hours 0 Minutes");
 });
 
 test("normalizeTailNumber accepts small tail-number formatting differences", () => {
@@ -57,7 +57,7 @@ test("estimateFuelRemaining clamps exhausted duration at zero", () => {
     airborne: true,
     time_aloft_min: 9999,
   });
-  assert.equal(estimate?.label, "Fuel Remaining - 0 Hours 0 Minutes");
+  assert.equal(estimate?.label, "Est. Endurance - 0 Hours 0 Minutes");
   assert.equal(estimate?.minutesRemaining, 0);
 });
 
@@ -71,7 +71,7 @@ test("estimateFuelRemaining subtracts elapsed current-flight duration from mean 
   assert.equal(estimate?.maxDurationMinutes, 240);
   assert.equal(estimate?.elapsedMinutes, 5);
   assert.equal(estimate?.minutesRemaining, 235);
-  assert.equal(estimate?.label, "Fuel Remaining - 3 Hours 55 Minutes");
+  assert.equal(estimate?.label, "Est. Endurance - 3 Hours 55 Minutes");
 });
 
 test("estimateFuelRemaining uses mean duration for aircraft with duration ranges", () => {
@@ -83,5 +83,5 @@ test("estimateFuelRemaining uses mean duration for aircraft with duration ranges
 
   assert.equal(estimate?.maxDurationMinutes, 282);
   assert.equal(estimate?.minutesRemaining, 240);
-  assert.equal(estimate?.label, "Fuel Remaining - 4 Hours 0 Minutes");
+  assert.equal(estimate?.label, "Est. Endurance - 4 Hours 0 Minutes");
 });

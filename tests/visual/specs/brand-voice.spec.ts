@@ -8,7 +8,7 @@ const ROOT = path.resolve(__dirname, "..");
 // Lifted from BRAND.md §3 voice rules + Prompt 4 banned-vocab list.
 //
 // The "emoji" matcher excludes a small set of glyphs that are part of the
-// SmokySignal design language and not actually emoji:
+// Out Of Sight design language and not actually emoji:
 //   ©          OpenFreeMap / OpenStreetMap attribution
 //   ↗ ↘ ✦ ⚠   activity-feed kind icons (takeoff/landing/first-seen/squawk)
 //   ↑ ↓ →     directional arrow glyphs used in chrome

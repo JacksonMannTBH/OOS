@@ -9,7 +9,7 @@ import { SS_TOKENS } from "@/lib/tokens";
 import { fmtAgoTs } from "@/lib/time";
 import { filterOpsAircraftByState } from "@/lib/aircraft-directory";
 import { useAircraft } from "@/lib/hooks/useAircraft";
-import { useSelectedRegionStateId } from "@/lib/hooks/useSelectedRegionStateId";
+import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { computeStatus } from "@/lib/status";
 import { Card } from "./Card";
 import { PlaneIcon } from "./PlaneIcon";
@@ -35,8 +35,7 @@ type Props = {
    *  ("usually up at this hour. 67% of weeks."). Server computes,
    *  passes the string in. null = hide. */
   contextLine?: string | null;
-  /** ms-since-epoch of the most recent track sample. null = no
-   *  meta:last_sample_ts in KV yet (renders "UNKNOWN"). */
+  /** Milliseconds since epoch for the most recent database observation. */
   lastSampleMs?: number | null;
 };
 
@@ -50,7 +49,7 @@ export function Glanceable({
   lastSampleMs = null,
 }: Props) {
   const snap = useAircraft(initial, mockOn);
-  const stateId = useSelectedRegionStateId();
+  const stateId = useSelectedStateId();
   const [activity, setActivity] = useState<ActivityEntry[]>(initialActivity);
   const stateActivity = useMemo(
     () => filterOpsAircraftByState(activity, stateId),
@@ -282,7 +281,7 @@ function LeadIdentity({
   operator: string;
 }) {
   // Lead-identity line under the stat chips so a rider knows whether
-  // the smokey at 4m aloft is the WSP Cessna near Olympia or the CBP
+  // the fixed_wing at 4m aloft is the WSP Cessna near Olympia or the CBP
   // B300C at FL190. Tappable — drills into /plane/[tail] for live
   // map + history.
   const middle = nickname ? ` · "${nickname}" · ` : " · ";

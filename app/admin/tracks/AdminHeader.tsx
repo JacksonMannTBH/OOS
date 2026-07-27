@@ -30,7 +30,7 @@ export function AdminHeader({
           margin: 0,
         }}
       >
-        SMOKYSIGNAL ADMIN
+        OUT OF SIGHT ADMIN
         {subtitle && (
           <span style={{ color: SS_TOKENS.fg2, fontWeight: 400 }}>
             {" · "}

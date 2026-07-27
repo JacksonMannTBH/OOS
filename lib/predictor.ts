@@ -1,7 +1,7 @@
 // "Next likely sweep" predictor — replaces the hardcoded probability
 // card on the home page with one derived from accumulated activity:feed
 // events. Algorithm is a simple (hour, day-of-week) histogram of takeoff
-// events for fleet tails in our region, normalized per dow.
+// events for tracked aircraft, normalized per day of week.
 //
 // Storage:
 //   predictor:current → JSON of { windows, total_events, generated_at }, 1h TTL
@@ -9,10 +9,9 @@
 // Refreshed by /api/cron/refresh-predictor (hourly on Pro, daily on Hobby).
 // Reads served from cache; falls back to live recompute on cache miss.
 
-import { getRedis, cacheGet, cacheSet } from "./cache";
-import type { ActivityEntry } from "./activity";
+import { cacheGet, cacheSet } from "./cache";
+import { getRecentActivity, type ActivityEntry } from "./activity";
 
-const FEED_KEY = "activity:feed";
 const CACHE_KEY = "predictor:current";
 const CACHE_TTL_SECONDS = 60 * 60;
 
@@ -117,28 +116,7 @@ function nextOccurrenceMs(anchorMs: number, dow: number, hour: number): number {
 }
 
 async function readActivityEvents(): Promise<ActivityEntry[]> {
-  const redis = await getRedis();
-  if (!redis) return [];
-  let raw: unknown[] = [];
-  try {
-    raw = (await redis.lrange(FEED_KEY, -MAX_FEED_READ, -1)) as unknown[];
-  } catch {
-    return [];
-  }
-  return raw
-    .map((s) => {
-      if (typeof s === "string") {
-        try {
-          return JSON.parse(s) as ActivityEntry;
-        } catch {
-          return null;
-        }
-      }
-      if (s && typeof s === "object") return s as ActivityEntry;
-      return null;
-    })
-    .filter((e): e is ActivityEntry => e !== null)
-    .map((e) => (e.ts < 1e12 ? { ...e, ts: e.ts * 1000 } : e));
+  return getRecentActivity(MAX_FEED_READ);
 }
 
 /**

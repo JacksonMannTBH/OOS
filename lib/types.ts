@@ -1,11 +1,11 @@
 /**
- * Role drives the home + radar status pill via lib/status.ts. Only smokey
+ * Role drives the home + radar status pill via lib/status.ts. Only fixed_wing
  * (speed-enforcement fixed-wing) and patrol (multi-role helicopters) trigger
  * the alert pill; sar / transport stay green; unknown is treated as alert
  * (conservative default for tails we haven't classified yet).
  */
 export type FleetRole =
-  | "smokey"
+  | "fixed_wing"
   | "patrol"
   | "sar"
   | "transport"
@@ -45,7 +45,21 @@ export type FleetEntry = {
 export type AircraftLive = {
   tail: string;
   icao24: string;
+  /** True only when the current upstream sample contained this aircraft. */
+  observed?: boolean;
   airborne: boolean;
+  observation_status?: "grounded" | "airborne_candidate" | "airborne" | "landing_candidate" | "unknown";
+  home_state_code?: string;
+  current_state_code?: string | null;
+  flight_session_id?: string | null;
+  detected_takeoff_at?: string | null;
+  takeoff_confidence?: "low" | "medium" | "high" | null;
+  starting_fuel_estimate_gal?: number;
+  usable_fuel_gallons?: number;
+  nominal_endurance_min?: number;
+  low_burn_gph?: number;
+  high_burn_gph?: number;
+  reserve_min?: number;
   lat?: number;
   lon?: number;
   altitude_ft?: number;
@@ -84,9 +98,11 @@ export type NormalizedAc = {
 export type Snapshot = {
   fetched_at: number;
   source: SnapshotSource;
+  source_ok?: boolean;
+  source_error?: string;
   aircraft: Aircraft[];
   /**
-   * Total count of aircraft the upstream feed returned for the regional
+   * Total count of aircraft the upstream feed returned for the state-scoped
    * bbox, BEFORE we filter down to our fleet. Useful as a feed-health
    * signal: if this is 0 for hours during daytime, the upstream parser
    * is probably broken again (the adsb.fi v2 ac→aircraft rename incident

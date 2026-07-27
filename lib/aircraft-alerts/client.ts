@@ -1,48 +1,30 @@
 "use client";
 
-import { stateForRegion, type AppStateId } from "@/lib/app-regions";
-import { DEFAULT_PROXIMITY_NM } from "@/lib/proximity-display";
-import { clampRegionProximityNm } from "@/lib/proximity-limits";
-import type { RegionId } from "@/lib/regions";
+import {
+  getSelectedStateCode,
+  stateIdForCode,
+  type StateCode,
+} from "@/lib/app-states";
 import type {
   AircraftAlertPushSubscription,
   AircraftAlertStatus,
 } from "./types";
 
-const USER_ID_KEY = "ss_aircraft_alert_user_id";
-const RANGE_NM_KEY = "ss_aircraft_alert_range_nm";
+const DEVICE_ID_KEY = "oos_aircraft_alert_device_id";
 
-type EnableInput = {
-  regionId: RegionId;
-  proximityRangeNm: number;
-  stateId?: AppStateId;
+type StateInput = {
+  stateCode?: StateCode;
 };
 
 export function getAircraftAlertUserId(): string {
   if (typeof window === "undefined") return "";
-  const existing = window.localStorage.getItem(USER_ID_KEY);
+  const existing = window.localStorage.getItem(DEVICE_ID_KEY);
   if (existing) return existing;
   const next =
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
-  window.localStorage.setItem(USER_ID_KEY, next);
-  return next;
-}
-
-export function getStoredAircraftAlertRangeNm(): number {
-  if (typeof window === "undefined") return DEFAULT_PROXIMITY_NM;
-  const raw = Number(window.localStorage.getItem(RANGE_NM_KEY));
-  return Number.isFinite(raw) && raw > 0
-    ? clampRegionProximityNm(raw)
-    : DEFAULT_PROXIMITY_NM;
-}
-
-export function setStoredAircraftAlertRangeNm(value: number): number {
-  const next = clampRegionProximityNm(value);
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(RANGE_NM_KEY, String(next));
-  }
+  window.localStorage.setItem(DEVICE_ID_KEY, next);
   return next;
 }
 
@@ -67,23 +49,19 @@ export async function readAircraftAlertStatus(): Promise<AircraftAlertStatus> {
     configured: Boolean(server.configured),
     enabled: Boolean(server.enabled),
     permission: Notification.permission,
-    regionId: server.regionId,
-    stateId: server.stateId,
-    proximityRangeNm: server.proximityRangeNm,
+    stateCode: server.stateCode,
+    stateId: server.stateCode ? stateIdForCode(server.stateCode) : undefined,
     publicKey: server.publicKey,
     message: server.message,
   };
 }
 
-export async function enableAircraftProximityAlerts(
-  input: EnableInput,
+export async function enableAircraftAlerts(
+  input: StateInput = {},
 ): Promise<AircraftAlertStatus> {
-  if (!browserSupportsAircraftAlerts()) {
-    throw new Error("unsupported");
-  }
+  if (!browserSupportsAircraftAlerts()) throw new Error("unsupported");
   const status = await readAircraftAlertStatus();
-  const publicKey =
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || status.publicKey || "";
+  const publicKey = status.publicKey ?? "";
   if (!publicKey) throw new Error("not_configured");
 
   const permission = await Notification.requestPermission();
@@ -99,19 +77,14 @@ export async function enableAircraftProximityAlerts(
     });
   }
 
-  const pushSubscription = normalizePushSubscription(subscription);
-  const proximityRangeNm = setStoredAircraftAlertRangeNm(input.proximityRangeNm);
-  const regionId = input.regionId;
-  const stateId = input.stateId ?? stateForRegion(regionId).id;
+  const stateCode = input.stateCode ?? getSelectedStateCode();
   const res = await fetch("/api/aircraft-alerts/subscription", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       userId: getAircraftAlertUserId(),
-      subscription: pushSubscription,
-      regionId,
-      stateId,
-      proximityRangeNm,
+      subscription: normalizePushSubscription(subscription),
+      stateCode,
     }),
   });
   if (!res.ok) throw new Error("subscribe_failed");
@@ -119,13 +92,12 @@ export async function enableAircraftProximityAlerts(
     ...(await readAircraftAlertStatus()),
     enabled: true,
     permission,
-    regionId,
-    stateId,
-    proximityRangeNm,
+    stateCode,
+    stateId: stateIdForCode(stateCode),
   };
 }
 
-export async function disableAircraftProximityAlerts(): Promise<AircraftAlertStatus> {
+export async function disableAircraftAlerts(): Promise<AircraftAlertStatus> {
   const userId = getAircraftAlertUserId();
   if (browserSupportsAircraftAlerts()) {
     try {
@@ -133,7 +105,7 @@ export async function disableAircraftProximityAlerts(): Promise<AircraftAlertSta
       const subscription = await registration.pushManager.getSubscription();
       await subscription?.unsubscribe();
     } catch {
-      // Server cleanup below still disarms this browser.
+      // The server record is still removed below.
     }
   }
   await fetch("/api/aircraft-alerts/subscription", {
@@ -141,34 +113,25 @@ export async function disableAircraftProximityAlerts(): Promise<AircraftAlertSta
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ userId }),
   });
-  return {
-    ...(await readAircraftAlertStatus()),
-    enabled: false,
-  };
+  return { ...(await readAircraftAlertStatus()), enabled: false };
 }
 
 export async function syncAircraftAlertPreferences(
-  input: EnableInput,
+  input: StateInput,
 ): Promise<AircraftAlertStatus | null> {
   const current = await readAircraftAlertStatus();
-  if (!current.enabled) {
-    setStoredAircraftAlertRangeNm(input.proximityRangeNm);
-    return current;
-  }
-  const proximityRangeNm = setStoredAircraftAlertRangeNm(input.proximityRangeNm);
-  const stateId = input.stateId ?? stateForRegion(input.regionId).id;
+  if (!current.enabled) return current;
+  const stateCode = input.stateCode ?? getSelectedStateCode();
   const res = await fetch("/api/aircraft-alerts/subscription", {
     method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       userId: getAircraftAlertUserId(),
-      regionId: input.regionId,
-      stateId,
-      proximityRangeNm,
+      stateCode,
     }),
   });
   if (!res.ok) return null;
-  return await readAircraftAlertStatus();
+  return readAircraftAlertStatus();
 }
 
 export async function sendAircraftAlertTest(): Promise<void> {
@@ -177,7 +140,10 @@ export async function sendAircraftAlertTest(): Promise<void> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ userId: getAircraftAlertUserId() }),
   });
-  if (!res.ok) throw new Error("test_failed");
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
+    throw new Error(typeof body?.error === "string" ? body.error : "test_failed");
+  }
 }
 
 function browserSupportsAircraftAlerts(): boolean {
@@ -195,9 +161,7 @@ function normalizePushSubscription(
   const json = subscription.toJSON();
   const p256dh = json.keys?.p256dh;
   const auth = json.keys?.auth;
-  if (!json.endpoint || !p256dh || !auth) {
-    throw new Error("invalid_subscription");
-  }
+  if (!json.endpoint || !p256dh || !auth) throw new Error("invalid_subscription");
   return {
     endpoint: json.endpoint,
     expirationTime: json.expirationTime ?? null,
@@ -209,10 +173,9 @@ function urlBase64ToArrayBuffer(base64Url: string): ArrayBuffer {
   const padding = "=".repeat((4 - (base64Url.length % 4)) % 4);
   const base64 = `${base64Url}${padding}`.replace(/-/g, "+").replace(/_/g, "/");
   const rawData = window.atob(base64);
-  const buffer = new ArrayBuffer(rawData.length);
-  const output = new Uint8Array(buffer);
-  for (let i = 0; i < rawData.length; i += 1) {
-    output[i] = rawData.charCodeAt(i);
+  const output = new Uint8Array(rawData.length);
+  for (let index = 0; index < rawData.length; index += 1) {
+    output[index] = rawData.charCodeAt(index);
   }
-  return buffer;
+  return output.buffer;
 }

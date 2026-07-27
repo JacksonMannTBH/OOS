@@ -1,82 +1,66 @@
-// Polling hook for /api/aircraft. Used by Glanceable home + RadarShell.
-//
-// - Polls every 10s
-// - Pauses while document.visibilityState === "hidden"
-// - Refetches immediately on visibilitychange → visible (catch up after backgrounding)
-// - Forces one fresh server snapshot when the rider changes region
-// - Honors `mockOn` so /?mock=up and /radar?mock=up share the demo state
-
 import { useEffect, useState } from "react";
-import { REGION_CHANGE_EVENT, getRegion } from "@/lib/region-pref";
-import type { RegionId } from "@/lib/regions";
+import {
+  STATE_CHANGE_EVENT,
+  getSelectedStateCode,
+  type StateCode,
+} from "@/lib/app-states";
 import type { Snapshot } from "@/lib/types";
 
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 30_000;
 
-function aircraftUrl(
-  mockOn: boolean,
-  regionId: RegionId,
-  forceFresh = false,
-): string {
-  const base = `/api/aircraft?region_id=${encodeURIComponent(regionId)}`;
-  const sep = base.includes("?") ? "&" : "?";
-  const withFresh = forceFresh ? `${base}${sep}fresh=${Date.now()}` : base;
-  if (!mockOn) return withFresh;
-  if (typeof window !== "undefined") {
-    const mock = new URLSearchParams(window.location.search).get("mock");
-    if (mock) return `${withFresh}&mock=${encodeURIComponent(mock)}`;
-  }
-  return `${withFresh}&mock=up`;
+function aircraftUrl(mockOn: boolean, stateCode: StateCode): string {
+  const base = `/api/aircraft?state=${encodeURIComponent(stateCode)}`;
+  if (!mockOn) return base;
+  const mock =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("mock")
+      : null;
+  return `${base}&mock=${encodeURIComponent(mock ?? "up")}`;
 }
 
 export function useAircraft(initial: Snapshot, mockOn = false): Snapshot {
-  const [snap, setSnap] = useState<Snapshot>(initial);
-  const [regionId, setRegionId] = useState<RegionId>(() => getRegion());
-  const [regionRefreshSeq, setRegionRefreshSeq] = useState(0);
+  const [snapshot, setSnapshot] = useState(initial);
+  const [stateCode, setStateCode] = useState<StateCode>(
+    () => getSelectedStateCode(),
+  );
 
   useEffect(() => {
-    const onRegionChange = (e: Event) => {
-      const detail = (e as CustomEvent<{ id?: RegionId }>).detail;
-      setRegionId(detail?.id ?? getRegion());
-      setRegionRefreshSeq((seq) => seq + 1);
+    const onStateChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ code?: StateCode }>).detail;
+      setStateCode(detail?.code ?? getSelectedStateCode());
     };
-    window.addEventListener(REGION_CHANGE_EVENT, onRegionChange);
-    return () => window.removeEventListener(REGION_CHANGE_EVENT, onRegionChange);
+    window.addEventListener(STATE_CHANGE_EVENT, onStateChange);
+    return () => window.removeEventListener(STATE_CHANGE_EVENT, onStateChange);
   }, []);
 
   useEffect(() => {
     let cancelled = false;
-    const normalUrl = aircraftUrl(mockOn, regionId);
-    const freshUrl = aircraftUrl(mockOn, regionId, regionRefreshSeq > 0);
-
-    const fetchSnap = async (forceFresh = false) => {
+    const fetchSnapshot = async () => {
       if (document.visibilityState === "hidden") return;
       try {
-        const r = await fetch(forceFresh ? freshUrl : normalUrl, {
+        const response = await fetch(aircraftUrl(mockOn, stateCode), {
           cache: "no-store",
         });
-        if (!r.ok) return;
-        const data = (await r.json()) as Snapshot;
-        if (!cancelled) setSnap(data);
+        if (!response.ok) return;
+        const next = (await response.json()) as Snapshot;
+        if (!cancelled) setSnapshot(next);
       } catch {
-        // transient — next tick retries
+        // A later poll reconciles transient network failures.
       }
     };
 
-    void fetchSnap(regionRefreshSeq > 0);
-    const id = setInterval(() => void fetchSnap(false), POLL_INTERVAL_MS);
-
+    void fetchSnapshot();
+    const interval = window.setInterval(fetchSnapshot, POLL_INTERVAL_MS);
     const onVisibility = () => {
-      if (document.visibilityState === "visible") void fetchSnap(false);
+      if (document.visibilityState === "visible") void fetchSnapshot();
     };
     document.addEventListener("visibilitychange", onVisibility);
-
     return () => {
       cancelled = true;
-      clearInterval(id);
+      window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [mockOn, regionId, regionRefreshSeq]);
+  }, [mockOn, stateCode]);
 
-  return snap;
+  return snapshot;
 }

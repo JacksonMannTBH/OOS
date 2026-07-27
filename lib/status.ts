@@ -3,12 +3,12 @@
 // (Glanceable), the radar status pill, the PWA app-icon badge, and the
 // embeddable /api/badge.svg all derive their copy from computeStatus().
 //
-// Alert classes (amber pill, all read BIRD UP): smokey, patrol, unknown
+// Alert classes (amber pill, all read BIRD UP): fixed_wing, patrol, unknown
 // Clear classes (green pill, ALL CLEAR): sar, transport, nothing
 //
 // Bird-as-umbrella: every law-enforcement aircraft surfaces as BIRD UP
 // on the rider-facing pill. The granular role taxonomy still drives body
-// copy (a fixed-wing smokey vs a patrol helicopter read differently
+// copy (a fixed-wing fixed_wing vs a patrol helicopter read differently
 // underneath the pill), but the headline is uniform.
 //
 // When something clear-class is up alone, we still show ALL CLEAR but
@@ -34,7 +34,7 @@ export type StatusState = {
   /** Lead aircraft + fleet entry, for callers that need raw context. */
   lead: { aircraft: Aircraft; entry: FleetEntry } | null;
   /**
-   * Count of alert-class aircraft (smokey + patrol + unknown). Drives the
+   * Count of alert-class aircraft (fixed_wing + patrol + unknown). Drives the
    * "X up" suffix on the embeddable badge and the PWA app-icon badge.
    * SAR + transport are excluded — they're up but they don't count.
    */
@@ -44,7 +44,7 @@ export type StatusState = {
 };
 
 const ALERT_ROLES: ReadonlySet<FleetRole> = new Set([
-  "smokey",
+  "fixed_wing",
   "patrol",
   "unknown",
 ]);
@@ -61,7 +61,7 @@ export function computeStatus(
 ): StatusState {
   const airborne = snapshot.aircraft.filter((a) => a.airborne);
   const upByRole: Record<FleetRole, Array<{ aircraft: Aircraft; entry: FleetEntry }>> = {
-    smokey: [],
+    fixed_wing: [],
     patrol: [],
     sar: [],
     transport: [],
@@ -73,33 +73,26 @@ export function computeStatus(
     upByRole[entry.role].push({ aircraft: a, entry });
   }
   const alertCount =
-    upByRole.smokey.length + upByRole.patrol.length + upByRole.unknown.length;
+    upByRole.fixed_wing.length + upByRole.patrol.length + upByRole.unknown.length;
 
-  // Alert tier 1 — any smokey-class up. BIRD UP, amber.
-  if (upByRole.smokey.length > 0) {
-    const lead = upByRole.smokey[0]!;
-    const otherBirds = upByRole.smokey.length - 1;
+  // Alert tier 1 — any fixed_wing-class up. BIRD UP, amber.
+  if (upByRole.fixed_wing.length > 0) {
+    const lead = upByRole.fixed_wing[0]!;
     return {
       kind: "alert",
       pill: "BIRD UP",
       pillSub: alertCount > 1 ? `${alertCount} up` : undefined,
       headline: "Eye In The Sky",
-      body: lead.entry.nickname
-        ? `${lead.entry.nickname} watching. Mind the throttle.`
-        : "Speed enforcement plane in the air. Mind the throttle.",
-      footnote:
-        otherBirds > 0 || upByRole.patrol.length > 0
-          ? buildAlertFootnote(upByRole, lead)
-          : undefined,
+      body: "Mind the throttle.",
       lead,
       alertCount,
       totalAirborne: airborne.length,
     };
   }
 
-  // Alert tier 2 — patrol or unknown up (no smokey). Per the Bird
+  // Alert tier 2 — patrol or unknown up (no fixed_wing). Per the Bird
   // umbrella, the pill reads BIRD UP just like tier 1 — body copy
-  // still distinguishes a patrol helicopter from a fixed-wing smokey
+  // still distinguishes a patrol helicopter from a fixed-wing fixed_wing
   // for context, but the headline is uniform.
   if (upByRole.patrol.length > 0 || upByRole.unknown.length > 0) {
     const lead = upByRole.patrol[0] ?? upByRole.unknown[0]!;
@@ -126,7 +119,7 @@ export function computeStatus(
       kind: "clear",
       pill: "ALL CLEAR",
       headline: "No Eyes",
-      body: "No bird up in your selected state. Send it.",
+      body: "Send it.",
       footnote: `${name} on a ${mission}.`,
       lead,
       alertCount: 0,
@@ -139,31 +132,11 @@ export function computeStatus(
     kind: "clear",
     pill: "ALL CLEAR",
     headline: "No Eyes",
-    body: "No bird up in your selected state. Send it.",
+    body: "Send it.",
     lead: null,
     alertCount: 0,
     totalAirborne: 0,
   };
-}
-
-function buildAlertFootnote(
-  upByRole: Record<FleetRole, Array<{ aircraft: Aircraft; entry: FleetEntry }>>,
-  lead: { aircraft: Aircraft; entry: FleetEntry },
-): string | undefined {
-  const others: string[] = [];
-  for (const r of upByRole.smokey) {
-    if (r.aircraft.tail !== lead.aircraft.tail) {
-      others.push(r.entry.nickname ?? r.aircraft.tail);
-    }
-  }
-  for (const r of upByRole.patrol) {
-    if (r.aircraft.tail !== lead.aircraft.tail) {
-      others.push(r.entry.nickname ?? r.aircraft.tail);
-    }
-  }
-  if (others.length === 0) return undefined;
-  if (others.length === 1) return `${others[0]} also up.`;
-  return `${others.length} other watchers up.`;
 }
 
 /** Convenience for callers that only have an array, not a Map. */

@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Analytics } from "@vercel/analytics/react";
 import { BASE_URL } from "@/lib/config";
 import { IOSInstallPrompt } from "@/components/IOSInstallPrompt";
 import { SwRegistrar } from "@/components/SwRegistrar";
@@ -92,7 +91,6 @@ export default function RootLayout({
           <IOSInstallPrompt />
           <SwRegistrar />
         </TooltipProvider>
-        <Analytics />
       </body>
     </html>
   );

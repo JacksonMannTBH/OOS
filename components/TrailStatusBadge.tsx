@@ -1,7 +1,7 @@
 "use client";
 
 // Diagnostic badge that surfaces the /api/trails layer's data state in
-// plain English at the bottom-left of /radar. Lets a non-technical
+// plain English at the bottom-left of /map. Lets a non-technical
 // rider confirm the trail data path is healthy without opening dev
 // tools — pairs with the [trail] console.debug logs in
 // AircraftTrailLayer.tsx during the PROMPT_19C strip-back diagnostic.

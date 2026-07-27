@@ -146,7 +146,7 @@ export default async function OGImage({ params }: Props) {
                 color: SS_FG,
               }}
             >
-              SMOKYSIGNAL
+              OUT OF SIGHT
             </span>
           </div>
 
@@ -174,7 +174,7 @@ export default async function OGImage({ params }: Props) {
 
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ fontSize: 18, color: SS_FG2 }}>
-              smokysignal.app
+              LIVE AIRCRAFT
             </span>
             <span style={{ fontSize: 18, color: SS_FG2 }}>
               /flight/{tail}/{params.flightId}

@@ -3,9 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --font-brand: "Math Bold", "Cambria Math", "STIX Two Math", "Noto Sans Math", "Times New Roman", serif;
-  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  --font-brand: Helvetica, "Helvetica Neue", Arial, sans-serif;
+  --font-ui: Helvetica, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: Helvetica, "Helvetica Neue", Arial, sans-serif;
+  --font-header-brand: "Math Bold", "Cambria Math", "STIX Two Math", "Noto Sans Math", "Times New Roman", serif;
+  --font-header-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --ss-bg0: #050607;
   --ss-bg1: rgba(13, 14, 11, 0.94);
   --ss-bg2: rgba(246, 196, 49, 0.10);
