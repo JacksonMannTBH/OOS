@@ -93,6 +93,10 @@ export type NormalizedAc = {
   track?: number;
   /** Mode A squawk code as 4-character string. */
   squawk?: string | null;
+  /** Seconds since the upstream source last received any message. */
+  seen_seconds?: number;
+  /** Seconds since the upstream source last received a position. */
+  seen_position_seconds?: number;
 };
 
 export type Snapshot = {
@@ -102,11 +106,8 @@ export type Snapshot = {
   source_error?: string;
   aircraft: Aircraft[];
   /**
-   * Total count of aircraft the upstream feed returned for the state-scoped
-   * bbox, BEFORE we filter down to our fleet. Useful as a feed-health
-   * signal: if this is 0 for hours during daytime, the upstream parser
-   * is probably broken again (the adsb.fi v2 ac→aircraft rename incident
-   * of P3-debug, 2026-04-30).
+   * Current tracked-fleet observations returned by the upstream feed before
+   * they are joined back onto the complete state catalog.
    */
   live_seen_count: number;
 };

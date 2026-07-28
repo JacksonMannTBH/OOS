@@ -1,12 +1,11 @@
 // ADS-B feed adapters: adsb.fi (primary) + OpenSky (fallback).
-// Polite usage: bbox query once per refresh, KV-cached upstream.
+// Polite usage: exact fleet ICAOs once per state refresh, locally cached.
 
 import { fleetHex } from "./seed";
 import { getCatalog } from "./aircraft-data";
 import { fetchOpenSky } from "./opensky";
 import {
   DEFAULT_STATE_CODE,
-  getAppState,
   type StateCode,
 } from "./app-states";
 import type {
@@ -17,10 +16,6 @@ import type {
   Snapshot,
 } from "./types";
 
-// State-centroid query covers all four corners of Washington within
-// ~190 nm. adsb.fi v2 caps the radius at 250 nm (501+ returns HTTP 400),
-// so this is the largest single-circle query the API allows. Registry-tail
-// filtering downstream drops any non-fleet leakage from BC / OR / ID.
 const FETCH_OPTS: RequestInit = {
   headers: { "User-Agent": "OutOfSight/0.1 (+https://github.com/)" },
   // Avoid Next.js's fetch caching layer — we cache ourselves.
@@ -29,25 +24,78 @@ const FETCH_OPTS: RequestInit = {
 
 // ─── adsb.fi ───────────────────────────────────────────────────────────────
 
-// Top-level field is `aircraft`, NOT `ac` (adsbexchange uses `ac` —
-// don't conflate them). Misreading this field caused every tail to
-// classify as airborne:false from launch through 2026-04-30.
-type AdsbFiResp = { aircraft?: NormalizedAc[]; now?: number };
+// Exact-ICAO responses use the ADSBexchange-compatible `ac` field. Keep
+// `aircraft` compatibility for older regional responses and fixtures.
+type AdsbFiResp = {
+  ac?: unknown[];
+  aircraft?: unknown[];
+  now?: number;
+};
 
 const SNAPSHOT_TTL_MS = 15_000;
+const MAX_ADSB_OBSERVATION_AGE_SECONDS = 60;
 const snapshotCache = new Map<
   StateCode,
   { snapshot: Snapshot; expiresAt: number }
 >();
 const pendingSnapshots = new Map<StateCode, Promise<Snapshot>>();
 
-async function fetchAdsbFi(stateCode: StateCode): Promise<NormalizedAc[]> {
-  const state = getAppState(stateCode);
-  const url = `https://opendata.adsb.fi/api/v2/lat/${state.centerLat}/lon/${state.centerLon}/dist/250`;
+async function fetchAdsbFi(hexes: string[]): Promise<NormalizedAc[]> {
+  if (hexes.length === 0) return [];
+  const url = `https://opendata.adsb.fi/api/v2/icao/${hexes.join(",")}`;
   const r = await fetch(url, FETCH_OPTS);
   if (!r.ok) throw new Error(`adsb.fi ${r.status}`);
   const j = (await r.json()) as AdsbFiResp;
-  return j.aircraft ?? [];
+  return normalizeAdsbFiPayload(j);
+}
+
+export function normalizeAdsbFiPayload(payload: unknown): NormalizedAc[] {
+  if (!isRecord(payload)) return [];
+  const rows = Array.isArray(payload.ac)
+    ? payload.ac
+    : Array.isArray(payload.aircraft)
+      ? payload.aircraft
+      : [];
+
+  const aircraft: NormalizedAc[] = [];
+  for (const value of rows) {
+    if (!isRecord(value) || typeof value.hex !== "string") continue;
+    const seenSeconds = finiteNumber(value.seen);
+    if (
+      seenSeconds != null &&
+      seenSeconds > MAX_ADSB_OBSERVATION_AGE_SECONDS
+    ) {
+      continue;
+    }
+
+    const seenPositionSeconds = finiteNumber(value.seen_pos);
+    const positionIsCurrent =
+      seenPositionSeconds == null ||
+      seenPositionSeconds <= MAX_ADSB_OBSERVATION_AGE_SECONDS;
+    const altitude =
+      value.alt_baro === "ground"
+        ? "ground"
+        : finiteNumber(value.alt_baro);
+
+    aircraft.push({
+      hex: value.hex.toLowerCase(),
+      r: typeof value.r === "string" ? value.r : undefined,
+      lat: positionIsCurrent ? finiteNumber(value.lat) : undefined,
+      lon: positionIsCurrent ? finiteNumber(value.lon) : undefined,
+      alt_baro: altitude,
+      gs: finiteNumber(value.gs),
+      track: finiteNumber(value.track),
+      squawk:
+        typeof value.squawk === "string"
+          ? value.squawk
+          : value.squawk === null
+            ? null
+            : undefined,
+      seen_seconds: seenSeconds,
+      seen_position_seconds: seenPositionSeconds,
+    });
+  }
+  return aircraft;
 }
 
 // ─── Normalize + merge ─────────────────────────────────────────────────────
@@ -94,13 +142,14 @@ async function buildSnapshotUncached(
   let sourceOk = true;
   let sourceError: string | undefined;
   try {
-    raw = await fetchAdsbFi(stateCode);
+    raw = await fetchAdsbFi(fleetHexes);
   } catch (e) {
     console.warn("[adsb] primary failed, falling back to OpenSky:", e);
     const primaryError = errorMessage(e);
     try {
       raw = await fetchOpenSky(fleetHexes);
       source = "opensky";
+      sourceError = `adsb.fi: ${primaryError}`;
     } catch (e2) {
       console.error("[adsb] both feeds failed:", e2);
       raw = [];
@@ -164,6 +213,16 @@ async function buildSnapshotUncached(
 
 function errorMessage(error: unknown): string {
   return (error instanceof Error ? error.message : String(error)).slice(0, 500);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 export function anyAirborne(snap: Snapshot): boolean {

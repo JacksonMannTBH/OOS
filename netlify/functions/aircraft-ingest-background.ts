@@ -6,7 +6,24 @@ import { dispatchPendingTakeoffNotifications } from "../../lib/aircraft-alerts/d
 import { getSupabaseAdmin } from "../../lib/supabase/server";
 
 const SAMPLE_INTERVAL_MS = 30_000;
-const LEASE_SECONDS = 90;
+// adsb.fi's public API allows one request per second. Keep a small safety
+// margin so all state-scoped ICAO batches remain below that limit.
+const UPSTREAM_REQUEST_SPACING_MS = 1_100;
+const LEASE_SECONDS = 150;
+
+type StateIngestionReport = {
+  state_code: string;
+  source: string | null;
+  source_ok: boolean;
+  source_error: string | null;
+  source_aircraft_count: number;
+  tracked_aircraft_count: number;
+  queried_icao_count: number;
+  matched_aircraft_count: number;
+  positions_inserted: number;
+  takeoffs_created: number;
+  duration_ms: number;
+};
 
 export default async function aircraftIngestBackground(
   request: Request,
@@ -60,42 +77,102 @@ async function sampleAllStates(workerId: string, sampleIndex: number) {
   if (runError) throw new Error(`Ingestion run create failed: ${runError.message}`);
 
   try {
-    const snapshots = await Promise.all(
-      APP_STATES.map((state) => buildSnapshot(state.code)),
-    );
     let positionsInserted = 0;
     let takeoffsCreated = 0;
     let trackedAircraftCount = 0;
     let sourceAircraftCount = 0;
-    const unhealthyStates: string[] = [];
-    for (const [index, snapshot] of snapshots.entries()) {
-      const result = await ingestSnapshot(snapshot, workerId);
-      positionsInserted += result.positionsInserted;
-      takeoffsCreated += result.takeoffsCreated;
-      trackedAircraftCount += result.trackedAircraftCount;
-      sourceAircraftCount += snapshot.live_seen_count;
-      if (!result.sourceHealthy) unhealthyStates.push(APP_STATES[index]!.code);
+    const reports: StateIngestionReport[] = [];
+
+    for (const [index, state] of APP_STATES.entries()) {
+      if (index > 0) await wait(UPSTREAM_REQUEST_SPACING_MS);
+      const stateStartedAt = Date.now();
+      try {
+        const snapshot = await buildSnapshot(state.code);
+        const result = await ingestSnapshot(snapshot, workerId);
+        const queriedIcaos = new Set(
+          snapshot.aircraft
+            .map((aircraft) => aircraft.icao24.toLowerCase())
+            .filter((icao24) => /^[0-9a-f]{6}$/.test(icao24)),
+        );
+        const matchedAircraftCount = snapshot.aircraft.filter(
+          (aircraft) => aircraft.observed,
+        ).length;
+        const stateTrackedAircraftCount = snapshot.aircraft.length;
+
+        positionsInserted += result.positionsInserted;
+        takeoffsCreated += result.takeoffsCreated;
+        trackedAircraftCount += stateTrackedAircraftCount;
+        sourceAircraftCount += snapshot.live_seen_count;
+        reports.push({
+          state_code: state.code,
+          source: snapshot.source,
+          source_ok: result.sourceHealthy,
+          source_error: snapshot.source_error ?? null,
+          source_aircraft_count: snapshot.live_seen_count,
+          tracked_aircraft_count: stateTrackedAircraftCount,
+          queried_icao_count: queriedIcaos.size,
+          matched_aircraft_count: matchedAircraftCount,
+          positions_inserted: result.positionsInserted,
+          takeoffs_created: result.takeoffsCreated,
+          duration_ms: Date.now() - stateStartedAt,
+        });
+      } catch (error) {
+        reports.push({
+          state_code: state.code,
+          source: null,
+          source_ok: false,
+          source_error: errorMessage(error),
+          source_aircraft_count: 0,
+          tracked_aircraft_count: 0,
+          queried_icao_count: 0,
+          matched_aircraft_count: 0,
+          positions_inserted: 0,
+          takeoffs_created: 0,
+          duration_ms: Date.now() - stateStartedAt,
+        });
+      }
     }
-    await db
+
+    const unhealthyReports = reports.filter((report) => !report.source_ok);
+    const successfulReports = reports.filter((report) => report.source_ok);
+    const status =
+      successfulReports.length === 0
+        ? "failed"
+        : unhealthyReports.length > 0
+          ? "partial"
+          : "succeeded";
+    const runError =
+      unhealthyReports.length > 0
+        ? unhealthyReports
+            .map(
+              (report) =>
+                `${report.state_code}: ${report.source_error ?? "live sources unavailable"}`,
+            )
+            .join("; ")
+        : null;
+    const { error: updateError } = await db
       .from("ingestion_runs")
       .update({
         finished_at: new Date().toISOString(),
-        status: unhealthyStates.length > 0 ? "partial" : "succeeded",
-        source: snapshots.map((snapshot) => snapshot.source).join(","),
+        status,
+        source: [...new Set(successfulReports.map((report) => report.source))]
+          .filter(Boolean)
+          .join(","),
         source_aircraft_count: sourceAircraftCount,
         tracked_aircraft_count: trackedAircraftCount,
         positions_inserted: positionsInserted,
         takeoffs_created: takeoffsCreated,
-        error:
-          unhealthyStates.length > 0
-            ? `Live sources unavailable for: ${unhealthyStates.join(", ")}`
-            : null,
+        error: runError,
         metadata: {
           sample_index: sampleIndex,
-          unhealthy_states: unhealthyStates,
+          unhealthy_states: unhealthyReports.map((report) => report.state_code),
+          states: reports,
         },
       })
       .eq("id", run.id);
+    if (updateError) {
+      throw new Error(`Ingestion run update failed: ${updateError.message}`);
+    }
   } catch (error) {
     await db
       .from("ingestion_runs")
@@ -147,4 +224,8 @@ async function runNotificationWorker(workerId: string) {
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function errorMessage(error: unknown): string {
+  return (error instanceof Error ? error.message : String(error)).slice(0, 500);
 }

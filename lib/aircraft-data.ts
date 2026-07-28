@@ -223,10 +223,11 @@ export async function getDatabaseSnapshot(
   const aircraft = (data ?? []).map((row) => {
     const observedAt = parseTime(row.observed_at);
     const lastSeenAt = parseTime(row.last_seen_at);
+    const updatedAt = parseTime(row.updated_at);
+    if (updatedAt != null) fetchedAt = Math.max(fetchedAt, updatedAt);
     const hasCurrentObservation =
       observedAt != null &&
       snapshotReadAt - observedAt <= CURRENT_OBSERVATION_MAX_AGE_MS;
-    if (hasCurrentObservation) fetchedAt = Math.max(fetchedAt, observedAt);
     const status = row.observation_status as Aircraft["observation_status"];
     const airborne =
       hasCurrentObservation &&
@@ -307,7 +308,7 @@ export async function ingestSnapshot(
   const observedAt = new Date(snapshot.fetched_at).toISOString();
 
   if (snapshot.source_ok === false) {
-    await db.from("data_source_health").upsert(
+    const { error: healthError } = await db.from("data_source_health").upsert(
       {
         source: snapshot.source,
         last_attempt_at: observedAt,
@@ -318,6 +319,9 @@ export async function ingestSnapshot(
       },
       { onConflict: "source" },
     );
+    if (healthError) {
+      throw new Error(`Source-health write failed: ${healthError.message}`);
+    }
     return {
       positionsInserted: 0,
       takeoffsCreated: 0,
@@ -572,7 +576,7 @@ export async function ingestSnapshot(
     if (error) throw new Error(`Position write failed: ${error.message}`);
   }
 
-  await db.from("data_source_health").upsert(
+  const { error: healthError } = await db.from("data_source_health").upsert(
     {
       source: snapshot.source,
       last_attempt_at: observedAt,
@@ -583,6 +587,9 @@ export async function ingestSnapshot(
     },
     { onConflict: "source" },
   );
+  if (healthError) {
+    throw new Error(`Source-health write failed: ${healthError.message}`);
+  }
 
   return {
     positionsInserted: positionRows.length,

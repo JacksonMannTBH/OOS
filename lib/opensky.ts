@@ -113,7 +113,7 @@ function normalizeStates(states: unknown[][]): NormalizedAc[] {
  */
 export async function fetchOpenSky(hexes: string[]): Promise<NormalizedAc[]> {
   if (hexes.length === 0) return [];
-  const url = `${STATES_URL}?icao24=${hexes.join(",")}`;
+  const url = buildOpenSkyStatesUrl(hexes);
 
   const doFetch = async (): Promise<Response> => {
     const token = await getOpenskyToken();
@@ -145,6 +145,14 @@ export async function fetchOpenSky(hexes: string[]): Promise<NormalizedAc[]> {
 
   const j = (await r.json()) as OpenSkyResp;
   return normalizeStates(j.states ?? []);
+}
+
+export function buildOpenSkyStatesUrl(hexes: string[]): string {
+  const url = new URL(STATES_URL);
+  for (const hex of hexes) {
+    url.searchParams.append("icao24", hex.toLowerCase());
+  }
+  return url.toString();
 }
 
 async function stashCredits(raw: string): Promise<void> {
