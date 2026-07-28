@@ -13,3 +13,6 @@
   from = "/radar"
   to = "/map"
   status = 301
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
