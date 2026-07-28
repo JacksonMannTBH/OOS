@@ -55,6 +55,7 @@ export type IngestionSummary = {
 
 const TAKEOFF_CONFIRMATION_SAMPLES = 2;
 const LANDING_CONFIRMATION_SAMPLES = 2;
+const CURRENT_OBSERVATION_MAX_AGE_MS = 2 * 60 * 1_000;
 
 export async function ensureCatalogSeeded(): Promise<void> {
   if (!isSupabaseConfigured()) return;
@@ -217,11 +218,19 @@ export async function getDatabaseSnapshot(
     .order("tail");
   if (error) throw new Error(`Live aircraft read failed: ${error.message}`);
 
+  const snapshotReadAt = Date.now();
   let fetchedAt = 0;
   const aircraft = (data ?? []).map((row) => {
     const observedAt = parseTime(row.observed_at);
-    fetchedAt = Math.max(fetchedAt, observedAt ?? 0);
+    const lastSeenAt = parseTime(row.last_seen_at);
+    const hasCurrentObservation =
+      observedAt != null &&
+      snapshotReadAt - observedAt <= CURRENT_OBSERVATION_MAX_AGE_MS;
+    if (hasCurrentObservation) fetchedAt = Math.max(fetchedAt, observedAt);
     const status = row.observation_status as Aircraft["observation_status"];
+    const airborne =
+      hasCurrentObservation &&
+      (status === "airborne" || status === "airborne_candidate");
     const takeoffAt = parseTime(row.detected_takeoff_at);
     const trackingStartedAt = parseTime(row.tracking_started_at);
     const elapsedStart = takeoffAt ?? trackingStartedAt;
@@ -236,21 +245,23 @@ export async function getDatabaseSnapshot(
       role: row.role as FleetEntry["role"],
       roleConfidence: row.role_confidence as FleetEntry["roleConfidence"],
       roleNote: row.role_note ? String(row.role_note) : undefined,
-      observed: observedAt != null,
-      airborne: status === "airborne" || status === "airborne_candidate",
-      observation_status: status ?? "unknown",
+      observed: hasCurrentObservation,
+      airborne,
+      observation_status: hasCurrentObservation ? status ?? "unknown" : "unknown",
       home_state_code: String(row.home_state_code),
-      current_state_code: row.current_state_code
+      current_state_code: hasCurrentObservation && row.current_state_code
         ? String(row.current_state_code)
         : null,
-      flight_session_id: row.flight_session_id
+      flight_session_id: hasCurrentObservation && row.flight_session_id
         ? String(row.flight_session_id)
         : null,
-      detected_takeoff_at: row.detected_takeoff_at
+      detected_takeoff_at: hasCurrentObservation && row.detected_takeoff_at
         ? String(row.detected_takeoff_at)
         : null,
       takeoff_confidence:
-        (row.takeoff_confidence as Aircraft["takeoff_confidence"]) ?? null,
+        hasCurrentObservation
+          ? (row.takeoff_confidence as Aircraft["takeoff_confidence"]) ?? null
+          : null,
       starting_fuel_estimate_gal: finiteNumber(
         row.starting_fuel_estimate_gal,
       ),
@@ -259,24 +270,28 @@ export async function getDatabaseSnapshot(
       low_burn_gph: finiteNumber(row.low_burn_gph),
       high_burn_gph: finiteNumber(row.high_burn_gph),
       reserve_min: finiteNumber(row.reserve_min),
-      lat: finiteNumber(row.latitude),
-      lon: finiteNumber(row.longitude),
-      altitude_ft: finiteNumber(row.altitude_ft),
-      ground_speed_kt: finiteNumber(row.ground_speed_kt),
-      heading: finiteNumber(row.heading_deg),
-      squawk: row.squawk ? String(row.squawk) : null,
+      lat: hasCurrentObservation ? finiteNumber(row.latitude) : undefined,
+      lon: hasCurrentObservation ? finiteNumber(row.longitude) : undefined,
+      altitude_ft: hasCurrentObservation
+        ? finiteNumber(row.altitude_ft)
+        : undefined,
+      ground_speed_kt: hasCurrentObservation
+        ? finiteNumber(row.ground_speed_kt)
+        : undefined,
+      heading: hasCurrentObservation ? finiteNumber(row.heading_deg) : undefined,
+      squawk: hasCurrentObservation && row.squawk ? String(row.squawk) : null,
       time_aloft_min:
-        elapsedStart != null
-          ? Math.max(0, Math.floor((Date.now() - elapsedStart) / 60_000))
+        airborne && elapsedStart != null
+          ? Math.max(0, Math.floor((snapshotReadAt - elapsedStart) / 60_000))
           : undefined,
-      last_seen_min: observedAt
-        ? Math.max(0, Math.floor((Date.now() - observedAt) / 60_000))
+      last_seen_min: lastSeenAt
+        ? Math.max(0, Math.floor((snapshotReadAt - lastSeenAt) / 60_000))
         : null,
     } satisfies Aircraft;
   });
 
   return {
-    fetched_at: fetchedAt || Date.now(),
+    fetched_at: fetchedAt || snapshotReadAt,
     source: inferSnapshotSource(data),
     aircraft,
     live_seen_count: aircraft.filter((row) => row.observed).length,
@@ -359,13 +374,19 @@ export async function ingestSnapshot(
         aircraft_id: catalogRow.id,
         flight_session_id: previous?.flight_session_id ?? null,
         observation_status: "unknown",
-        consecutive_airborne: previous?.consecutive_airborne ?? 0,
-        consecutive_grounded: previous?.consecutive_grounded ?? 0,
-        observed_at: previous?.observed_at ?? null,
+        consecutive_airborne: 0,
+        consecutive_grounded: 0,
+        current_state_code: null,
+        observed_at: null,
         last_seen_at: previous?.last_seen_at ?? null,
         last_grounded_at: previous?.last_grounded_at ?? null,
-        airborne_candidate_started_at:
-          previous?.airborne_candidate_started_at ?? null,
+        airborne_candidate_started_at: null,
+        latitude: null,
+        longitude: null,
+        altitude_ft: null,
+        ground_speed_kt: null,
+        heading_deg: null,
+        squawk: null,
         source: snapshot.source,
         updated_at: observedAt,
       });
