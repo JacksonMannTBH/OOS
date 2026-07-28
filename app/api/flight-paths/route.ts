@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { DEFAULT_STATE_CODE, isStateCode, type StateCode } from "@/lib/app-states";
 import { getCatalog } from "@/lib/aircraft-data";
+import { liveDataHeaders } from "@/lib/http-cache";
 import { getLiveTrackWindow } from "@/lib/tracks";
 
 export const runtime = "nodejs";
@@ -48,10 +49,7 @@ export async function GET(req: Request) {
       window_minutes: 60,
     },
     {
-      headers: {
-        "Cache-Control":
-          "public, max-age=0, s-maxage=15, stale-while-revalidate=30",
-      },
+      headers: liveDataHeaders("query=state|tails"),
     },
   );
 }

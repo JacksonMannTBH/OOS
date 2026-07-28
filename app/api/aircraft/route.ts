@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { DEFAULT_STATE_CODE, isStateCode, type StateCode } from "@/lib/app-states";
+import { liveDataHeaders } from "@/lib/http-cache";
 import { getSnapshotForRender } from "@/lib/snapshot";
 import { applyMockState, getMockStateFromRequest } from "@/lib/mock-state";
 
@@ -15,10 +16,7 @@ export async function GET(req: Request) {
   return NextResponse.json(
     applyMockState(snapshot, getMockStateFromRequest(req)),
     {
-      headers: {
-        "Cache-Control":
-          "public, max-age=0, s-maxage=15, stale-while-revalidate=30",
-      },
+      headers: liveDataHeaders("query=state|mock"),
     },
   );
 }

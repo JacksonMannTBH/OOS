@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRecentActivity } from "@/lib/activity";
 import { getAppState } from "@/lib/app-states";
+import { liveDataHeaders } from "@/lib/http-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,9 +18,7 @@ export async function GET(req: Request) {
   return NextResponse.json(
     { entries, fetched_at: Date.now() },
     {
-      headers: {
-        "Cache-Control": "public, max-age=0, s-maxage=8, stale-while-revalidate=30",
-      },
+      headers: liveDataHeaders("query=limit|state_id"),
     },
   );
 }

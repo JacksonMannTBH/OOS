@@ -18,6 +18,12 @@ function aircraftUrl(mockOn: boolean, stateCode: StateCode): string {
   return `${base}&mock=${encodeURIComponent(mock ?? "up")}`;
 }
 
+function freshAircraftUrl(mockOn: boolean, stateCode: StateCode): string {
+  const url = new URL(aircraftUrl(mockOn, stateCode), window.location.origin);
+  url.searchParams.set("_", String(Date.now()));
+  return `${url.pathname}${url.search}`;
+}
+
 export function useAircraft(initial: Snapshot, mockOn = false): Snapshot {
   const [snapshot, setSnapshot] = useState(initial);
   const [stateCode, setStateCode] = useState<StateCode>(
@@ -38,7 +44,7 @@ export function useAircraft(initial: Snapshot, mockOn = false): Snapshot {
     const fetchSnapshot = async () => {
       if (document.visibilityState === "hidden") return;
       try {
-        const response = await fetch(aircraftUrl(mockOn, stateCode), {
+        const response = await fetch(freshAircraftUrl(mockOn, stateCode), {
           cache: "no-store",
         });
         if (!response.ok) return;
@@ -54,11 +60,17 @@ export function useAircraft(initial: Snapshot, mockOn = false): Snapshot {
     const onVisibility = () => {
       if (document.visibilityState === "visible") void fetchSnapshot();
     };
+    const onPageShow = () => void fetchSnapshot();
+    const onFocus = () => void fetchSnapshot();
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", onPageShow);
+    window.addEventListener("focus", onFocus);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("focus", onFocus);
     };
   }, [mockOn, stateCode]);
 

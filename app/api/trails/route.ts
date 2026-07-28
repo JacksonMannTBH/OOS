@@ -8,6 +8,7 @@
 //   - Sorted ascending by ts so a polyline reads from oldest → newest.
 
 import { NextResponse } from "next/server";
+import { liveDataHeaders } from "@/lib/http-cache";
 import { getCurrentFlightTrack, getLiveTrackWindow } from "@/lib/tracks";
 
 export const runtime = "nodejs";
@@ -59,13 +60,7 @@ export async function GET(req: Request) {
   return NextResponse.json(
     { trails },
     {
-      headers: {
-        // Trails update every ~10s on the client; cache for half that
-        // at the edge so two simultaneous map viewers share a fetch
-        // but never see stale-by-more-than-a-poll data.
-        "Cache-Control":
-          "public, max-age=0, s-maxage=5, stale-while-revalidate=30",
-      },
+      headers: liveDataHeaders("query=tails"),
     },
   );
 }
