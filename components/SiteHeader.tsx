@@ -2,8 +2,8 @@
 
 import { LogoMark } from "@/components/brand/Logo";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import {
   STATE_CHANGE_EVENT,
   getSelectedStateCode,
@@ -19,7 +19,6 @@ export function SiteHeader() {
     pathname === "/ride" ||
     pathname.startsWith("/map/") ||
     pathname.startsWith("/admin");
-  const hasAirborneAircraft = useHeaderAircraftStatus(!hidden);
 
   if (hidden) return null;
 
@@ -55,14 +54,9 @@ export function SiteHeader() {
             color: "inherit",
           }}
         >
-          <LogoMark
-            height="clamp(30px, 7.6vw, 42px)"
-            width="clamp(45px, 11.4vw, 63px)"
-            variant={hasAirborneAircraft === false ? "closed" : "open"}
-            style={{
-              justifySelf: "start",
-            }}
-          />
+          <Suspense fallback={<HeaderLogoMark variant="open" />}>
+            <HeaderAircraftLogo />
+          </Suspense>
           <span
             style={{
               fontFamily: "var(--font-header-brand)",
@@ -109,7 +103,48 @@ export function SiteHeader() {
   );
 }
 
-function useHeaderAircraftStatus(enabled: boolean): boolean | null {
+function HeaderAircraftLogo() {
+  const mockState = useSearchParams().get("mock");
+  const mockHasAirborneAircraft =
+    mockState === "down"
+      ? false
+      : mockState === "up" ||
+          mockState === "fixed_wing" ||
+          mockState === "eyes-up" ||
+          mockState === "multiple"
+        ? true
+        : null;
+  const liveHasAirborneAircraft = useHeaderAircraftStatus(
+    mockHasAirborneAircraft == null,
+    mockState,
+  );
+  const hasAirborneAircraft =
+    mockHasAirborneAircraft ?? liveHasAirborneAircraft;
+
+  return (
+    <HeaderLogoMark
+      variant={hasAirborneAircraft === false ? "closed" : "open"}
+    />
+  );
+}
+
+function HeaderLogoMark({ variant }: { variant: "open" | "closed" }) {
+  return (
+    <LogoMark
+      height="clamp(30px, 7.6vw, 42px)"
+      width="clamp(45px, 11.4vw, 63px)"
+      variant={variant}
+      style={{
+        justifySelf: "start",
+      }}
+    />
+  );
+}
+
+function useHeaderAircraftStatus(
+  enabled: boolean,
+  mockState: string | null,
+): boolean | null {
   const [hasAirborneAircraft, setHasAirborneAircraft] = useState<boolean | null>(
     null,
   );
@@ -122,8 +157,7 @@ function useHeaderAircraftStatus(enabled: boolean): boolean | null {
       const params = new URLSearchParams({
         state: getSelectedStateCode(),
       });
-      const mock = new URLSearchParams(window.location.search).get("mock");
-      if (mock) params.set("mock", mock);
+      if (mockState) params.set("mock", mockState);
 
       try {
         const response = await fetch(`/api/aircraft?${params.toString()}`, {
@@ -159,7 +193,7 @@ function useHeaderAircraftStatus(enabled: boolean): boolean | null {
       window.removeEventListener(STATE_CHANGE_EVENT, onStateChange);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [enabled]);
+  }, [enabled, mockState]);
 
   return hasAirborneAircraft;
 }

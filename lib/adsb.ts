@@ -34,6 +34,13 @@ const FETCH_OPTS: RequestInit = {
 // classify as airborne:false from launch through 2026-04-30.
 type AdsbFiResp = { aircraft?: NormalizedAc[]; now?: number };
 
+const SNAPSHOT_TTL_MS = 15_000;
+const snapshotCache = new Map<
+  StateCode,
+  { snapshot: Snapshot; expiresAt: number }
+>();
+const pendingSnapshots = new Map<StateCode, Promise<Snapshot>>();
+
 async function fetchAdsbFi(stateCode: StateCode): Promise<NormalizedAc[]> {
   const state = getAppState(stateCode);
   const url = `https://opendata.adsb.fi/api/v2/lat/${state.centerLat}/lon/${state.centerLon}/dist/250`;
@@ -47,6 +54,32 @@ async function fetchAdsbFi(stateCode: StateCode): Promise<NormalizedAc[]> {
 
 export async function buildSnapshot(
   stateCode: StateCode = DEFAULT_STATE_CODE,
+): Promise<Snapshot> {
+  const now = Date.now();
+  const cached = snapshotCache.get(stateCode);
+  if (cached && cached.expiresAt > now) return cached.snapshot;
+
+  const pending = pendingSnapshots.get(stateCode);
+  if (pending) return pending;
+
+  const request = buildSnapshotUncached(stateCode)
+    .then((snapshot) => {
+      snapshotCache.set(stateCode, {
+        snapshot,
+        expiresAt: Date.now() + SNAPSHOT_TTL_MS,
+      });
+      return snapshot;
+    })
+    .finally(() => {
+      pendingSnapshots.delete(stateCode);
+    });
+
+  pendingSnapshots.set(stateCode, request);
+  return request;
+}
+
+async function buildSnapshotUncached(
+  stateCode: StateCode,
 ): Promise<Snapshot> {
   const fleet = await getCatalog(stateCode);
   const fleetByIcao = new Map<string, FleetEntry>();

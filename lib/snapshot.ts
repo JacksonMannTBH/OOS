@@ -4,6 +4,7 @@ import {
   isStateCode,
   type StateCode,
 } from "./app-states";
+import { buildSnapshot } from "./adsb";
 import { getDatabaseSnapshot } from "./aircraft-data";
 import { getSupabaseAdmin, isSupabaseConfigured } from "./supabase/server";
 import type { Snapshot, SnapshotSource } from "./types";
@@ -62,7 +63,9 @@ async function readSnapshot(state: StateCode | string): Promise<Snapshot | null>
   const code = isStateCode(state)
     ? state.toUpperCase() as StateCode
     : getAppState(state).code;
-  const snapshot = await getDatabaseSnapshot(code);
+  const snapshot = isSupabaseConfigured()
+    ? await getDatabaseSnapshot(code)
+    : await buildSnapshot(code);
   lastSource = snapshot.source;
   return snapshot;
 }
