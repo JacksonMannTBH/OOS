@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import nextDynamic from "next/dynamic";
 import { fleetHex } from "@/lib/seed";
-import { getRegistry } from "@/lib/registry";
+import { getAircraftCatalogEntries } from "@/lib/aircraft-data";
+import { isStateCode, type StateCode } from "@/lib/app-states";
 import { getSnapshotForRender } from "@/lib/snapshot";
 import { applyMockState, parseMockState } from "@/lib/mock-state";
 import {
@@ -39,7 +40,7 @@ const PlaneTrackMap = nextDynamic(() => import("@/components/PlaneTrackMap"), {
 
 type Props = {
   params: { tail: string };
-  searchParams: { mock?: string };
+  searchParams: { mock?: string; state?: string };
 };
 
 export async function generateMetadata({ params }: Props) {
@@ -49,10 +50,17 @@ export async function generateMetadata({ params }: Props) {
 export default async function PlanePage({ params, searchParams }: Props) {
   const tail = params.tail.toUpperCase();
 
-  const [fleet, real] = await Promise.all([getRegistry(), getSnapshotForRender()]);
-  const entry = fleet.find((f) => f.tail === tail);
-  if (!entry) notFound();
-  const recentFlight = await getMostRecentFlightForTail(tail, entry.nickname);
+  const catalog = await getAircraftCatalogEntries();
+  const catalogEntry = catalog.find((item) => item.aircraft.tail === tail);
+  if (!catalogEntry) notFound();
+  const entry = catalogEntry.aircraft;
+  const stateCode = isStateCode(searchParams.state)
+    ? searchParams.state.toUpperCase() as StateCode
+    : catalogEntry.homeStateCode;
+  const [real, recentFlight] = await Promise.all([
+    getSnapshotForRender(stateCode),
+    getMostRecentFlightForTail(tail, entry.nickname),
+  ]);
   const snap = applyMockState(real, parseMockState(searchParams.mock));
 
   const live = snap.aircraft.find((a) => a.tail === tail);

@@ -2,6 +2,13 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let client: SupabaseClient | null = null;
 
+export function withNoStore(init?: RequestInit): RequestInit {
+  return { ...init, cache: "no-store" };
+}
+
+const supabaseFetch: typeof fetch = (input, init) =>
+  fetch(input, withNoStore(init));
+
 export function isSupabaseConfigured(): boolean {
   return Boolean(
     readServerEnv("SUPABASE_URL") &&
@@ -26,6 +33,11 @@ export function getSupabaseAdmin(): SupabaseClient {
       persistSession: false,
     },
     global: {
+      // Next.js extends server-side fetch with a persistent data cache. The
+      // Supabase client performs reads through fetch, so opt every database
+      // request out explicitly; otherwise current aircraft rows can remain
+      // frozen even while the ingestion worker continues writing positions.
+      fetch: supabaseFetch,
       headers: {
         "X-Client-Info": "out-of-sight-netlify",
       },

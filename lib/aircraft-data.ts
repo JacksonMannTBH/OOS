@@ -223,8 +223,7 @@ export async function getDatabaseSnapshot(
   const aircraft = (data ?? []).map((row) => {
     const observedAt = parseTime(row.observed_at);
     const lastSeenAt = parseTime(row.last_seen_at);
-    const updatedAt = parseTime(row.updated_at);
-    if (updatedAt != null) fetchedAt = Math.max(fetchedAt, updatedAt);
+    if (observedAt != null) fetchedAt = Math.max(fetchedAt, observedAt);
     const hasCurrentObservation =
       observedAt != null &&
       snapshotReadAt - observedAt <= CURRENT_OBSERVATION_MAX_AGE_MS;
