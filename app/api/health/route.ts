@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const DATABASE_TIMEOUT_MS = 8_000;
-const INGESTION_STALE_AFTER_SECONDS = 180;
+const INGESTION_STALE_AFTER_SECONDS = 60;
 
 type StateIngestionReport = {
   state_code: string;
@@ -60,6 +60,10 @@ async function operationalHealth() {
       positions_inserted: null,
       takeoffs_created: null,
       catalog_aircraft_count: null,
+      sample_interval_ms: null,
+      scheduled_at: null,
+      start_lag_ms: null,
+      skipped_samples_last_hour: null,
       unhealthy_states: [] as string[],
       states: [] as StateIngestionReport[],
       pending_notifications: null,
@@ -68,7 +72,8 @@ async function operationalHealth() {
   }
 
   const db = getSupabaseAdmin();
-  const [runResult, pendingResult, failedResult, catalogResult] =
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1_000).toISOString();
+  const [runResult, pendingResult, failedResult, catalogResult, skippedResult] =
     await Promise.all([
     db
       .from("ingestion_runs")
@@ -91,6 +96,11 @@ async function operationalHealth() {
       .from("aircraft")
       .select("id", { count: "exact", head: true })
       .eq("active", true),
+    db
+      .from("ingestion_runs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "skipped")
+      .gte("started_at", oneHourAgo),
     ]);
 
   const metadata = isRecord(runResult.data?.metadata)
@@ -115,6 +125,11 @@ async function operationalHealth() {
     positions_inserted: runResult.data?.positions_inserted ?? null,
     takeoffs_created: runResult.data?.takeoffs_created ?? null,
     catalog_aircraft_count: catalogResult.count ?? null,
+    sample_interval_ms: nullableNumber(metadata.sample_interval_ms),
+    scheduled_at:
+      typeof metadata.scheduled_at === "string" ? metadata.scheduled_at : null,
+    start_lag_ms: nullableNumber(metadata.start_lag_ms),
+    skipped_samples_last_hour: skippedResult.count ?? null,
     unhealthy_states: unhealthyStates,
     states,
     pending_notifications: pendingResult.count ?? null,
@@ -184,6 +199,10 @@ export async function GET() {
         tracked_aircraft_count: operations.tracked_aircraft_count,
         positions_inserted: operations.positions_inserted,
         takeoffs_created: operations.takeoffs_created,
+        sample_interval_ms: operations.sample_interval_ms,
+        scheduled_at: operations.scheduled_at,
+        start_lag_ms: operations.start_lag_ms,
+        skipped_samples_last_hour: operations.skipped_samples_last_hour,
         unhealthy_states: operations.unhealthy_states,
         states: operations.states,
       },
@@ -253,4 +272,8 @@ function stringValue(value: unknown): string {
 
 function numberValue(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function nullableNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }

@@ -1,66 +1,65 @@
 "use client";
 
-// Sets the PWA app icon badge to the count of currently-airborne
-// alert-class fleet members (fixed_wing + patrol + unknown). SAR /
-// transport are explicitly NOT counted — riders care about
-// enforcement, not rescues. Pure browser API, no server changes.
-// Fails silently on browsers that don't support the Badging API
-// (Safari, most desktop installs).
+// Sets the PWA app icon badge from the same shared aircraft stream used by
+// the visible UI. Unsupported browser contexts fail silently.
 
 import { useEffect } from "react";
+import {
+  EMPTY_AIRCRAFT_SNAPSHOT,
+  useAircraft,
+} from "@/lib/hooks/useAircraft";
 
 type BadgeNavigator = Navigator & {
   setAppBadge?: (count?: number) => Promise<void> | void;
   clearAppBadge?: () => Promise<void> | void;
 };
 
-const POLL_INTERVAL_MS = 30_000;
-const ALERT_ROLES: ReadonlySet<string> = new Set(["fixed_wing", "patrol", "unknown"]);
+const ALERT_ROLES: ReadonlySet<string> = new Set([
+  "fixed_wing",
+  "patrol",
+  "unknown",
+]);
 
 export function AppBadge() {
+  const snapshot = useAircraft(EMPTY_AIRCRAFT_SNAPSHOT);
+
   useEffect(() => {
     if (typeof navigator === "undefined") return;
     const nav = navigator as BadgeNavigator;
     if (typeof nav.setAppBadge !== "function") return;
 
     let cancelled = false;
-
-    const refresh = async () => {
-      if (document.visibilityState === "hidden") return;
+    const count = snapshot.aircraft.filter(
+      (aircraft) =>
+        aircraft.airborne && ALERT_ROLES.has(aircraft.role ?? "unknown"),
+    ).length;
+    const updateBadge = async () => {
+      if (cancelled) return;
       try {
-        const r = await fetch("/api/aircraft", { cache: "no-store" });
-        if (!r.ok) return;
-        const data = (await r.json()) as {
-          aircraft: { airborne: boolean; role?: string }[];
-        };
-        if (cancelled) return;
-        const count = data.aircraft.filter(
-          (a) => a.airborne && ALERT_ROLES.has(a.role ?? "unknown"),
-        ).length;
-        try {
-          if (count > 0) await nav.setAppBadge?.(count);
-          else await nav.clearAppBadge?.();
-        } catch {
-          /* badge writes can throw on locked / focused-mode contexts */
-        }
+        if (count > 0) await nav.setAppBadge?.(count);
+        else await nav.clearAppBadge?.();
       } catch {
-        /* transient — try again next tick */
+        // Badge writes can throw on locked or focused-mode contexts.
       }
     };
-
-    void refresh();
-    const id = setInterval(refresh, POLL_INTERVAL_MS);
+    void updateBadge();
 
     return () => {
       cancelled = true;
-      clearInterval(id);
+    };
+  }, [snapshot]);
+
+  useEffect(
+    () => () => {
+      const nav = navigator as BadgeNavigator;
       try {
         void nav.clearAppBadge?.();
       } catch {
-        /* ignore */
+        // Ignore cleanup errors from unsupported browser contexts.
       }
-    };
-  }, []);
+    },
+    [],
+  );
 
   return null;
 }

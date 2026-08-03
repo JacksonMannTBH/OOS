@@ -3,14 +3,11 @@
 import { LogoMark } from "@/components/brand/Logo";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 import {
-  STATE_CHANGE_EVENT,
-  getSelectedStateCode,
-} from "@/lib/app-states";
-import type { Snapshot } from "@/lib/types";
-
-const AIRCRAFT_POLL_INTERVAL_MS = 30_000;
+  EMPTY_AIRCRAFT_SNAPSHOT,
+  useAircraft,
+} from "@/lib/hooks/useAircraft";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -114,12 +111,23 @@ function HeaderAircraftLogo() {
           mockState === "multiple"
         ? true
         : null;
-  const liveHasAirborneAircraft = useHeaderAircraftStatus(
-    mockHasAirborneAircraft == null,
-    mockState,
-  );
-  const hasAirborneAircraft =
-    mockHasAirborneAircraft ?? liveHasAirborneAircraft;
+  if (mockHasAirborneAircraft != null) {
+    return (
+      <HeaderLogoMark
+        variant={mockHasAirborneAircraft ? "open" : "closed"}
+      />
+    );
+  }
+
+  return <LiveHeaderAircraftLogo />;
+}
+
+function LiveHeaderAircraftLogo() {
+  const snapshot = useAircraft(EMPTY_AIRCRAFT_SNAPSHOT);
+  const hasLoaded = snapshot.fetched_at > 0;
+  const hasAirborneAircraft = hasLoaded
+    ? snapshot.aircraft.some((aircraft) => aircraft.airborne)
+    : null;
 
   return (
     <HeaderLogoMark
@@ -139,63 +147,6 @@ function HeaderLogoMark({ variant }: { variant: "open" | "closed" }) {
       }}
     />
   );
-}
-
-function useHeaderAircraftStatus(
-  enabled: boolean,
-  mockState: string | null,
-): boolean | null {
-  const [hasAirborneAircraft, setHasAirborneAircraft] = useState<boolean | null>(
-    null,
-  );
-
-  useEffect(() => {
-    if (!enabled) return;
-
-    let cancelled = false;
-    const fetchStatus = async () => {
-      const params = new URLSearchParams({
-        state: getSelectedStateCode(),
-      });
-      if (mockState) params.set("mock", mockState);
-
-      try {
-        const response = await fetch(`/api/aircraft?${params.toString()}`, {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          if (!cancelled) setHasAirborneAircraft(null);
-          return;
-        }
-        const snapshot = (await response.json()) as Snapshot;
-        if (!cancelled) {
-          setHasAirborneAircraft(
-            snapshot.aircraft.some((aircraft) => aircraft.airborne),
-          );
-        }
-      } catch {
-        if (!cancelled) setHasAirborneAircraft(null);
-      }
-    };
-
-    void fetchStatus();
-    const interval = window.setInterval(fetchStatus, AIRCRAFT_POLL_INTERVAL_MS);
-    const onStateChange = () => void fetchStatus();
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") void fetchStatus();
-    };
-
-    window.addEventListener(STATE_CHANGE_EVENT, onStateChange);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      window.removeEventListener(STATE_CHANGE_EVENT, onStateChange);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, [enabled, mockState]);
-
-  return hasAirborneAircraft;
 }
 
 function SettingsIcon() {

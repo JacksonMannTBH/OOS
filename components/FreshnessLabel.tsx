@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { SS_TOKENS } from "@/lib/tokens";
 import { formatTsBare } from "@/lib/time";
 
-const STALE_MS = 15 * 60 * 1000;
+const STALE_MS = 90 * 1000;
 
 type Props = {
   /** ms-since-epoch of the last successful track sample. null = unknown. */
@@ -14,13 +14,13 @@ type Props = {
 };
 
 export function FreshnessLabel({ lastSampleMs, className, style }: Props) {
-  // Re-tick every 30s so the label stays honest without requiring a
+  // Re-tick every 10s so the label stays honest without requiring a
   // server round-trip. The cookie/cache layer keeps the underlying value
   // current at server-render time; this just ages it gracefully.
   const [now, setNow] = useState<number>(() => lastSampleMs ?? Date.now());
   useEffect(() => {
     setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 30_000);
+    const id = setInterval(() => setNow(Date.now()), 10_000);
     return () => clearInterval(id);
   }, []);
 
@@ -50,7 +50,7 @@ export function FreshnessLabel({ lastSampleMs, className, style }: Props) {
       }}
       title={
         stale
-          ? "Live cron may be down — last sample is older than 15 minutes."
+          ? "Live ingestion may be down — last sample is older than 90 seconds."
           : undefined
       }
     >

@@ -30,10 +30,17 @@ NEXT_PUBLIC_VAPID_PUBLIC_KEY
 VAPID_PRIVATE_KEY
 VAPID_SUBJECT
 CRON_SECRET
+AIRCRAFT_SAMPLE_INTERVAL_MS=10000
 ```
 
 The service-role key is server-only. Never expose it through a
 `NEXT_PUBLIC_` variable.
+
+`AIRCRAFT_SAMPLE_INTERVAL_MS` is optional and accepts values from 5000 through
+60000 milliseconds. Production defaults to a 10-second ingestion interval.
+Upstream observation timestamps are stored with positions so an unchanged
+provider sample does not create another coordinate row. Operational ingestion
+and notification-worker runs are retained for seven days.
 
 Import official state boundary polygons into `states.boundary` before enabling
 coordinate-derived state display. Subscription matching uses an aircraft's

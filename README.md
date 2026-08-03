@@ -37,13 +37,18 @@ Set these encrypted environment variables in Netlify:
 - `VAPID_PRIVATE_KEY`
 - `VAPID_SUBJECT`
 - `NEXT_PUBLIC_BASE_URL`
+- Optional: `AIRCRAFT_SAMPLE_INTERVAL_MS` (defaults to `10000`)
 - Optional: `OPENSKY_CLIENT_ID` and `OPENSKY_CLIENT_SECRET`
 
 The scheduled `aircraft-ingest` function runs once per minute and starts a
-background function that samples twice, 30 seconds apart. The database retains
-aircraft coordinates for one hour. Flight sessions, detected takeoff/landing
-times, notification history, and catalog records remain available after the
-coordinate cleanup.
+background function that samples at six deadline-based 10-second offsets. Each
+sample fetches the complete tracked fleet in rate-limited ICAO batches and
+writes it to Supabase in one combined ingestion pass. Source observation times
+deduplicate unchanged positions, and already-unknown aircraft are not rewritten
+on every pass. Notification retries run once per minute and immediately after a
+detected takeoff. The database retains aircraft coordinates for one hour and
+worker-run logs for seven days. Flight sessions, detected takeoff/landing times,
+notification history, and catalog records remain available after cleanup.
 
 See [supabase/README.md](supabase/README.md) for database details and state
 boundary import guidance.

@@ -1,14 +1,14 @@
 import type { Config } from "@netlify/functions";
 import { APP_STATES } from "../../lib/app-states";
-import { buildSnapshot } from "../../lib/adsb";
+import { buildFleetSnapshot } from "../../lib/adsb";
 import { ingestSnapshot } from "../../lib/aircraft-data";
 import { dispatchPendingTakeoffNotifications } from "../../lib/aircraft-alerts/dispatcher";
 import { getSupabaseAdmin } from "../../lib/supabase/server";
+import {
+  buildSampleOffsets,
+  normalizeAircraftSampleInterval,
+} from "../../lib/ingestion-schedule";
 
-const SAMPLE_INTERVAL_MS = 30_000;
-// adsb.fi's public API allows one request per second. Keep a small safety
-// margin so all state-scoped ICAO batches remain below that limit.
-const UPSTREAM_REQUEST_SPACING_MS = 1_100;
 const LEASE_SECONDS = 150;
 
 type StateIngestionReport = {
@@ -44,9 +44,48 @@ export default async function aircraftIngestBackground(
   if (!claimed) return;
 
   try {
-    for (let sampleIndex = 0; sampleIndex < 2; sampleIndex += 1) {
-      if (sampleIndex > 0) await wait(SAMPLE_INTERVAL_MS);
-      await sampleAllStates(workerId, sampleIndex);
+    const sampleIntervalMs = configuredSampleIntervalMs();
+    const workerStartedAt = Date.now();
+    const sampleOffsets = buildSampleOffsets(sampleIntervalMs);
+    let notificationWorkerRuns = 0;
+
+    for (const [sampleIndex, offsetMs] of sampleOffsets.entries()) {
+      const scheduledAt = workerStartedAt + offsetMs;
+      const waitMs = scheduledAt - Date.now();
+      if (waitMs > 0) await wait(waitMs);
+
+      const startLagMs = Date.now() - scheduledAt;
+      if (startLagMs >= sampleIntervalMs) {
+        console.warn(
+          `[aircraft-ingest] skipping sample ${sampleIndex}; ` +
+            `worker is ${startLagMs}ms behind schedule`,
+        );
+        await recordSkippedSample(
+          workerId,
+          sampleIndex,
+          sampleIntervalMs,
+          scheduledAt,
+          startLagMs,
+        );
+        continue;
+      }
+
+      const result = await sampleAllStates(
+        workerId,
+        sampleIndex,
+        sampleIntervalMs,
+        scheduledAt,
+        startLagMs,
+      );
+      if (result.takeoffsCreated > 0) {
+        await runNotificationWorker(workerId);
+        notificationWorkerRuns += 1;
+      }
+    }
+
+    // Retry pending deliveries once per minute even when no new takeoff was
+    // detected. A takeoff-triggered run already satisfies this minute's pass.
+    if (notificationWorkerRuns === 0) {
       await runNotificationWorker(workerId);
     }
   } finally {
@@ -57,11 +96,23 @@ export default async function aircraftIngestBackground(
   }
 }
 
+function configuredSampleIntervalMs(): number {
+  return normalizeAircraftSampleInterval(
+    Netlify.env.get("AIRCRAFT_SAMPLE_INTERVAL_MS"),
+  );
+}
+
 export const config: Config = {
   method: "POST",
 };
 
-async function sampleAllStates(workerId: string, sampleIndex: number) {
+async function sampleAllStates(
+  workerId: string,
+  sampleIndex: number,
+  sampleIntervalMs: number,
+  scheduledAt: number,
+  startLagMs: number,
+): Promise<{ takeoffsCreated: number }> {
   const db = getSupabaseAdmin();
   const startedAt = new Date().toISOString();
   const { data: run, error: runError } = await db
@@ -70,68 +121,46 @@ async function sampleAllStates(workerId: string, sampleIndex: number) {
       worker_id: workerId,
       started_at: startedAt,
       status: "running",
-      metadata: { sample_index: sampleIndex },
+      metadata: {
+        sample_index: sampleIndex,
+        sample_interval_ms: sampleIntervalMs,
+        scheduled_at: new Date(scheduledAt).toISOString(),
+        start_lag_ms: startLagMs,
+      },
     })
     .select("id")
     .single();
   if (runError) throw new Error(`Ingestion run create failed: ${runError.message}`);
 
   try {
-    let positionsInserted = 0;
-    let takeoffsCreated = 0;
-    let trackedAircraftCount = 0;
-    let sourceAircraftCount = 0;
-    const reports: StateIngestionReport[] = [];
-
-    for (const [index, state] of APP_STATES.entries()) {
-      if (index > 0) await wait(UPSTREAM_REQUEST_SPACING_MS);
-      const stateStartedAt = Date.now();
-      try {
-        const snapshot = await buildSnapshot(state.code);
-        const result = await ingestSnapshot(snapshot, workerId);
-        const queriedIcaos = new Set(
-          snapshot.aircraft
-            .map((aircraft) => aircraft.icao24.toLowerCase())
+    const cycleStartedAt = Date.now();
+    const snapshot = await buildFleetSnapshot(
+      APP_STATES.map((state) => state.code),
+    );
+    const result = await ingestSnapshot(snapshot, workerId);
+    const reports: StateIngestionReport[] = APP_STATES.map((state) => {
+      const aircraft = snapshot.aircraft.filter(
+        (item) => item.home_state_code === state.code,
+      );
+      const stateSummary = result.byState[state.code];
+      return {
+        state_code: state.code,
+        source: snapshot.source,
+        source_ok: result.sourceHealthy,
+        source_error: snapshot.source_error ?? null,
+        source_aircraft_count: aircraft.filter((item) => item.observed).length,
+        tracked_aircraft_count: aircraft.length,
+        queried_icao_count: new Set(
+          aircraft
+            .map((item) => item.icao24.toLowerCase())
             .filter((icao24) => /^[0-9a-f]{6}$/.test(icao24)),
-        );
-        const matchedAircraftCount = snapshot.aircraft.filter(
-          (aircraft) => aircraft.observed,
-        ).length;
-        const stateTrackedAircraftCount = snapshot.aircraft.length;
-
-        positionsInserted += result.positionsInserted;
-        takeoffsCreated += result.takeoffsCreated;
-        trackedAircraftCount += stateTrackedAircraftCount;
-        sourceAircraftCount += snapshot.live_seen_count;
-        reports.push({
-          state_code: state.code,
-          source: snapshot.source,
-          source_ok: result.sourceHealthy,
-          source_error: snapshot.source_error ?? null,
-          source_aircraft_count: snapshot.live_seen_count,
-          tracked_aircraft_count: stateTrackedAircraftCount,
-          queried_icao_count: queriedIcaos.size,
-          matched_aircraft_count: matchedAircraftCount,
-          positions_inserted: result.positionsInserted,
-          takeoffs_created: result.takeoffsCreated,
-          duration_ms: Date.now() - stateStartedAt,
-        });
-      } catch (error) {
-        reports.push({
-          state_code: state.code,
-          source: null,
-          source_ok: false,
-          source_error: errorMessage(error),
-          source_aircraft_count: 0,
-          tracked_aircraft_count: 0,
-          queried_icao_count: 0,
-          matched_aircraft_count: 0,
-          positions_inserted: 0,
-          takeoffs_created: 0,
-          duration_ms: Date.now() - stateStartedAt,
-        });
-      }
-    }
+        ).size,
+        matched_aircraft_count: aircraft.filter((item) => item.observed).length,
+        positions_inserted: stateSummary?.positionsInserted ?? 0,
+        takeoffs_created: stateSummary?.takeoffsCreated ?? 0,
+        duration_ms: Date.now() - cycleStartedAt,
+      };
+    });
 
     const unhealthyReports = reports.filter((report) => !report.source_ok);
     const successfulReports = reports.filter((report) => report.source_ok);
@@ -158,13 +187,16 @@ async function sampleAllStates(workerId: string, sampleIndex: number) {
         source: [...new Set(successfulReports.map((report) => report.source))]
           .filter(Boolean)
           .join(","),
-        source_aircraft_count: sourceAircraftCount,
-        tracked_aircraft_count: trackedAircraftCount,
-        positions_inserted: positionsInserted,
-        takeoffs_created: takeoffsCreated,
+        source_aircraft_count: snapshot.live_seen_count,
+        tracked_aircraft_count: snapshot.aircraft.length,
+        positions_inserted: result.positionsInserted,
+        takeoffs_created: result.takeoffsCreated,
         error: runError,
         metadata: {
           sample_index: sampleIndex,
+          sample_interval_ms: sampleIntervalMs,
+          scheduled_at: new Date(scheduledAt).toISOString(),
+          start_lag_ms: startLagMs,
           unhealthy_states: unhealthyReports.map((report) => report.state_code),
           states: reports,
         },
@@ -173,6 +205,7 @@ async function sampleAllStates(workerId: string, sampleIndex: number) {
     if (updateError) {
       throw new Error(`Ingestion run update failed: ${updateError.message}`);
     }
+    return { takeoffsCreated: result.takeoffsCreated };
   } catch (error) {
     await db
       .from("ingestion_runs")
@@ -183,6 +216,33 @@ async function sampleAllStates(workerId: string, sampleIndex: number) {
       })
       .eq("id", run.id);
     throw error;
+  }
+}
+
+async function recordSkippedSample(
+  workerId: string,
+  sampleIndex: number,
+  sampleIntervalMs: number,
+  scheduledAt: number,
+  startLagMs: number,
+): Promise<void> {
+  const db = getSupabaseAdmin();
+  const { error } = await db.from("ingestion_runs").insert({
+    worker_id: workerId,
+    started_at: new Date(scheduledAt).toISOString(),
+    finished_at: new Date().toISOString(),
+    status: "skipped",
+    error: `sample_start_lag_${startLagMs}ms`,
+    metadata: {
+      sample_index: sampleIndex,
+      sample_interval_ms: sampleIntervalMs,
+      scheduled_at: new Date(scheduledAt).toISOString(),
+      start_lag_ms: startLagMs,
+      skip_reason: "worker_behind_schedule",
+    },
+  });
+  if (error) {
+    throw new Error(`Skipped ingestion run write failed: ${error.message}`);
   }
 }
 
@@ -224,8 +284,4 @@ async function runNotificationWorker(workerId: string) {
 
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-function errorMessage(error: unknown): string {
-  return (error instanceof Error ? error.message : String(error)).slice(0, 500);
 }

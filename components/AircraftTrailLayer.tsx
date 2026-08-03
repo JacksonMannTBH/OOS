@@ -22,13 +22,9 @@
 // console.debug lines stay. Both clean up in a follow-up after the
 // rebuild has soaked.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { Map as MaplibreMap, GeoJSONSource } from "maplibre-gl";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
-import {
-  FLIGHT_PATHS_VISIBLE_KEY,
-  LAYER_VISIBILITY_CHANGE_EVENT,
-} from "@/lib/radar-layer-events";
 import type { Aircraft } from "@/lib/types";
 
 const SOURCE_ID = "aircraft-trails";
@@ -126,9 +122,11 @@ function reorderTrailLayers(map: MaplibreMap): void {
 export function AircraftTrailLayer({
   map,
   airborne,
+  enabled,
 }: {
   map: MaplibreMap | null;
   airborne: Aircraft[];
+  enabled: boolean;
 }) {
   const tailsKey = airborne
     .map((a) => a.tail)
@@ -138,38 +136,8 @@ export function AircraftTrailLayer({
   const tailsKeyRef = useRef(tailsKey);
   tailsKeyRef.current = tailsKey;
   const pulseRef = useRef<number | null>(null);
-  const [enabled, setEnabled] = useState<boolean>(false);
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = window.localStorage.getItem(FLIGHT_PATHS_VISIBLE_KEY);
-    if (stored === "0") setEnabled(false);
-    else if (stored === "1") setEnabled(true);
-    const onLayerVisChange = (e: Event) => {
-      const detail = (
-        e as CustomEvent<{ key: string; enabled: boolean }>
-      ).detail;
-      if (detail?.key === FLIGHT_PATHS_VISIBLE_KEY) {
-        setEnabled(detail.enabled);
-      }
-    };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === FLIGHT_PATHS_VISIBLE_KEY) {
-        setEnabled(e.newValue !== "0");
-      }
-    };
-    window.addEventListener(LAYER_VISIBILITY_CHANGE_EVENT, onLayerVisChange);
-    window.addEventListener("storage", onStorage);
-    return () => {
-      window.removeEventListener(
-        LAYER_VISIBILITY_CHANGE_EVENT,
-        onLayerVisChange,
-      );
-      window.removeEventListener("storage", onStorage);
-    };
-  }, []);
 
   // Layer attachment — once per map instance.
   useEffect(() => {

@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { SS_TOKENS } from "@/lib/tokens";
-import {
-  FLIGHT_PATHS_VISIBLE_KEY,
-  LAYER_VISIBILITY_CHANGE_EVENT,
-} from "@/lib/radar-layer-events";
 import { Tooltip } from "./Tooltip";
 
 const TABBAR_HEIGHT = 66;
 const PATH_ICON = "/icons/radar-path.svg";
 const RINGS_ICON = "/icons/radar-rings.svg";
+const LOCATION_ICON = "/icons/radar-location.svg";
 
 type Props = {
   /** Extra px above the tab bar; pass when the airborne carousel is on. */
@@ -18,6 +14,10 @@ type Props = {
   ringsActive: boolean;
   onToggleRings: () => void;
   ringsDisabled?: boolean;
+  flightPathsEnabled: boolean;
+  onToggleFlightPaths: () => void;
+  onReturnToLocation: () => void;
+  locationDisabled?: boolean;
 };
 
 export function RadarLayerControls({
@@ -25,52 +25,11 @@ export function RadarLayerControls({
   ringsActive,
   onToggleRings,
   ringsDisabled = false,
+  flightPathsEnabled,
+  onToggleFlightPaths,
+  onReturnToLocation,
+  locationDisabled = false,
 }: Props) {
-  const [flightPathsEnabled, setFlightPathsEnabled] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const fp = window.localStorage.getItem(FLIGHT_PATHS_VISIBLE_KEY);
-    if (fp === "0") setFlightPathsEnabled(false);
-    else if (fp === "1") setFlightPathsEnabled(true);
-    const onLayerVisChange = (e: Event) => {
-      const detail = (
-        e as CustomEvent<{ key: string; enabled: boolean }>
-      ).detail;
-      if (detail?.key === FLIGHT_PATHS_VISIBLE_KEY) {
-        setFlightPathsEnabled(detail.enabled);
-      }
-    };
-
-    window.addEventListener(LAYER_VISIBILITY_CHANGE_EVENT, onLayerVisChange);
-    return () => {
-      window.removeEventListener(
-        LAYER_VISIBILITY_CHANGE_EVENT,
-        onLayerVisChange,
-      );
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      FLIGHT_PATHS_VISIBLE_KEY,
-      flightPathsEnabled ? "1" : "0",
-    );
-  }, [flightPathsEnabled]);
-
-  const toggleFlightPaths = () => {
-    const next = !flightPathsEnabled;
-    setFlightPathsEnabled(next);
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent(LAYER_VISIBILITY_CHANGE_EVENT, {
-          detail: { key: FLIGHT_PATHS_VISIBLE_KEY, enabled: next },
-        }),
-      );
-    }
-  };
-
   const bottom = TABBAR_HEIGHT + 80 + bottomBoost;
   const offsetCss = (extra: number) =>
     `calc(${bottom + extra}px + var(--ss-install-prompt-h, 0px))`;
@@ -120,12 +79,37 @@ export function RadarLayerControls({
       >
         <button
           type="button"
-          onClick={toggleFlightPaths}
+          onClick={onToggleFlightPaths}
           aria-label="Toggle flight paths"
           aria-pressed={flightPathsEnabled}
           style={iconButtonStyle(flightPathsEnabled)}
         >
           <IconGlyph src={PATH_ICON} active={flightPathsEnabled} />
+        </button>
+      </Tooltip>
+      <Tooltip
+        side="right"
+        align="start"
+        content={
+          locationDisabled
+            ? "Waiting for your location. Allow location access on /map."
+            : "Return the map to your current location."
+        }
+      >
+        <button
+          type="button"
+          onClick={() => {
+            if (!locationDisabled) onReturnToLocation();
+          }}
+          aria-label="Return to my location"
+          aria-disabled={locationDisabled}
+          style={iconButtonStyle(false, locationDisabled)}
+        >
+          <IconGlyph
+            src={LOCATION_ICON}
+            active={false}
+            disabled={locationDisabled}
+          />
         </button>
       </Tooltip>
     </div>

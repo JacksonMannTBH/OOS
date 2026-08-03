@@ -17,7 +17,7 @@ const ALERT = "#f6c431";
 const CLEAR = "#5DD9A7";
 const STALE = "#6B7380";
 
-const STALE_AFTER_MS = 5 * 60 * 1000;
+const STALE_AFTER_MS = 90 * 1000;
 
 function escape(s: string): string {
   return s.replace(/[<>&"']/g, (c) =>

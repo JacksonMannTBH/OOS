@@ -26,8 +26,8 @@ import {
   estimateFuelRemaining,
 } from "@/lib/fuel-estimate";
 
-const PUGET_SOUND: [number, number] = [-122.3, 47.6];
 const DEFAULT_ZOOM = 9;
+const STATE_OVERVIEW_ZOOM = 6;
 const NORTH_AMERICA_BOUNDS: [[number, number], [number, number]] = [
   [-179, 5],
   [-25, 84],
@@ -346,6 +346,7 @@ export default function RadarMap({
   showFuelEstimate = false,
   stateCode,
   focusRequest,
+  riderFocusRequest = 0,
   onMapReady,
 }: {
   aircraft: Aircraft[];
@@ -356,6 +357,7 @@ export default function RadarMap({
   /** Selected catalog state. Used for the default map center. */
   stateCode?: StateCode;
   focusRequest?: FocusRequest | null;
+  riderFocusRequest?: number;
   onMapReady?: (map: MaplibreMap | null) => void;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -366,6 +368,8 @@ export default function RadarMap({
   const stateRef = useRef<Snapshot>(EMPTY_SNAPSHOT);
   const aircraftRef = useRef<Aircraft[]>(aircraft);
   const riderRef = useRef<RiderPos | null>(rider);
+  const stateCodeRef = useRef<StateCode | undefined>(stateCode);
+  stateCodeRef.current = stateCode;
   const showDistanceRingsRef = useRef<boolean>(showDistanceRings);
   const showFuelEstimateRef = useRef<boolean>(showFuelEstimate);
   const darkModeRef = useRef<boolean>(darkMode);
@@ -390,11 +394,16 @@ export default function RadarMap({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const initialState = stateCodeRef.current
+      ? getAppState(stateCodeRef.current)
+      : null;
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: MAP_STYLE_URL,
-      center: PUGET_SOUND,
-      zoom: DEFAULT_ZOOM,
+      center: initialState
+        ? [initialState.centerLon, initialState.centerLat]
+        : [-122.3, 47.6],
+      zoom: initialState ? STATE_OVERVIEW_ZOOM : DEFAULT_ZOOM,
       minZoom: 3,
       maxBounds: NORTH_AMERICA_BOUNDS,
       renderWorldCopies: false,
@@ -587,6 +596,17 @@ export default function RadarMap({
       applyCustomRadarLayerTheme(map, darkModeRef.current);
 
       readyRef.current = true;
+      // A stored state can hydrate while MapLibre is still loading. Always
+      // apply the latest state here so that update cannot be lost and leave
+      // live aircraft and trails rendered offscreen in the previous state.
+      if (!riderRef.current && stateCodeRef.current) {
+        const selectedState = getAppState(stateCodeRef.current);
+        map.jumpTo({
+          center: [selectedState.centerLon, selectedState.centerLat],
+          zoom: STATE_OVERVIEW_ZOOM,
+        });
+      }
+      lastStateRef.current = stateCodeRef.current;
       applyAircraft(aircraftRef.current);
       applyRider(riderRef.current);
       applyDistanceRings(riderRef.current);
@@ -740,16 +760,21 @@ export default function RadarMap({
     focusTailOnMap(focusRequest.tail);
   }, [focusRequest]);
 
+  useEffect(() => {
+    if (riderFocusRequest === 0) return;
+    focusRiderOnMap();
+  }, [riderFocusRequest]);
+
   const lastStateRef = useRef<StateCode | undefined>(stateCode);
   useEffect(() => {
     if (!stateCode || stateCode === lastStateRef.current) return;
-    lastStateRef.current = stateCode;
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
+    lastStateRef.current = stateCode;
     const state = getAppState(stateCode);
     map.flyTo({
       center: [state.centerLon, state.centerLat],
-      zoom: 6,
+      zoom: STATE_OVERVIEW_ZOOM,
       duration: 800,
     });
     userInteractedAtRef.current = Date.now();
@@ -811,6 +836,22 @@ export default function RadarMap({
       center: pos,
       zoom: Math.max(map.getZoom(), 12),
       duration: 600,
+    });
+    return true;
+  }
+
+  function focusRiderOnMap(): boolean {
+    const map = mapRef.current;
+    const rider = riderRef.current;
+    if (!map || !readyRef.current || !rider) return false;
+
+    followedTailRef.current = null;
+    popupRef.current?.remove();
+    popupRef.current = null;
+    map.flyTo({
+      center: [rider.lon, rider.lat],
+      zoom: Math.max(map.getZoom(), RIDER_ZOOM),
+      duration: 800,
     });
     return true;
   }

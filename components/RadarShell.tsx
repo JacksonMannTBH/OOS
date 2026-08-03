@@ -17,6 +17,10 @@ import { RadarLayerControls } from "./RadarLayerControls";
 import { AircraftTrailLayer } from "./AircraftTrailLayer";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
 import { haversineNm } from "@/lib/geo";
+import {
+  FLIGHT_PATHS_VISIBLE_KEY,
+  LAYER_VISIBILITY_CHANGE_EVENT,
+} from "@/lib/radar-layer-events";
 import { Tooltip } from "./Tooltip";
 import {
   STATE_CHANGE_EVENT,
@@ -76,6 +80,7 @@ export function RadarShell({
   const [toast, setToast] = useState<string | null>(null);
   const [map, setMap] = useState<MaplibreMap | null>(null);
   const [showRings, setShowRings] = useState(false);
+  const [showFlightPaths, setShowFlightPaths] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [stateCode, setStateCode] = useState<StateCode>(
     () => getSelectedStateCode(),
@@ -84,6 +89,7 @@ export function RadarShell({
     tail: string;
     seq: number;
   } | null>(null);
+  const [riderFocusRequest, setRiderFocusRequest] = useState(0);
   const focusSeqRef = useRef(0);
   const bubbleAircraft = useMemo(() => {
     const selectedState = getAppState(stateCode);
@@ -106,6 +112,9 @@ export function RadarShell({
   useEffect(() => {
     if (typeof window === "undefined") return;
     setShowRings(window.localStorage.getItem("oos_distance_rings_visible") === "1");
+    setShowFlightPaths(
+      window.localStorage.getItem(FLIGHT_PATHS_VISIBLE_KEY) === "1",
+    );
     setDarkMode(readStoredDarkTheme());
     setStateCode(getSelectedStateCode());
     const onChange = (e: Event) => {
@@ -119,6 +128,8 @@ export function RadarShell({
     const onStorage = (e: StorageEvent) => {
       if (e.key === THEME_STORAGE_KEY) {
         setDarkMode(readStoredDarkTheme());
+      } else if (e.key === FLIGHT_PATHS_VISIBLE_KEY) {
+        setShowFlightPaths(e.newValue === "1");
       }
     };
     window.addEventListener(STATE_CHANGE_EVENT, onChange);
@@ -173,14 +184,35 @@ export function RadarShell({
         darkMode={darkMode}
         stateCode={stateCode}
         focusRequest={focusRequest}
+        riderFocusRequest={riderFocusRequest}
         onMapReady={setMap}
       />
       <RadarLayerControls
         ringsActive={showRings}
         onToggleRings={() => setShowRings((v) => !v)}
         ringsDisabled={!rider}
+        flightPathsEnabled={showFlightPaths}
+        onToggleFlightPaths={() => {
+          const next = !showFlightPaths;
+          setShowFlightPaths(next);
+          window.localStorage.setItem(
+            FLIGHT_PATHS_VISIBLE_KEY,
+            next ? "1" : "0",
+          );
+          window.dispatchEvent(
+            new CustomEvent(LAYER_VISIBILITY_CHANGE_EVENT, {
+              detail: { key: FLIGHT_PATHS_VISIBLE_KEY, enabled: next },
+            }),
+          );
+        }}
+        onReturnToLocation={() => setRiderFocusRequest((seq) => seq + 1)}
+        locationDisabled={!rider || !map}
       />
-      <AircraftTrailLayer map={map} airborne={airborne} />
+      <AircraftTrailLayer
+        map={map}
+        airborne={airborne}
+        enabled={showFlightPaths}
+      />
 
       <header
         style={{

@@ -51,6 +51,13 @@ export type IngestionSummary = {
   takeoffsCreated: number;
   trackedAircraftCount: number;
   sourceHealthy: boolean;
+  byState: Record<string, StateIngestionSummary>;
+};
+
+export type StateIngestionSummary = {
+  positionsInserted: number;
+  takeoffsCreated: number;
+  trackedAircraftCount: number;
 };
 
 const TAKEOFF_CONFIRMATION_SAMPLES = 2;
@@ -211,15 +218,29 @@ export async function getDatabaseSnapshot(
     };
   }
 
-  const { data, error } = await getSupabaseAdmin()
-    .from("aircraft_live_public")
-    .select("*")
-    .eq("home_state_code", stateCode)
-    .order("tail");
-  if (error) throw new Error(`Live aircraft read failed: ${error.message}`);
+  const db = getSupabaseAdmin();
+  const [liveResult, ingestionResult] = await Promise.all([
+    db
+      .from("aircraft_live_public")
+      .select("*")
+      .eq("home_state_code", stateCode)
+      .order("tail"),
+    db
+      .from("ingestion_runs")
+      .select("finished_at")
+      .in("status", ["succeeded", "partial"])
+      .not("finished_at", "is", null)
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (liveResult.error) {
+    throw new Error(`Live aircraft read failed: ${liveResult.error.message}`);
+  }
+  const data = liveResult.data;
 
   const snapshotReadAt = Date.now();
-  let fetchedAt = 0;
+  let fetchedAt = parseTime(ingestionResult.data?.finished_at) ?? 0;
   const aircraft = (data ?? []).map((row) => {
     const observedAt = parseTime(row.observed_at);
     const lastSeenAt = parseTime(row.last_seen_at);
@@ -246,6 +267,9 @@ export async function getDatabaseSnapshot(
       roleConfidence: row.role_confidence as FleetEntry["roleConfidence"],
       roleNote: row.role_note ? String(row.role_note) : undefined,
       observed: hasCurrentObservation,
+      observed_at: observedAt != null ? new Date(observedAt).toISOString() : null,
+      position_observed_at:
+        observedAt != null ? new Date(observedAt).toISOString() : null,
       airborne,
       observation_status: hasCurrentObservation ? status ?? "unknown" : "unknown",
       home_state_code: String(row.home_state_code),
@@ -304,17 +328,17 @@ export async function ingestSnapshot(
 ): Promise<IngestionSummary> {
   const db = getSupabaseAdmin();
   await ensureCatalogSeeded();
-  const observedAt = new Date(snapshot.fetched_at).toISOString();
+  const snapshotObservedAt = new Date(snapshot.fetched_at).toISOString();
 
   if (snapshot.source_ok === false) {
     const { error: healthError } = await db.from("data_source_health").upsert(
       {
         source: snapshot.source,
-        last_attempt_at: observedAt,
-        last_failure_at: observedAt,
+        last_attempt_at: snapshotObservedAt,
+        last_failure_at: snapshotObservedAt,
         last_error: snapshot.source_error ?? "all live sources failed",
         metadata: { worker_id: workerId },
-        updated_at: observedAt,
+        updated_at: snapshotObservedAt,
       },
       { onConflict: "source" },
     );
@@ -326,6 +350,7 @@ export async function ingestSnapshot(
       takeoffsCreated: 0,
       trackedAircraftCount: 0,
       sourceHealthy: false,
+      byState: {},
     };
   }
 
@@ -339,6 +364,7 @@ export async function ingestSnapshot(
 
   const catalog = (catalogData ?? []) as CatalogRow[];
   const catalogByTail = new Map(catalog.map((row) => [row.tail, row]));
+  const catalogById = new Map(catalog.map((row) => [row.id, row]));
   const ids = catalog.map((row) => row.id);
   const { data: performanceData, error: performanceError } = ids.length
     ? await db
@@ -365,14 +391,22 @@ export async function ingestSnapshot(
 
   const stateRows: Record<string, unknown>[] = [];
   const positionRows: Record<string, unknown>[] = [];
+  const byState: Record<string, StateIngestionSummary> = {};
   let takeoffsCreated = 0;
 
   for (const aircraft of snapshot.aircraft) {
     const catalogRow = catalogByTail.get(aircraft.tail.toUpperCase());
     if (!catalogRow) continue;
+    const stateSummary = byState[catalogRow.home_state_code] ??= {
+      positionsInserted: 0,
+      takeoffsCreated: 0,
+      trackedAircraftCount: 0,
+    };
+    stateSummary.trackedAircraftCount += 1;
     const previous = currentByAircraft.get(catalogRow.id);
     const wasObserved = aircraft.observed !== false;
     if (!wasObserved) {
+      if (!shouldClearUnobservedState(previous)) continue;
       stateRows.push({
         aircraft_id: catalogRow.id,
         flight_session_id: previous?.flight_session_id ?? null,
@@ -391,10 +425,22 @@ export async function ingestSnapshot(
         heading_deg: null,
         squawk: null,
         source: snapshot.source,
-        updated_at: observedAt,
+        updated_at: snapshotObservedAt,
       });
       continue;
     }
+
+    const aircraftObservedAt = normalizedAircraftTimestamp(
+      aircraft.observed_at,
+      snapshot.fetched_at,
+      snapshotObservedAt,
+    );
+    if (!isNewerAircraftObservation(previous, aircraftObservedAt)) continue;
+    const positionObservedAt = normalizedAircraftTimestamp(
+      aircraft.position_observed_at,
+      snapshot.fetched_at,
+      aircraftObservedAt,
+    );
 
     const isAirborne = aircraft.airborne;
     const consecutiveAirborne = isAirborne
@@ -405,11 +451,11 @@ export async function ingestSnapshot(
       : 0;
     const lastGroundedAt = isAirborne
       ? previous?.last_grounded_at ?? null
-      : observedAt;
+      : aircraftObservedAt;
     const airborneCandidateStartedAt = isAirborne
       ? previous?.consecutive_airborne
-        ? previous.airborne_candidate_started_at ?? observedAt
-        : observedAt
+        ? previous.airborne_candidate_started_at ?? aircraftObservedAt
+        : aircraftObservedAt
       : null;
     let flightSessionId = previous?.flight_session_id ?? null;
     let status: Aircraft["observation_status"] = isAirborne
@@ -432,15 +478,15 @@ export async function ingestSnapshot(
             ).toISOString()
           : null;
       const detectedTakeoffAt =
-        interpolatedTakeoffAt ?? airborneCandidateStartedAt ?? observedAt;
+        interpolatedTakeoffAt ?? airborneCandidateStartedAt ?? aircraftObservedAt;
       const { data: session, error: sessionError } = await db
         .from("flight_sessions")
         .insert({
           aircraft_id: catalogRow.id,
           status: "airborne",
-          tracking_started_at: previous?.observed_at ?? observedAt,
+          tracking_started_at: previous?.observed_at ?? aircraftObservedAt,
           detected_takeoff_at: detectedTakeoffAt,
-          last_seen_at: observedAt,
+          last_seen_at: aircraftObservedAt,
           takeoff_time_source: interpolatedTakeoffAt
             ? "interpolated"
             : "tracking_started_airborne",
@@ -479,7 +525,10 @@ export async function ingestSnapshot(
           },
           { onConflict: "flight_session_id,event_type", ignoreDuplicates: true },
         );
-        if (!eventError) takeoffsCreated += 1;
+        if (!eventError) {
+          takeoffsCreated += 1;
+          stateSummary.takeoffsCreated += 1;
+        }
       }
     }
 
@@ -487,7 +536,11 @@ export async function ingestSnapshot(
       status = "airborne";
       await db
         .from("flight_sessions")
-        .update({ status: "airborne", last_seen_at: observedAt, updated_at: observedAt })
+        .update({
+          status: "airborne",
+          last_seen_at: aircraftObservedAt,
+          updated_at: snapshotObservedAt,
+        })
         .eq("id", flightSessionId);
     } else if (
       !isAirborne &&
@@ -498,9 +551,9 @@ export async function ingestSnapshot(
         .from("flight_sessions")
         .update({
           status: "landed",
-          detected_landing_at: observedAt,
-          last_seen_at: observedAt,
-          updated_at: observedAt,
+          detected_landing_at: aircraftObservedAt,
+          last_seen_at: aircraftObservedAt,
+          updated_at: snapshotObservedAt,
         })
         .eq("id", flightSessionId);
       flightSessionId = null;
@@ -526,8 +579,8 @@ export async function ingestSnapshot(
       consecutive_airborne: consecutiveAirborne,
       consecutive_grounded: consecutiveGrounded,
       current_state_code: currentStateCode,
-      observed_at: observedAt,
-      last_seen_at: observedAt,
+      observed_at: aircraftObservedAt,
+      last_seen_at: aircraftObservedAt,
       last_grounded_at: lastGroundedAt,
       airborne_candidate_started_at: airborneCandidateStartedAt,
       latitude: aircraft.lat ?? null,
@@ -537,7 +590,7 @@ export async function ingestSnapshot(
       heading_deg: aircraft.heading ?? null,
       squawk: aircraft.squawk ?? null,
       source: snapshot.source,
-      updated_at: observedAt,
+      updated_at: snapshotObservedAt,
     });
 
     if (
@@ -548,7 +601,7 @@ export async function ingestSnapshot(
       positionRows.push({
         aircraft_id: catalogRow.id,
         flight_session_id: flightSessionId,
-        observed_at: observedAt,
+        observed_at: positionObservedAt,
         latitude: aircraft.lat,
         longitude: aircraft.lon,
         altitude_ft: aircraft.altitude_ft ?? null,
@@ -565,24 +618,34 @@ export async function ingestSnapshot(
       .upsert(stateRows, { onConflict: "aircraft_id" });
     if (error) throw new Error(`Current-state write failed: ${error.message}`);
   }
+  let positionsInserted = 0;
   if (positionRows.length > 0) {
-    const { error } = await db
+    const { data: insertedPositions, error } = await db
       .from("aircraft_positions")
       .upsert(positionRows, {
         onConflict: "aircraft_id,observed_at",
         ignoreDuplicates: true,
-      });
+      })
+      .select("aircraft_id");
     if (error) throw new Error(`Position write failed: ${error.message}`);
+    positionsInserted = insertedPositions?.length ?? 0;
+    for (const position of insertedPositions ?? []) {
+      const catalogRow = catalogById.get(String(position.aircraft_id));
+      if (catalogRow) {
+        const stateSummary = byState[catalogRow.home_state_code];
+        if (stateSummary) stateSummary.positionsInserted += 1;
+      }
+    }
   }
 
   const { error: healthError } = await db.from("data_source_health").upsert(
     {
       source: snapshot.source,
-      last_attempt_at: observedAt,
-      last_success_at: observedAt,
+      last_attempt_at: snapshotObservedAt,
+      last_success_at: snapshotObservedAt,
       last_error: null,
       metadata: { worker_id: workerId, live_seen_count: snapshot.live_seen_count },
-      updated_at: observedAt,
+      updated_at: snapshotObservedAt,
     },
     { onConflict: "source" },
   );
@@ -591,10 +654,11 @@ export async function ingestSnapshot(
   }
 
   return {
-    positionsInserted: positionRows.length,
+    positionsInserted,
     takeoffsCreated,
     trackedAircraftCount: snapshot.aircraft.length,
     sourceHealthy: true,
+    byState,
   };
 }
 
@@ -646,6 +710,38 @@ function parseTime(value: unknown): number | null {
   if (typeof value !== "string") return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function shouldClearUnobservedState(
+  previous?: Pick<
+    CurrentStateRow,
+    "observation_status" | "observed_at"
+  >,
+): boolean {
+  return !previous ||
+    previous.observation_status !== "unknown" ||
+    previous.observed_at != null;
+}
+
+export function isNewerAircraftObservation(
+  previous: Pick<CurrentStateRow, "observed_at" | "last_seen_at"> | undefined,
+  observedAt: string,
+): boolean {
+  const previousObservedAt =
+    parseTime(previous?.last_seen_at) ?? parseTime(previous?.observed_at);
+  const incomingObservedAt = parseTime(observedAt);
+  return incomingObservedAt != null &&
+    (previousObservedAt == null || incomingObservedAt > previousObservedAt);
+}
+
+function normalizedAircraftTimestamp(
+  value: string | null | undefined,
+  snapshotFetchedAt: number,
+  fallback: string,
+): string {
+  const parsed = parseTime(value);
+  if (parsed == null) return fallback;
+  return new Date(Math.min(parsed, snapshotFetchedAt)).toISOString();
 }
 
 function inferSnapshotSource(rows: Record<string, unknown>[] | null): SnapshotSource {

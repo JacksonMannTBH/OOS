@@ -47,6 +47,10 @@ export type AircraftLive = {
   icao24: string;
   /** True only when the current upstream sample contained this aircraft. */
   observed?: boolean;
+  /** Timestamp of the upstream aircraft message, not the local fetch time. */
+  observed_at?: string | null;
+  /** Timestamp of the upstream position used for lat/lon. */
+  position_observed_at?: string | null;
   airborne: boolean;
   observation_status?: "grounded" | "airborne_candidate" | "airborne" | "landing_candidate" | "unknown";
   home_state_code?: string;
@@ -97,6 +101,10 @@ export type NormalizedAc = {
   seen_seconds?: number;
   /** Seconds since the upstream source last received a position. */
   seen_position_seconds?: number;
+  /** Exact upstream timestamp for the last aircraft message. */
+  observed_at_ms?: number;
+  /** Exact upstream timestamp for the last position. */
+  position_observed_at_ms?: number;
 };
 
 export type Snapshot = {

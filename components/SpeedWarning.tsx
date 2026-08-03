@@ -3,20 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
-import { useAircraft } from "@/lib/hooks/useAircraft";
+import {
+  EMPTY_AIRCRAFT_SNAPSHOT,
+  useAircraft,
+} from "@/lib/hooks/useAircraft";
 import { haversineNm, DEFAULT_SPEED_LIMIT_MPH } from "@/lib/geo";
-import type { Aircraft, Snapshot } from "@/lib/types";
+import type { Aircraft } from "@/lib/types";
 
 const NEAR_NM = 5;
 const MPS_TO_MPH = 2.236936;
 const DISMISS_DELAY_MS = 3000;
-
-const EMPTY_SNAPSHOT: Snapshot = {
-  fetched_at: 0,
-  source: "adsbfi",
-  aircraft: [],
-  live_seen_count: 0,
-};
 
 // Only the rider-facing screens with location should drive this; / never
 // asks for geo, so we never mount the inner hooks there.
@@ -31,7 +27,7 @@ export function SpeedWarning({ enabled }: { enabled: boolean }) {
 
 function SpeedWarningActive() {
   const { pos } = useRiderPos();
-  const snap = useAircraft(EMPTY_SNAPSHOT, false);
+  const snap = useAircraft(EMPTY_AIRCRAFT_SNAPSHOT, false);
 
   const mph =
     pos?.speedMps != null && pos.speedMps >= 0

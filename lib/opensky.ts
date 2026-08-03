@@ -83,27 +83,63 @@ async function clearOpenskyToken(): Promise<void> {
 
 type OpenSkyResp = { time: number; states: unknown[][] | null };
 
-function normalizeStates(states: unknown[][]): NormalizedAc[] {
+export function normalizeOpenSkyStates(
+  states: unknown[][],
+  responseTimeSeconds: number,
+): NormalizedAc[] {
   // states_vector schema (positional):
-  // [0]=icao24 [5]=lon [6]=lat [7]=baro_alt(m) [8]=on_ground [9]=velocity(m/s)
+  // [0]=icao24 [3]=position time [4]=last contact [5]=lon [6]=lat
+  // [7]=baro_alt(m) [8]=on_ground [9]=velocity(m/s)
   // [10]=true_track [14]=squawk
-  return states.map((s) => ({
-    hex: String(s[0] ?? "").toLowerCase(),
-    lon: typeof s[5] === "number" ? (s[5] as number) : undefined,
-    lat: typeof s[6] === "number" ? (s[6] as number) : undefined,
-    alt_baro:
-      s[8] === true
-        ? "ground"
-        : typeof s[7] === "number"
-          ? Math.round((s[7] as number) * 3.28084) // m → ft
+  const referenceTimeSeconds = Number.isFinite(responseTimeSeconds)
+    ? responseTimeSeconds
+    : Date.now() / 1_000;
+  const responseTimeMs = referenceTimeSeconds * 1_000;
+  const normalized: NormalizedAc[] = [];
+
+  for (const state of states) {
+    const lastContactSeconds = finiteNumber(state[4]);
+    if (
+      lastContactSeconds != null &&
+      referenceTimeSeconds - lastContactSeconds > 60
+    ) {
+      continue;
+    }
+    const positionSeconds = finiteNumber(state[3]);
+    const positionIsCurrent =
+      positionSeconds == null || referenceTimeSeconds - positionSeconds <= 60;
+    const observedAtMs = lastContactSeconds != null
+      ? lastContactSeconds * 1_000
+      : responseTimeMs;
+
+    normalized.push({
+      hex: String(state[0] ?? "").toLowerCase(),
+      lon: positionIsCurrent ? finiteNumber(state[5]) : undefined,
+      lat: positionIsCurrent ? finiteNumber(state[6]) : undefined,
+      alt_baro:
+        state[8] === true
+          ? "ground"
+          : typeof state[7] === "number"
+            ? Math.round((state[7] as number) * 3.28084)
+            : undefined,
+      gs:
+        typeof state[9] === "number"
+          ? Math.round((state[9] as number) * 1.94384)
           : undefined,
-    gs:
-      typeof s[9] === "number"
-        ? Math.round((s[9] as number) * 1.94384) // m/s → kt
-        : undefined,
-    track: typeof s[10] === "number" ? (s[10] as number) : undefined,
-    squawk: typeof s[14] === "string" ? (s[14] as string) : null,
-  }));
+      track:
+        typeof state[10] === "number" ? (state[10] as number) : undefined,
+      squawk: typeof state[14] === "string" ? (state[14] as string) : null,
+      observed_at_ms: observedAtMs,
+      position_observed_at_ms:
+        positionIsCurrent &&
+        finiteNumber(state[5]) != null &&
+        finiteNumber(state[6]) != null
+          ? (positionSeconds ?? lastContactSeconds ?? referenceTimeSeconds) * 1_000
+          : undefined,
+    });
+  }
+
+  return normalized;
 }
 
 /**
@@ -144,7 +180,7 @@ export async function fetchOpenSky(hexes: string[]): Promise<NormalizedAc[]> {
   if (remaining != null) await stashCredits(remaining);
 
   const j = (await r.json()) as OpenSkyResp;
-  return normalizeStates(j.states ?? []);
+  return normalizeOpenSkyStates(j.states ?? [], j.time);
 }
 
 export function buildOpenSkyStatesUrl(hexes: string[]): string {
@@ -166,4 +202,10 @@ async function stashCredits(raw: string): Promise<void> {
 
 export async function getOpenskyCreditsRemaining(): Promise<number | null> {
   return await cacheGet<number>(CREDITS_KEY);
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
