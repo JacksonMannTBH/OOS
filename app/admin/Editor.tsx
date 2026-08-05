@@ -740,7 +740,7 @@ function EditRow({
           <Field label="Base" name="base" defaultValue={entry.base} required />
           <Field label="Mission (free text)" name="roleDescription" defaultValue={entry.roleDescription} />
           <RoleSelect
-            label="Class (drives status pill)"
+            label="Mission class"
             name="role"
             defaultValue={entry.role}
             required
@@ -792,7 +792,7 @@ function AddForm({ onCancel }: { onCancel: () => void }) {
       <Field label="Nickname (optional)" name="nickname" />
       <Field label="Base (e.g. KOLM Olympia)" name="base" required />
       <Field label="Mission (free text, optional)" name="roleDescription" />
-      <RoleSelect label="Class (drives status pill)" name="role" required />
+      <RoleSelect label="Mission class" name="role" required />
       <RoleConfidenceSelect label="Confidence" name="roleConfidence" required />
       <Field label="Class note (â‰¤120 chars, optional)" name="roleNote" maxLength={120} />
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>

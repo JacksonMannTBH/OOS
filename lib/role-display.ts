@@ -1,11 +1,9 @@
-// Shared role-badge display helpers. Used by /about and /plane/[tail]
-// so the role taxonomy reads consistently across the app.
+// Shared role-badge display helpers. Used by /about and /plane/[tail] so the
+// role taxonomy reads consistently across the app.
 //
-// Rider mental model: any law-enforcement aircraft is "Bird". The
-// backend role taxonomy stays granular (fixed_wing vs patrol vs unknown)
-// for plane-detail accuracy, but every rider-visible badge collapses
-// LE-tier roles to the single "BIRD" label. Tooltip body preserves
-// the airframe-specific detail for curious riders who hover.
+// Rider mental model: any tracked aircraft airborne is "Bird up." The role
+// taxonomy stays granular for plane-detail accuracy, but roles do not suppress
+// alerts.
 
 import type { FleetRole } from "./types";
 import { SS_TOKENS } from "./tokens";
@@ -28,22 +26,21 @@ export function roleTooltip(role: FleetRole): string {
     case "fixed_wing":
       return "Bird. Fixed-wing speed enforcement plane. Up = ease off.";
     case "patrol":
-      return "Bird. Multi-role helicopter — traffic enforcement, pursuit, or SAR. We err on alert.";
+      return "Bird. Multi-role helicopter. Up = ease off.";
     case "sar":
-      return "Search and rescue helicopter. Almost always responding to a rescue, not enforcement.";
+      return "Search and rescue helicopter. Airborne tracked aircraft still count as Bird up.";
     case "transport":
-      return "State transport or photography aircraft. Not enforcement-related.";
+      return "State transport or photography aircraft. Airborne tracked aircraft still count as Bird up.";
     case "unknown":
-      return "Bird. Role not yet confirmed. Treated as alert until classified.";
+      return "Bird. Role not yet confirmed.";
   }
 }
 
 /**
- * Inline style for the role badge pill. Bird + patrol get the alert
- * amber tint; sar / transport / unknown get a neutral fg2 tint.
+ * Inline style for the role badge pill. Every tracked role gets the same alert
+ * tint because any airborne tracked aircraft affects status.
  */
-export function roleBadgeStyle(role: FleetRole): React.CSSProperties {
-  const isAlert = role === "fixed_wing" || role === "patrol" || role === "unknown";
+export function roleBadgeStyle(_role: FleetRole): React.CSSProperties {
   return {
     display: "inline-flex",
     alignItems: "center",
@@ -51,9 +48,9 @@ export function roleBadgeStyle(role: FleetRole): React.CSSProperties {
     borderRadius: 999,
     fontSize: 9.5,
     letterSpacing: ".06em",
-    background: isAlert ? SS_TOKENS.alertDim : "rgba(107,115,128,0.13)",
-    color: isAlert ? SS_TOKENS.alert : SS_TOKENS.fg1,
-    border: `.5px solid ${isAlert ? `color-mix(in srgb, ${SS_TOKENS.alert} 34%, transparent)` : SS_TOKENS.hairline2}`,
+    background: SS_TOKENS.alertDim,
+    color: SS_TOKENS.alert,
+    border: `.5px solid color-mix(in srgb, ${SS_TOKENS.alert} 34%, transparent)`,
     cursor: "help",
     whiteSpace: "nowrap",
   };

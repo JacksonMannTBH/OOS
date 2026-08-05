@@ -7,11 +7,13 @@ import {
   cardinalFromDeg,
   cardinalTrackFromDeg,
   classifyRideStatus,
+  getRideContacts,
   isSameCardinalTrack,
   normalizeRideStatusThresholds,
   relativeBearingDeg,
   rideStatusLabel,
 } from "./ride-mode";
+import type { Aircraft } from "./types";
 
 function assertAbout(actual: number, expected: number, tolerance = 0.5) {
   assert.ok(
@@ -96,4 +98,29 @@ test("normalizeRideStatusThresholds keeps cutoffs ordered", () => {
 
 test("rideStatusLabel presents danger as Stop", () => {
   assert.equal(rideStatusLabel("danger"), "Stop");
+});
+
+test("getRideContacts includes SAR and transport aircraft", () => {
+  const aircraft = [
+    {
+      tail: "SAR1",
+      role: "sar",
+      airborne: true,
+      lat: 47.01,
+      lon: -122,
+    },
+    {
+      tail: "TRN1",
+      role: "transport",
+      airborne: true,
+      lat: 47.02,
+      lon: -122,
+    },
+  ] as Aircraft[];
+
+  const contacts = getRideContacts(aircraft, { lat: 47, lon: -122 }, null, true);
+  assert.deepEqual(
+    contacts.map((contact) => contact.plane.tail),
+    ["SAR1", "TRN1"],
+  );
 });

@@ -14,12 +14,6 @@ type BadgeNavigator = Navigator & {
   clearAppBadge?: () => Promise<void> | void;
 };
 
-const ALERT_ROLES: ReadonlySet<string> = new Set([
-  "fixed_wing",
-  "patrol",
-  "unknown",
-]);
-
 export function AppBadge() {
   const snapshot = useAircraft(EMPTY_AIRCRAFT_SNAPSHOT);
 
@@ -29,10 +23,7 @@ export function AppBadge() {
     if (typeof nav.setAppBadge !== "function") return;
 
     let cancelled = false;
-    const count = snapshot.aircraft.filter(
-      (aircraft) =>
-        aircraft.airborne && ALERT_ROLES.has(aircraft.role ?? "unknown"),
-    ).length;
+    const count = snapshot.aircraft.filter((aircraft) => aircraft.airborne).length;
     const updateBadge = async () => {
       if (cancelled) return;
       try {

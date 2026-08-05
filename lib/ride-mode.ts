@@ -1,5 +1,5 @@
 import { haversineNm } from "./geo";
-import type { Aircraft, FleetRole } from "./types";
+import type { Aircraft } from "./types";
 
 export type RideStatus = "clear" | "watch" | "warning" | "danger";
 
@@ -16,12 +16,6 @@ export type RideContact = {
   relativeBearingDeg: number | null;
   cardinal: string;
 };
-
-export const RIDE_ALERT_ROLES: ReadonlySet<FleetRole> = new Set([
-  "fixed_wing",
-  "patrol",
-  "unknown",
-]);
 
 export const DEFAULT_RIDE_STATUS_THRESHOLDS: RideStatusThresholds = {
   watchNm: 5,
@@ -156,10 +150,9 @@ function clampNm(
 
 export function isRideRelevantAircraft(
   aircraft: Aircraft,
-  alertOnly = true,
+  _alertOnly = true,
 ): boolean {
-  if (!alertOnly) return true;
-  return RIDE_ALERT_ROLES.has(aircraft.role);
+  return aircraft.airborne;
 }
 
 export function getRideContacts(

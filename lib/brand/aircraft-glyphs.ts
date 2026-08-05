@@ -8,13 +8,11 @@
 //   Family A — PLANE      → fixed_wing, transport
 //   Family B — HELICOPTER → patrol, sar
 //
-// COLOR STRATEGY (rationale doc, design/brand/aircraft-glyphs.md):
-//   alert     (fixed_wing, patrol)    fill #F2F4F7, stroke #f4c430 1.0px
-//   non-alert (sar, transport)    fill #6B7380, stroke none
+// COLOR STRATEGY:
+//   tracked aircraft fill #F2F4F7, stroke #f4c430 1.0px
 //
-// White fill + amber stroke borrows ATC display convention so alert
-// glyphs survive the amber heat layer (the moment they matter most);
-// muted gray glyphs visually deprioritize without disappearing.
+// White fill + amber stroke borrows ATC display convention so every airborne
+// tracked glyph survives the amber heat layer.
 //
 // VIEWBOX: 24×24, icon centered to ~80% of the box.
 // HEADING: glyphs face NORTH (up). Consumer applies
@@ -55,9 +53,9 @@ const ROLES: Record<
   { family: GlyphFamily; alert: boolean }
 > = {
   fixed_wing: { family: "plane", alert: true },
-  transport: { family: "plane", alert: false },
+  transport: { family: "plane", alert: true },
   patrol: { family: "heli", alert: true },
-  sar: { family: "heli", alert: false },
+  sar: { family: "heli", alert: true },
 };
 
 // ── PLANE ────────────────────────────────────────────────────────────────
@@ -161,10 +159,7 @@ export function pathHeliMuted(): string {
 
 /**
  * The aircraft-glyphs file recognizes four roles. The fifth FleetRole
- * value, `unknown`, has no glyph of its own — we render it as `fixed_wing`,
- * matching computeStatus()'s alert-on-unknown stance. A new tail with
- * unconfirmed classification should err toward visible alert until the
- * admin classifies it.
+ * value, `unknown`, has no glyph of its own, so we render it as `fixed_wing`.
  */
 export type GlyphRole = "fixed_wing" | "patrol" | "sar" | "transport";
 
@@ -172,7 +167,7 @@ export function glyphRoleFor(role: FleetRole | undefined | null): GlyphRole {
   if (role === "fixed_wing" || role === "patrol" || role === "sar" || role === "transport") {
     return role;
   }
-  // 'unknown' or missing → conservative alert.
+  // 'unknown' or missing -> conservative fixed-wing glyph.
   return "fixed_wing";
 }
 

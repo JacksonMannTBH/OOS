@@ -7,14 +7,8 @@ import { ADDITIONAL_FLEET } from "./aircraft-directory";
 // algorithm. lib/icao.test.ts asserts that every seeded hex matches what
 // the algorithm produces — typos surface as test failures.
 //
-// `role` drives the home + radar status pill via lib/status.ts. All three
-// alert-tier roles surface as BIRD UP under the rider-facing umbrella;
-// the granular role taxonomy still drives body copy and badge tooltips.
-//   fixed_wing    → BIRD UP                  (alert / amber)
-//   patrol    → BIRD UP                  (alert / amber)
-//   unknown   → BIRD UP                  (alert / amber, conservative)
-//   sar       → ALL CLEAR + footnote       (clear / green)
-//   transport → ALL CLEAR + footnote       (clear / green)
+// `role` describes aircraft mission/type for labels, icons, and admin context.
+// Status does not depend on role: any airborne tracked aircraft is BIRD UP.
 // `roleConfidence` ('confirmed' | 'tentative' | 'unknown') is surfaced in
 // the admin editor and as a small badge suffix on /plane/[tail] when not
 // confirmed. `roleNote` is operator-facing free text.
@@ -77,8 +71,8 @@ export const FLEET: FleetEntry[] = [
   // Port Angeles operates three MH-65E Dolphins per the 2021 transition
   // delivery; CGNR 6594 is the only one with a publicly documented
   // mode-S hex. Other airframes intentionally omitted until confirmed.
-  // Role = sar (clear-tier) — USCG missions are search & rescue, not
-  // enforcement against motorists.
+  // Role = sar because USCG missions are search & rescue, not enforcement
+  // against motorists. Status still turns BIRD UP when airborne.
   { tail: "CGNR6594", hex: "AE26B4", operator: "USCG",       model: "Eurocopter MH-65E Dolphin",      nickname: "Dolphin 6594",      roleDescription: "Maritime search and rescue",   base: "KCLM Port Angeles",                     role: "sar",       roleConfidence: "confirmed", roleNote: "CGAS Port Angeles MH-65E (Jan 2021 delivery)" },
   ...ADDITIONAL_FLEET,
 ];

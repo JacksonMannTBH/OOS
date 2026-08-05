@@ -43,8 +43,7 @@ export async function GET() {
     const status = computeStatus(snap, fleetMap);
     const count = status.alertCount;
     if (status.kind === "alert") {
-      // BIRD umbrella: every alert-tier state reads BIRD UP on the
-      // pill, so the badge label tracks status.pill directly.
+      // Every airborne tracked aircraft reads BIRD UP on the pill.
       label = `${status.pill} · ${count} up`;
       dot = ALERT;
     } else {

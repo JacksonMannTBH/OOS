@@ -71,9 +71,9 @@ export function RadarShell({
   const pillKind = status.kind;
   const pillTooltip =
     status.kind === "alert"
-      ? `${status.alertCount} alert-class aircraft up.`
+      ? `${status.alertCount} tracked aircraft up.`
       : status.lead
-        ? `Nothing alerting. ${status.lead.entry.nickname ?? status.lead.aircraft.tail} is up but classified ${status.lead.entry.role}.`
+        ? `${status.lead.entry.nickname ?? status.lead.aircraft.tail} is up.`
         : "Nothing in the tracked aircraft list is currently up.";
 
   const [rider, setRider] = useState<RiderPos | null>(null);

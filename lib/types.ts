@@ -1,8 +1,7 @@
 /**
- * Role drives the home + radar status pill via lib/status.ts. Only fixed_wing
- * (speed-enforcement fixed-wing) and patrol (multi-role helicopters) trigger
- * the alert pill; sar / transport stay green; unknown is treated as alert
- * (conservative default for tails we haven't classified yet).
+ * Role describes the aircraft mission/type for labels, icons, and admin
+ * context. Status alerts do not depend on role: any airborne tracked aircraft
+ * counts as BIRD UP.
  */
 export type FleetRole =
   | "fixed_wing"
@@ -27,12 +26,12 @@ export type FleetEntry = {
   /**
    * Free-text mission description (e.g. "Speed enforcement"). Surfaced in the
    * /about registry and on the plane detail page. Distinct from `role` /
-   * `roleConfidence`, which drive the status-pill semantics.
+   * `roleConfidence`, which describe the aircraft classification.
    */
   roleDescription: string;
   /** Home airport: ICAO code + city. */
   base: string;
-  /** Role classification driving the status pill. See lib/status.ts. */
+  /** Role classification for labels, icons, and admin context. */
   role: FleetRole;
   roleConfidence: RoleConfidence;
   /**

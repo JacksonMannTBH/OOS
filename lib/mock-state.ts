@@ -99,13 +99,11 @@ export function applyMockState(snap: Snapshot, state: MockState | null): Snapsho
         aircraft: snap.aircraft.map((a) => ({ ...a, airborne: false })),
       };
     case "up":
-      // At least one fixed_wing-class up. The original mock=up behavior.
+      // At least one fixed-wing aircraft up. The original mock=up behavior.
       return liftAirborne(snap, (r) => r === "fixed_wing");
     case "eyes-up": {
-      // Patrol or unknown airborne, no fixed_wing. Drives the alert-tier
-      // pill (which reads BIRD UP under the umbrella relabel) with
-      // patrol/unknown body copy. State name kept for back-compat with
-      // existing QA flows.
+      // Patrol or unknown airborne, no fixed_wing. State name kept for
+      // back-compat with existing QA flows.
       //
       // First ground every fixed_wing-class so a live fixed_wing doesn't bleed
       // through and contaminate the assertion that this state should
@@ -123,7 +121,7 @@ export function applyMockState(snap: Snapshot, state: MockState | null): Snapsho
       );
     }
     case "multiple":
-      // 3 fixed_wing-class + 1 patrol. Drives the "X up" pill sub and the
+      // 3 fixed-wing + 1 patrol. Drives the "X up" pill sub and the
       // others-also-up list.
       return liftAirborne(
         liftAirborne(snap, (r) => r === "fixed_wing", 3),
