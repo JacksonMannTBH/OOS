@@ -767,7 +767,7 @@ export default function RadarMap({
     };
     map.on("load", onLoad);
 
-    // Pause auto-recenter for 15s after any pan or zoom interaction.
+    // Pause auto-recenter for 30s after any pan or zoom interaction.
     // Distinguish true user gestures from programmatic flyTo/easeTo by the
     // presence of `originalEvent` (only set for browser-driven events) —
     // otherwise our own follow-mode flyTo would self-cancel.
@@ -845,7 +845,7 @@ export default function RadarMap({
         didFirstRiderZoomRef.current = true;
         // Skip the auto-zoom if the user has already manually panned
         // or zoomed (they meant it).
-        if (Date.now() - userInteractedAtRef.current >= 15_000) {
+        if (Date.now() - userInteractedAtRef.current >= 30_000) {
           mapRef.current.flyTo({
             center: [rider.lon, rider.lat],
             zoom: RIDER_ZOOM,
@@ -920,14 +920,14 @@ export default function RadarMap({
     userInteractedAtRef.current = Date.now();
   }, [stateCode]);
 
-  // Auto-recenter every 5s, paused for 15s after the user pans or zooms.
+  // Auto-recenter every 5s, paused for 30s after the user pans or zooms.
   // Also paused while a plane is being followed — applyAircraft handles
   // re-centering on the followed tail, and we don't want to fight it.
   useEffect(() => {
     if (!rider) return;
     const id = setInterval(() => {
       if (!readyRef.current || !mapRef.current) return;
-      if (Date.now() - userInteractedAtRef.current < 15_000) return;
+      if (Date.now() - userInteractedAtRef.current < 30_000) return;
       if (followedTailRef.current) return;
       const r = riderRef.current;
       if (!r) return;
