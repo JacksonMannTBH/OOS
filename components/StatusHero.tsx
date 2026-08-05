@@ -46,6 +46,10 @@ export function StatusHero({
           position: "relative",
           zIndex: 1,
           marginTop: frameless ? "clamp(28px, 6vw, 40px)" : 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
         }}
       >
         {showPill && <StatusPill label={status.pill} alert={isAlert} />}
@@ -53,6 +57,7 @@ export function StatusHero({
         <h1
           style={{
             maxWidth: 330,
+            width: "100%",
             margin: showPill ? "clamp(26px, 7.2vw, 44px) 0 0" : "0",
             color: "#ffe49a",
             fontFamily: "var(--font-brand)",
@@ -82,6 +87,7 @@ export function StatusHero({
         <p
           style={{
             maxWidth: 330,
+            width: "100%",
             margin: "14px 0 0",
             paddingTop: "clamp(32px, 7vw, 44px)",
             color: SS_TOKENS.fg1,
@@ -97,6 +103,7 @@ export function StatusHero({
           <p
             style={{
               maxWidth: 330,
+              width: "100%",
               margin: "8px 0 0",
               color: SS_TOKENS.fg2,
               fontSize: 13,
@@ -114,6 +121,7 @@ export function StatusHero({
               style={{
                 marginTop: 18,
                 display: "flex",
+                justifyContent: "center",
                 gap: 8,
                 flexWrap: "wrap",
               }}
@@ -147,6 +155,7 @@ export function StatusHero({
           zIndex: 1,
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
           gap: 10,
           color: SS_TOKENS.fg3,
           fontSize: "clamp(11.5px, 3vw, 13px)",
@@ -155,7 +164,6 @@ export function StatusHero({
           flexWrap: "wrap",
         }}
       >
-        <ClockIcon />
         <span>Last sample</span>
         <span aria-hidden>{"\u00b7"}</span>
         <span>{sampleTime ? `${sampleTime} PT` : "Unknown"}</span>
@@ -283,26 +291,6 @@ function LeadIdentity({
       {middle}
       {operator}
     </Link>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg
-      aria-hidden
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ color: "rgba(246, 196, 49, 0.62)" }}
-    >
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3 2" />
-    </svg>
   );
 }
 

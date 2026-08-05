@@ -44,6 +44,23 @@ test("getCurrentFlightDurationFromPoints uses the latest continuous persisted se
   );
 });
 
+test("getCurrentFlightTrackFromPoints does not stitch separate flights inside retention window", () => {
+  const nowSec = 10_000;
+  const points = [
+    point(nowSec - 45 * 60),
+    point(nowSec - 44 * 60),
+    point(nowSec - 90),
+    point(nowSec - 60),
+    point(nowSec - 30),
+  ];
+  const track = getCurrentFlightTrackFromPoints(points, nowSec * 1000);
+
+  assert.deepEqual(
+    track?.points.map((p) => p.ts),
+    [nowSec - 90, nowSec - 60, nowSec - 30],
+  );
+});
+
 test("getCurrentFlightDurationFromPoints ignores stale track history", () => {
   const nowSec = 10_000;
   const estimate = getCurrentFlightDurationFromPoints(

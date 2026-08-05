@@ -60,9 +60,6 @@ export function ArmAlertsCallout() {
       }}
     >
       <div style={{ minWidth: 0 }}>
-        <div className="ss-eyebrow" style={{ marginBottom: 4 }}>
-          OPT IN
-        </div>
         <div
           style={{
             fontSize: 14,

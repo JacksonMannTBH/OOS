@@ -99,7 +99,7 @@ test("coherence: home hero tier matches /api/aircraft", async ({ page }, testInf
   if (anyBirdUp && !/EYE IN THE SKY/i.test(heroText)) {
     violations.push({
       bug: `fixed_wing is airborne but home headline reads "${heroText}"`,
-      expected: "Eye In The Sky",
+      expected: "Active Air Support",
     });
   } else if (
     !anyBirdUp &&
@@ -108,7 +108,7 @@ test("coherence: home hero tier matches /api/aircraft", async ({ page }, testInf
   ) {
     violations.push({
       bug: `patrol/unknown is airborne but home headline reads "${heroText}"`,
-      expected: "Eye In The Sky",
+      expected: "Active Air Support",
     });
   } else if (
     !anyBirdUp &&

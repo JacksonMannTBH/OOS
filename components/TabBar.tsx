@@ -19,8 +19,8 @@ const TABS: TabItem[] = [
   {
     id: "home",
     label: "Home",
-    href: "/dash",
-    activePaths: ["/", "/dash"],
+    href: "/home",
+    activePaths: ["/", "/home", "/dash"],
     icon: <HomeIcon />,
   },
   {
@@ -28,7 +28,7 @@ const TABS: TabItem[] = [
     label: "Map",
     href: "/map",
     activePaths: ["/map"],
-    icon: <RadarIcon />,
+    icon: <MapIcon />,
   },
   {
     id: "ride",
@@ -60,20 +60,6 @@ export function TabBar() {
 
   return (
     <>
-      <div
-        aria-hidden
-        style={{
-          position: "fixed",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: "calc(96px + env(safe-area-inset-bottom, 0px))",
-          background:
-            "linear-gradient(180deg, rgba(5,6,7,0), rgba(5,6,7,0.94) 34%, #050607 100%)",
-          pointerEvents: "none",
-          zIndex: 49,
-        }}
-      />
       <nav
         aria-label="Main"
         style={{
@@ -129,18 +115,6 @@ export function TabBar() {
               }}
             >
               <span
-                aria-hidden
-                style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: "50%",
-                  background: active ? SS_TOKENS.alert : "transparent",
-                  boxShadow: active
-                    ? "0 0 3px rgba(246, 196, 49, 0.42)"
-                    : undefined,
-                }}
-              />
-              <span
                 style={{
                   display: "flex",
                   color: "currentColor",
@@ -190,23 +164,21 @@ function HomeIcon() {
   );
 }
 
-function RadarIcon() {
+function MapIcon() {
   return (
     <svg
       width="25"
       height="25"
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
       aria-hidden
     >
-      <circle cx="12" cy="12" r="9" opacity="0.55" />
-      <circle cx="12" cy="12" r="5.2" opacity="0.75" />
-      <circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none" />
-      <path d="M12 12 19.2 5.6" />
+      <path d="M1.2 7.65 6.85 9v13.25L1.45 20.9A1.25 1.25 0 0 1 .5 19.68V8.62c0-.64.34-1.1.7-.97ZM8.05 9.08l.7-.16c1.2 3.05 3.62 5.74 4.48 6.28.48.3 1.06.3 1.54 0 .08-.05.17-.11.26-.19v5.75l-6.98 1.5V9.08ZM16.25 13.74c1.07-1.28 2.18-3 2.73-4.92l3.58.9c.56.14.94.65.94 1.22v10.12c0 .81-.75 1.4-1.53 1.22l-5.72-1.33v-7.21Z" />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M13.95 1.15a5.45 5.45 0 0 0-5.45 5.45c0 3.8 4.18 7.75 5.05 8.52.23.2.57.2.8 0 .87-.77 5.05-4.72 5.05-8.52a5.45 5.45 0 0 0-5.45-5.45Zm0 7.68a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4Z"
+      />
     </svg>
   );
 }

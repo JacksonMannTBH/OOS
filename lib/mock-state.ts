@@ -2,7 +2,7 @@
 // routes. Deterministic — same query param yields the same response
 // shape, no randomness, no time-of-day drift.
 //
-// Snapshot-level states: up, down, eyes-up, multiple, stale.
+// Snapshot-level states: up, down, eyes-up, mixed, multiple, stale.
 // Data-layer states: learning (forecast empty + Day 0 of 30),
 // full-data (predictor confident + learning panel hidden).
 
@@ -14,6 +14,7 @@ export const MOCK_STATES = [
   "up",
   "down",
   "eyes-up",
+  "mixed",
   "multiple",
   "stale",
   "learning",
@@ -118,6 +119,19 @@ export function applyMockState(snap: Snapshot, state: MockState | null): Snapsho
       return liftAirborne(
         grounded,
         (r) => r === "patrol" || r === "unknown",
+      );
+    }
+    case "mixed": {
+      // Exactly one fixed-wing + one helicopter for compact UI mockups.
+      const grounded: Snapshot = {
+        ...snap,
+        source: "mock",
+        aircraft: snap.aircraft.map((a) => ({ ...a, airborne: false })),
+      };
+      return liftAirborne(
+        liftAirborne(grounded, (r) => r === "fixed_wing", 1),
+        (r) => r === "patrol" || r === "sar",
+        1,
       );
     }
     case "multiple":

@@ -178,8 +178,7 @@ export function AlertsSettings() {
 
       <Card title="Ride distance bands">
         <p style={copyStyle}>
-          These remain local ride-display settings and do not affect takeoff
-          notifications.
+          Range of Ride mode warning signs
         </p>
         {(
           [

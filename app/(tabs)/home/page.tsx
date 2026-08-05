@@ -3,14 +3,14 @@ import { getSnapshotForRender } from "@/lib/snapshot";
 import { applyMockState, parseMockState } from "@/lib/mock-state";
 
 export const metadata = {
-  title: "Out Of Sight · Dash",
+  title: "Out Of Sight - Home",
 };
 
 export const dynamic = "force-dynamic";
 
 type SP = { mock?: string };
 
-export default async function DashPage({
+export default async function HomePage({
   searchParams,
 }: {
   searchParams: SP;

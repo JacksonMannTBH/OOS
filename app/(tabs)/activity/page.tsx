@@ -7,5 +7,5 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function ActivityPage() {
-  redirect("/dash#recent-events");
+  redirect("/home");
 }

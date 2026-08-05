@@ -20,9 +20,17 @@ type Props = {
   role?: FleetRole | "unknown";
   /** Bearing in degrees clockwise from north. */
   heading?: number;
+  tone?: "default" | "radar";
+  color?: string;
 };
 
-export function PlaneIcon({ size = 16, role = "fixed_wing", heading = 0 }: Props) {
+export function PlaneIcon({
+  size = 16,
+  role = "fixed_wing",
+  heading = 0,
+  tone = "default",
+  color,
+}: Props) {
   return (
     <span
       role="img"
@@ -35,7 +43,9 @@ export function PlaneIcon({ size = 16, role = "fixed_wing", heading = 0 }: Props
         transform: `rotate(${heading}deg)`,
         lineHeight: 0,
       }}
-      dangerouslySetInnerHTML={{ __html: aircraftSvg(role, { size }) }}
+      dangerouslySetInnerHTML={{
+        __html: aircraftSvg(role, { size, tone, color }),
+      }}
     />
   );
 }

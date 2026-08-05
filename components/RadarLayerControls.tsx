@@ -30,7 +30,7 @@ export function RadarLayerControls({
   onReturnToLocation,
   locationDisabled = false,
 }: Props) {
-  const bottom = TABBAR_HEIGHT + 80 + bottomBoost;
+  const bottom = TABBAR_HEIGHT + 14 + bottomBoost;
   const offsetCss = (extra: number) =>
     `calc(${bottom + extra}px + var(--ss-install-prompt-h, 0px))`;
 

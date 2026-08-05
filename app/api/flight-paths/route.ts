@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { DEFAULT_STATE_CODE, isStateCode, type StateCode } from "@/lib/app-states";
 import { getCatalog } from "@/lib/aircraft-data";
 import { liveDataHeaders } from "@/lib/http-cache";
-import { getLiveTrackWindow } from "@/lib/tracks";
+import { getCurrentFlightTrack } from "@/lib/tracks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,10 +24,12 @@ export async function GET(req: Request) {
     ? catalog.filter((entry) => requestedTails.includes(entry.tail))
     : catalog;
 
+  const nowMs = Date.now();
   const features = (
     await Promise.all(
       allowed.map(async (entry): Promise<LineFeature | null> => {
-        const points = await getLiveTrackWindow(entry.tail);
+        const track = await getCurrentFlightTrack(entry.tail, nowMs);
+        const points = track?.points ?? [];
         if (points.length < 2) return null;
         return {
           type: "Feature",

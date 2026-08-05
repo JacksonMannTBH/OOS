@@ -230,7 +230,7 @@ const FOOTER_LINK: React.CSSProperties = {
 function ActivityStrip({ latest }: { latest: ActivityEntry }) {
   return (
     <Link
-      href="/dash#recent-events"
+      href="/home"
       prefetch={false}
       style={{
         display: "flex",

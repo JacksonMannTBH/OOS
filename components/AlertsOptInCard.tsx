@@ -56,17 +56,6 @@ export function AlertsOptInCard({ frameless = false }: { frameless?: boolean }) 
 
   return (
     <Wrapper frameless={frameless}>
-      <div
-        className="ss-mono"
-        style={{
-          fontSize: 9.5,
-          color: SS_TOKENS.fg2,
-          letterSpacing: ".12em",
-          marginBottom: 6,
-        }}
-      >
-        OPT IN
-      </div>
       <h3
         style={{
           fontSize: 16,

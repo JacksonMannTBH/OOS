@@ -9,7 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { liveDataHeaders } from "@/lib/http-cache";
-import { getCurrentFlightTrack, getLiveTrackWindow } from "@/lib/tracks";
+import { getCurrentFlightTrack } from "@/lib/tracks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,11 +31,6 @@ async function trailFor(
   tail: string,
   nowMs: number,
 ): Promise<TrailPoint[]> {
-  const live = await getLiveTrackWindow(tail, nowMs);
-  if (live.length > 0) {
-    return live.map((p) => ({ lat: p.lat, lon: p.lon, ts: p.ts }));
-  }
-
   const track = await getCurrentFlightTrack(tail, nowMs);
   return (track?.points ?? []).map((p) => ({ lat: p.lat, lon: p.lon, ts: p.ts }));
 }

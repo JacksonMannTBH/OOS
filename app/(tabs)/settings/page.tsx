@@ -57,7 +57,7 @@ export default function SettingsHub() {
         }}
       >
         <Link
-          href="/dash"
+          href="/home"
           style={{
             width: "fit-content",
             minHeight: 40,

@@ -8,7 +8,7 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = { mock?: string };
+type SearchParams = { mock?: string; tail?: string };
 
 export default async function MapPage({
   searchParams,
@@ -17,10 +17,18 @@ export default async function MapPage({
 }) {
   const snapshot = await getSnapshotForRender();
   const mockState = parseMockState(searchParams.mock);
+  const initialFocusTail = normalizeTailParam(searchParams.tail);
   return (
     <RadarShell
       initial={applyMockState(snapshot, mockState)}
       mockOn={mockState !== null}
+      initialFocusTail={initialFocusTail}
     />
   );
+}
+
+function normalizeTailParam(tail: string | undefined): string | undefined {
+  const normalized = tail?.trim().toUpperCase();
+  if (!normalized || !/^[A-Z0-9]{2,12}$/.test(normalized)) return undefined;
+  return normalized;
 }

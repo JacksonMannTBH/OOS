@@ -27,7 +27,9 @@ import {
 const VISIBLE_KEY = FLIGHT_PATHS_VISIBLE_KEY;
 const SOURCE_ID = "flight-paths";
 const LAYER_ID = "flight-paths-line";
+const AIRCRAFT_WAKE_LAYER_ID = "aircraft-wake-0";
 const AIRCRAFT_LAYER_ID = "aircraft";
+const AIRCRAFT_ROTOR_LAYER_ID = "aircraft-heli-rotor";
 
 function buildQueryString(stateCode: StateCode, tails: string[]): string {
   const p = new URLSearchParams();
@@ -66,7 +68,6 @@ export function FlightPathLayer({ map, airborneTails }: Props) {
     .filter(Boolean)
     .sort()
     .join(",");
-  const filteredAirborneTails = airborneTailKey ? airborneTailKey.split(",") : [];
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
 
@@ -112,6 +113,7 @@ export function FlightPathLayer({ map, airborneTails }: Props) {
   // Fetch the polyline FeatureCollection on filter / state change.
   useEffect(() => {
     let cancelled = false;
+    const filteredAirborneTails = airborneTailKey ? airborneTailKey.split(",") : [];
     if (filteredAirborneTails.length === 0) {
       setFeatures([]);
       return;
@@ -148,11 +150,15 @@ export function FlightPathLayer({ map, airborneTails }: Props) {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
         });
-        // Z-order: insert before aircraft so the polyline stays beneath
-        // the chevrons.
-        const beforeId = map.getLayer(AIRCRAFT_LAYER_ID)
-          ? AIRCRAFT_LAYER_ID
-          : undefined;
+        // Z-order: insert below the live aircraft marker stack so paths
+        // never cover the wake, body, rotor, or labels.
+        const beforeId = map.getLayer(AIRCRAFT_WAKE_LAYER_ID)
+          ? AIRCRAFT_WAKE_LAYER_ID
+          : map.getLayer(AIRCRAFT_LAYER_ID)
+            ? AIRCRAFT_LAYER_ID
+            : map.getLayer(AIRCRAFT_ROTOR_LAYER_ID)
+              ? AIRCRAFT_ROTOR_LAYER_ID
+              : undefined;
         map.addLayer(
           {
             id: LAYER_ID,

@@ -23,8 +23,9 @@ export function SiteHeader() {
     <header
       style={{
         width: "100%",
-        position: "relative",
-        zIndex: 2,
+        position: "sticky",
+        top: 0,
+        zIndex: 48,
         fontFamily: "var(--font-header-ui)",
         background: "#000000",
         color: "#ffffff",
@@ -51,10 +52,25 @@ export function SiteHeader() {
             color: "inherit",
           }}
         >
-          <Suspense fallback={<HeaderLogoMark variant="open" />}>
-            <HeaderAircraftLogo />
-          </Suspense>
-          <span
+          <Link
+            href="/home"
+            prefetch={false}
+            aria-label="Home"
+            style={{
+              justifySelf: "start",
+              color: "inherit",
+              textDecoration: "none",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            <Suspense fallback={<HeaderLogoMark variant="open" />}>
+              <HeaderAircraftLogo />
+            </Suspense>
+          </Link>
+          <Link
+            href="/home"
+            prefetch={false}
+            aria-label="Out Of Sight home"
             style={{
               fontFamily: "var(--font-header-brand)",
               fontSize: "clamp(28px, 6.4vw, 38px)",
@@ -64,10 +80,13 @@ export function SiteHeader() {
               paddingTop: 12,
               whiteSpace: "nowrap",
               textAlign: "center",
+              color: "inherit",
+              textDecoration: "none",
+              WebkitTapHighlightColor: "transparent",
             }}
           >
             Out Of Sight
-          </span>
+          </Link>
           <div
             style={{
               justifySelf: "end",
@@ -108,6 +127,7 @@ function HeaderAircraftLogo() {
       : mockState === "up" ||
           mockState === "fixed_wing" ||
           mockState === "eyes-up" ||
+          mockState === "mixed" ||
           mockState === "multiple"
         ? true
         : null;

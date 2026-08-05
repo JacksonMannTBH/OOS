@@ -10,10 +10,11 @@ import maplibregl, {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAP_LABEL_FONT, MAP_STYLE_URL } from "@/lib/map-style";
 import { SS_TOKENS } from "@/lib/tokens";
-import type { Aircraft, FleetRole } from "@/lib/types";
+import type { Aircraft } from "@/lib/types";
 import {
   aircraftSvg,
   glyphRoleFor,
+  helicopterRotorSvg,
   type GlyphRole,
 } from "@/lib/brand/aircraft-glyphs";
 import {
@@ -62,17 +63,58 @@ function circleRingCoords(
 }
 
 const AIRCRAFT_ICON_SIZE = 40; // bitmap raster size; layer `icon-size` scales it
+const AIRCRAFT_WAKE_ICON_SIZE = 52;
+const AIRCRAFT_WAKE_FRAMES = 4;
 const GLYPH_ROLES: GlyphRole[] = ["fixed_wing", "patrol", "sar", "transport"];
+const HELICOPTER_ROLES = new Set<GlyphRole>(["patrol", "sar"]);
 
 function iconKeyFor(role: GlyphRole, colorIndex: number): string {
   return `aircraft-${role}-${colorIndex}`;
 }
 
-function iconForAircraft(
-  role: FleetRole | undefined | null,
-  tail: string,
-): string {
-  return iconKeyFor(glyphRoleFor(role), aircraftColorIndex(tail));
+function rotorIconKeyFor(colorIndex: number): string {
+  return `aircraft-heli-rotor-${colorIndex}`;
+}
+
+function wakeIconKeyFor(colorIndex: number, frame: number): string {
+  return `aircraft-plane-wake-${colorIndex}-${frame}`;
+}
+
+function wakeLayerIdFor(frame: number): string {
+  return `aircraft-wake-${frame}`;
+}
+
+function isHelicopterRole(role: GlyphRole): boolean {
+  return HELICOPTER_ROLES.has(role);
+}
+
+function aircraftWakeSvg({
+  size,
+  color,
+  frame,
+}: {
+  size: number;
+  color: string;
+  frame: number;
+}): string {
+  const offset = frame * 1.7;
+  const fade = 1 - frame / AIRCRAFT_WAKE_FRAMES;
+  const amberOpacity = (0.7 + fade * 0.22).toFixed(2);
+  const whiteOpacity = (0.38 + fade * 0.14).toFixed(2);
+  const softOpacity = (0.2 + fade * 0.12).toFixed(2);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52" width="${size}" height="${size}" data-role="plane-wake"><filter id="ss-plane-wake-glow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="0" stdDeviation="1.1" flood-color="#050908" flood-opacity="0.72"/><feDropShadow dx="0" dy="0" stdDeviation="1.2" flood-color="${color}" flood-opacity="0.38"/></filter><g filter="url(#ss-plane-wake-glow)" fill="none" stroke-linecap="round"><line x1="26" y1="${29 + offset}" x2="26" y2="${43 + offset}" stroke="#fff7d8" stroke-width="1.55" opacity="${whiteOpacity}"/><line x1="21.2" y1="${31.5 + offset}" x2="21.2" y2="${41.8 + offset}" stroke="${color}" stroke-width="1.35" opacity="${amberOpacity}"/><line x1="30.8" y1="${31.5 + offset}" x2="30.8" y2="${41.8 + offset}" stroke="${color}" stroke-width="1.35" opacity="${amberOpacity}"/><line x1="17.4" y1="${34 + offset}" x2="17.4" y2="${40.5 + offset}" stroke="#fff7d8" stroke-width="0.95" opacity="${softOpacity}"/><line x1="34.6" y1="${34 + offset}" x2="34.6" y2="${40.5 + offset}" stroke="#fff7d8" stroke-width="0.95" opacity="${softOpacity}"/></g></svg>`;
+}
+
+function setWakeFrame(map: MaplibreMap, activeFrame: number) {
+  for (let frame = 0; frame < AIRCRAFT_WAKE_FRAMES; frame++) {
+    const layerId = wakeLayerIdFor(frame);
+    if (!map.getLayer(layerId)) continue;
+    map.setPaintProperty(
+      layerId,
+      "icon-opacity",
+      frame === activeFrame ? 0.86 : 0,
+    );
+  }
 }
 
 const RIDER_COLOR = "#8bd2ff";
@@ -311,7 +353,15 @@ type Snapshot = {
   toByTail: Map<string, [number, number]>;
   metaByTail: Map<
     string,
-    { icon: string; track: number; nickname: string | null; color: string; label: string }
+    {
+      icon: string;
+      rotorIcon?: string;
+      wakeIcons?: string[];
+      track: number;
+      nickname: string | null;
+      color: string;
+      label: string;
+    }
   >;
   startedAt: number;
 };
@@ -373,6 +423,8 @@ export default function RadarMap({
   const showDistanceRingsRef = useRef<boolean>(showDistanceRings);
   const showFuelEstimateRef = useRef<boolean>(showFuelEstimate);
   const darkModeRef = useRef<boolean>(darkMode);
+  const reducedMotionRef = useRef(false);
+  const lastWakeFrameRef = useRef<number | null>(null);
   const originalPaintRef = useRef<ThemePaintStore>(new Map());
   // Tracks whether we've done the one-time zoom-to-rider on first
   // geolocation resolve. Subsequent rider changes only recenter
@@ -410,6 +462,16 @@ export default function RadarMap({
       attributionControl: { compact: true },
     });
     mapRef.current = map;
+    const motionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)") ?? null;
+    reducedMotionRef.current = Boolean(motionQuery?.matches);
+    const onMotionPreferenceChange = (event: MediaQueryListEvent) => {
+      reducedMotionRef.current = event.matches;
+      if (event.matches) {
+        setWakeFrame(map, 0);
+        lastWakeFrameRef.current = 0;
+      }
+    };
+    motionQuery?.addEventListener("change", onMotionPreferenceChange);
 
     const onLoad = async () => {
       const iconEntries = GLYPH_ROLES.flatMap((role) =>
@@ -419,7 +481,18 @@ export default function RadarMap({
           color,
         })),
       );
-      const [riderImg, ...aircraftImgs] = await Promise.all([
+      const rotorEntries = AIRCRAFT_PATH_COLORS.map((color, colorIndex) => ({
+        key: rotorIconKeyFor(colorIndex),
+        color,
+      }));
+      const wakeEntries = AIRCRAFT_PATH_COLORS.flatMap((color, colorIndex) =>
+        Array.from({ length: AIRCRAFT_WAKE_FRAMES }, (_, frame) => ({
+          key: wakeIconKeyFor(colorIndex, frame),
+          color,
+          frame,
+        })),
+      );
+      const [riderImg, ...iconImgs] = await Promise.all([
         loadSvgBitmap(RIDER_SVG, 48),
         ...iconEntries.map(({ role, color }) =>
           loadSvgBitmap(
@@ -427,15 +500,48 @@ export default function RadarMap({
               size: AIRCRAFT_ICON_SIZE,
               tone: "radar",
               color,
+              heliRotor: isHelicopterRole(role) ? "omit" : "static",
             }),
             AIRCRAFT_ICON_SIZE,
           ),
         ),
+        ...rotorEntries.map(({ color }) =>
+          loadSvgBitmap(
+            helicopterRotorSvg({
+              size: AIRCRAFT_ICON_SIZE,
+              color: "#F8FBFF",
+              strokeColor: color,
+            }),
+            AIRCRAFT_ICON_SIZE,
+          ),
+        ),
+        ...wakeEntries.map(({ color, frame }) =>
+          loadSvgBitmap(
+            aircraftWakeSvg({
+              size: AIRCRAFT_WAKE_ICON_SIZE,
+              color,
+              frame,
+            }),
+            AIRCRAFT_WAKE_ICON_SIZE,
+          ),
+        ),
       ]);
+      const aircraftImgs = iconImgs.slice(0, iconEntries.length);
+      const rotorImgs = iconImgs.slice(
+        iconEntries.length,
+        iconEntries.length + rotorEntries.length,
+      );
+      const wakeImgs = iconImgs.slice(iconEntries.length + rotorEntries.length);
       if (!mapRef.current) return; // guard - unmounted while loading
       map.addImage("rider-dot", riderImg);
       iconEntries.forEach(({ key }, i) => {
         map.addImage(key, aircraftImgs[i]!);
+      });
+      rotorEntries.forEach(({ key }, i) => {
+        map.addImage(key, rotorImgs[i]!);
+      });
+      wakeEntries.forEach(({ key }, i) => {
+        map.addImage(key, wakeImgs[i]!);
       });
       applyMapDetailBudget(map);
       applyRadarMapTheme(map, darkModeRef.current, originalPaintRef.current);
@@ -519,6 +625,25 @@ export default function RadarMap({
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
       });
+      for (let frame = 0; frame < AIRCRAFT_WAKE_FRAMES; frame++) {
+        map.addLayer({
+          id: wakeLayerIdFor(frame),
+          type: "symbol",
+          source: "aircraft",
+          layout: {
+            "icon-image": ["get", `wakeIcon${frame}`],
+            "icon-rotate": ["get", "track"],
+            "icon-rotation-alignment": "map",
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            "icon-size": 0.95,
+          },
+          paint: {
+            "icon-opacity": frame === 0 ? 0.86 : 0,
+          },
+          filter: ["has", "wakeIcon0"],
+        });
+      }
       map.addLayer({
         id: "aircraft",
         type: "symbol",
@@ -557,6 +682,20 @@ export default function RadarMap({
           "text-halo-color": "#fff7f2",
           "text-halo-width": 2,
         },
+      });
+      map.addLayer({
+        id: "aircraft-heli-rotor",
+        type: "symbol",
+        source: "aircraft",
+        layout: {
+          "icon-image": ["get", "rotorIcon"],
+          "icon-rotate": ["+", ["get", "track"], 0],
+          "icon-rotation-alignment": "map",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+          "icon-size": 0.95,
+        },
+        filter: ["has", "rotorIcon"],
       });
       map.addLayer({
         id: "aircraft-fuel",
@@ -683,6 +822,7 @@ export default function RadarMap({
       map.off("mouseleave", "aircraft", onMouseLeave);
       map.off("click", "aircraft", onClick);
       map.off("click", onMapClick);
+      motionQuery?.removeEventListener("change", onMotionPreferenceChange);
       popupRef.current?.remove();
       popupRef.current = null;
       onMapReadyRef.current?.(null);
@@ -863,8 +1003,23 @@ export default function RadarMap({
     const tick = () => {
       const phase = (Date.now() - start) / 1600; // 1.6s loop
       const sized = 0.86 + 0.14 * (Math.sin(phase * Math.PI * 2) + 1);
+      const rotorSpinDeg = ((Date.now() - start) * 1.2) % 360;
+      const wakeFrame = reducedMotionRef.current
+        ? 0
+        : Math.floor(((Date.now() - start) % 1200) / (1200 / AIRCRAFT_WAKE_FRAMES));
       try {
         map.setLayoutProperty("rider", "icon-size", sized);
+        if (wakeFrame !== lastWakeFrameRef.current) {
+          setWakeFrame(map, wakeFrame);
+          lastWakeFrameRef.current = wakeFrame;
+        }
+        if (map.getLayer("aircraft-heli-rotor")) {
+          map.setLayoutProperty("aircraft-heli-rotor", "icon-rotate", [
+            "+",
+            ["get", "track"],
+            rotorSpinDeg,
+          ]);
+        }
       } catch {
         // Layer may not exist yet; ignore.
       }
@@ -958,6 +1113,8 @@ export default function RadarMap({
       string,
       {
         icon: string;
+        rotorIcon?: string;
+        wakeIcons?: string[];
         track: number;
         nickname: string | null;
         color: string;
@@ -967,9 +1124,19 @@ export default function RadarMap({
     for (const a of list) {
       if (a.lat == null || a.lon == null) continue;
       const color = aircraftColorForTail(a.tail);
+      const colorIndex = aircraftColorIndex(a.tail);
+      const glyphRole = glyphRoleFor(a.role);
       newTo.set(a.tail, [a.lon, a.lat]);
       newMeta.set(a.tail, {
-        icon: iconForAircraft(a.role, a.tail),
+        icon: iconKeyFor(glyphRole, colorIndex),
+        rotorIcon: isHelicopterRole(glyphRole)
+          ? rotorIconKeyFor(colorIndex)
+          : undefined,
+        wakeIcons: isHelicopterRole(glyphRole)
+          ? undefined
+          : Array.from({ length: AIRCRAFT_WAKE_FRAMES }, (_, frame) =>
+              wakeIconKeyFor(colorIndex, frame),
+            ),
         track: a.heading ?? 0,
         nickname: a.nickname,
         color,
@@ -1041,6 +1208,10 @@ export default function RadarMap({
           color: meta.color,
           label: meta.label,
         };
+        if (meta.rotorIcon) props.rotorIcon = meta.rotorIcon;
+        meta.wakeIcons?.forEach((wakeIcon, frame) => {
+          props[`wakeIcon${frame}`] = wakeIcon;
+        });
         if (meta.nickname) props.nickname = meta.nickname;
         if (showFuelEstimateRef.current) {
           const plane = aircraftRef.current.find((a) => a.tail === tail);

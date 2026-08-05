@@ -33,9 +33,15 @@ const HALO_LAYER_ID = "aircraft-trail-halo";
 const LAYER_ID = "aircraft-trail";
 const START_DOT_LAYER_ID = "aircraft-trail-start-dot";
 const END_DOT_LAYER_ID = "aircraft-trail-end-dot";
+const AIRCRAFT_WAKE_LAYER_ID = "aircraft-wake-0";
 const AIRCRAFT_LAYER_ID = "aircraft";
+const AIRCRAFT_ROTOR_LAYER_ID = "aircraft-heli-rotor";
 const POLL_MS = 10_000;
 const PULSE_PERIOD_MS = 1600;
+const MIN_TRAIL_OPACITY = 0.22;
+const MAX_TRAIL_OPACITY = 0.95;
+const MIN_HALO_OPACITY = 0.12;
+const MAX_HALO_OPACITY = 0.3;
 const TRAIL_LAYER_IDS = [
   HALO_LAYER_ID,
   LAYER_ID,
@@ -45,25 +51,57 @@ const TRAIL_LAYER_IDS = [
 
 type TrailPoint = { lat: number; lon: number; ts: number };
 type TrailsResponse = { trails: Record<string, TrailPoint[]> };
+type TrailSegmentProps = {
+  tail: string;
+  color: string;
+  opacity: number;
+  haloOpacity: number;
+  sort: number;
+};
 
 type EndpointKind = "start" | "end";
 type EndpointProps = { tail: string; kind: EndpointKind; color: string };
 
+function fadeValue(progress: number, min: number, max: number): number {
+  const clamped = Math.max(0, Math.min(1, progress));
+  const eased = clamped ** 1.35;
+  return min + (max - min) * eased;
+}
+
 function buildFeatureCollection(
   trails: Record<string, TrailPoint[]>,
-): GeoJSON.FeatureCollection<GeoJSON.LineString> {
-  const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+): GeoJSON.FeatureCollection<GeoJSON.LineString, TrailSegmentProps> {
+  const features: GeoJSON.Feature<GeoJSON.LineString, TrailSegmentProps>[] = [];
   for (const [tail, pts] of Object.entries(trails)) {
     if (pts.length < 2) continue;
     const color = aircraftColorForTail(tail);
-    features.push({
-      type: "Feature",
-      geometry: {
-        type: "LineString",
-        coordinates: pts.map((p) => [p.lon, p.lat]),
-      },
-      properties: { tail, color },
-    });
+    const segmentCount = pts.length - 1;
+    const oldestTs = pts[0]!.ts;
+    const newestTs = pts[pts.length - 1]!.ts;
+    const tsRange = newestTs - oldestTs;
+    for (let i = 0; i < segmentCount; i++) {
+      const from = pts[i]!;
+      const to = pts[i + 1]!;
+      const timeProgress =
+        tsRange > 0 ? (to.ts - oldestTs) / tsRange : (i + 1) / segmentCount;
+      features.push({
+        type: "Feature",
+        geometry: {
+          type: "LineString",
+          coordinates: [
+            [from.lon, from.lat],
+            [to.lon, to.lat],
+          ],
+        },
+        properties: {
+          tail,
+          color,
+          opacity: fadeValue(timeProgress, MIN_TRAIL_OPACITY, MAX_TRAIL_OPACITY),
+          haloOpacity: fadeValue(timeProgress, MIN_HALO_OPACITY, MAX_HALO_OPACITY),
+          sort: i,
+        },
+      });
+    }
   }
   return { type: "FeatureCollection", features };
 }
@@ -92,7 +130,7 @@ function buildEndpointCollection(
 }
 
 /**
- * Move all four trail layers to sit just below the aircraft chevron.
+ * Move all four trail layers to sit below the live aircraft marker stack.
  * Layers were added with no beforeId (default-stack-top) so the
  * polyline is visible immediately even if the chevron mounts later;
  * this call slides them into proper position once the chevron exists.
@@ -101,7 +139,14 @@ function buildEndpointCollection(
  * sibling layer mounting late can never bury the trail.
  */
 function reorderTrailLayers(map: MaplibreMap): void {
-  if (!map.getLayer(AIRCRAFT_LAYER_ID)) {
+  const markerBaseLayerId = map.getLayer(AIRCRAFT_WAKE_LAYER_ID)
+    ? AIRCRAFT_WAKE_LAYER_ID
+    : map.getLayer(AIRCRAFT_LAYER_ID)
+      ? AIRCRAFT_LAYER_ID
+      : map.getLayer(AIRCRAFT_ROTOR_LAYER_ID)
+        ? AIRCRAFT_ROTOR_LAYER_ID
+        : null;
+  if (!markerBaseLayerId) {
     // Aircraft chevron not attached yet — leave the trail at the top
     // of the stack for now. Next poll will move it down once the
     // chevron exists.
@@ -109,7 +154,7 @@ function reorderTrailLayers(map: MaplibreMap): void {
   }
   for (const id of TRAIL_LAYER_IDS) {
     try {
-      if (map.getLayer(id)) map.moveLayer(id, AIRCRAFT_LAYER_ID);
+      if (map.getLayer(id)) map.moveLayer(id, markerBaseLayerId);
     } catch {
       /* layer torn down mid-call */
     }
@@ -178,6 +223,7 @@ export function AircraftTrailLayer({
           visibility: enabledRef.current ? "visible" : "none",
           "line-cap": "round",
           "line-join": "round",
+          "line-sort-key": ["coalesce", ["get", "sort"], 0],
         },
         paint: {
           "line-color": "#050505",
@@ -194,7 +240,7 @@ export function AircraftTrailLayer({
             18,
             7,
           ],
-          "line-opacity": 0.28,
+          "line-opacity": ["coalesce", ["get", "haloOpacity"], 0.28],
         },
       });
       // Line — high contrast against the dark basemap. Wider than every
@@ -207,6 +253,7 @@ export function AircraftTrailLayer({
           visibility: enabledRef.current ? "visible" : "none",
           "line-cap": "round",
           "line-join": "round",
+          "line-sort-key": ["coalesce", ["get", "sort"], 0],
         },
         paint: {
           "line-color": ["coalesce", ["get", "color"], "#8bd2ff"],
@@ -223,7 +270,7 @@ export function AircraftTrailLayer({
             18,
             3.6,
           ],
-          "line-opacity": 0.9,
+          "line-opacity": ["coalesce", ["get", "opacity"], 0.9],
         },
       });
       map.addLayer({
@@ -271,9 +318,15 @@ export function AircraftTrailLayer({
     // cheap; the radius expression covers every airborne tail in a
     // single layer (filter handles which features show).
     const startedAt = Date.now();
+    let cancelled = false;
     const tick = () => {
-      if (!map.getLayer(END_DOT_LAYER_ID)) {
-        pulseRef.current = requestAnimationFrame(tick);
+      if (cancelled) return;
+      try {
+        if (!map.getLayer(END_DOT_LAYER_ID)) {
+          pulseRef.current = requestAnimationFrame(tick);
+          return;
+        }
+      } catch {
         return;
       }
       const phase =
@@ -282,13 +335,17 @@ export function AircraftTrailLayer({
       try {
         map.setPaintProperty(END_DOT_LAYER_ID, "circle-radius", radius);
       } catch {
-        /* layer torn down mid-frame */
+        if (!cancelled) {
+          pulseRef.current = requestAnimationFrame(tick);
+        }
+        return;
       }
       pulseRef.current = requestAnimationFrame(tick);
     };
     pulseRef.current = requestAnimationFrame(tick);
 
     return () => {
+      cancelled = true;
       map.off("load", attach);
       map.off("styledata", attach);
       map.off("data", attach);

@@ -12,5 +12,5 @@ export default async function Page({
   const mock = searchParams.mock
     ? `?mock=${encodeURIComponent(searchParams.mock)}`
     : "";
-  redirect(`/dash${mock}`);
+  redirect(`/home${mock}`);
 }

@@ -12,11 +12,10 @@ import {
   readStoredDarkTheme,
 } from "@/lib/theme";
 import { computeStatus } from "@/lib/status";
-import { StatusPill } from "./StatusPill";
 import { RadarLayerControls } from "./RadarLayerControls";
 import { AircraftTrailLayer } from "./AircraftTrailLayer";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
-import { haversineNm } from "@/lib/geo";
+import { LogoMark } from "./brand/Logo";
 import {
   FLIGHT_PATHS_VISIBLE_KEY,
   LAYER_VISIBILITY_CHANGE_EVENT,
@@ -28,6 +27,7 @@ import {
   getSelectedStateCode,
   type StateCode,
 } from "@/lib/app-states";
+import { PlaneIcon } from "./PlaneIcon";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
 export type RiderPos = { lat: number; lon: number };
@@ -47,16 +47,18 @@ const RadarMap = nextDynamic(() => import("./RadarMap"), {
 
 const TABBAR_HEIGHT = 66;
 const GLASS_BG_STRONG = SS_TOKENS.surface;
-const AIRBORNE_BUBBLE_LIMIT = 3;
+const MAP_HEADER_ICON_LIMIT = 10;
 
 type Props = {
   initial: Snapshot;
   mockOn?: boolean;
+  initialFocusTail?: string;
 };
 
 export function RadarShell({
   initial,
   mockOn = false,
+  initialFocusTail,
 }: Props) {
   const snap = useAircraft(initial, mockOn);
   const fleetMap = useMemo(
@@ -68,13 +70,6 @@ export function RadarShell({
     () => snap.aircraft.filter((a) => a.airborne),
     [snap.aircraft],
   );
-  const pillKind = status.kind;
-  const pillTooltip =
-    status.kind === "alert"
-      ? `${status.alertCount} tracked aircraft up.`
-      : status.lead
-        ? `${status.lead.entry.nickname ?? status.lead.aircraft.tail} is up.`
-        : "Nothing in the tracked aircraft list is currently up.";
 
   const [rider, setRider] = useState<RiderPos | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -88,19 +83,13 @@ export function RadarShell({
   const [focusRequest, setFocusRequest] = useState<{
     tail: string;
     seq: number;
-  } | null>(null);
+  } | null>(
+    initialFocusTail
+      ? { tail: initialFocusTail, seq: 1 }
+      : null,
+  );
   const [riderFocusRequest, setRiderFocusRequest] = useState(0);
-  const focusSeqRef = useRef(0);
-  const bubbleAircraft = useMemo(() => {
-    const selectedState = getAppState(stateCode);
-    const origin = rider ?? {
-      lat: selectedState.centerLat,
-      lon: selectedState.centerLon,
-    };
-    return [...airborne]
-      .sort((a, b) => distanceFrom(origin, a) - distanceFrom(origin, b))
-      .slice(0, AIRBORNE_BUBBLE_LIMIT);
-  }, [airborne, rider, stateCode]);
+  const focusSeqRef = useRef(initialFocusTail ? 1 : 0);
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.dataset.radarMode = "true";
@@ -214,57 +203,179 @@ export function RadarShell({
         enabled={showFlightPaths}
       />
 
-      <header
-        style={{
-          position: "absolute",
-          left: 10,
-          top: "calc(env(safe-area-inset-top, 0px) + 58px)",
-          padding: 0,
-          background: "transparent",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          zIndex: 16,
+      <MapHeader
+        airborne={airborne}
+        kind={status.kind}
+        onSelect={(tail) => {
+          focusSeqRef.current += 1;
+          setFocusRequest({ tail, seq: focusSeqRef.current });
         }}
-      >
-        <StatusPill
-          kind={pillKind}
-          label={status.pill}
-          sub={status.pillSub}
-          big
-          tooltip={pillTooltip}
-          style={{
-            minHeight: 42,
-            padding: "0 12px",
-            borderRadius: 10,
-            background: "rgba(5, 6, 7, 0.88)",
-            border: `1px solid color-mix(in srgb, ${
-              pillKind === "alert" ? "var(--ss-alert)" : "var(--ss-clear)"
-            } 58%, transparent)`,
-            boxShadow: "0 6px 18px rgba(0, 0, 0, 0.35)",
-            letterSpacing: "0.02em",
-          }}
-        />
-      </header>
-
-      {bubbleAircraft.length > 0 && (
-        <AirborneBubbles
-          airborne={bubbleAircraft}
-          onSelect={(tail) => {
-            focusSeqRef.current += 1;
-            setFocusRequest({ tail, seq: focusSeqRef.current });
-          }}
-        />
-      )}
+      />
 
       {toast && <Toast message={toast} bottomBoost={0} />}
     </main>
   );
 }
 
-function distanceFrom(origin: RiderPos, aircraft: Aircraft): number {
-  if (aircraft.lat == null || aircraft.lon == null) return Number.POSITIVE_INFINITY;
-  return haversineNm(origin.lat, origin.lon, aircraft.lat, aircraft.lon);
+function MapHeader({
+  airborne,
+  kind,
+  onSelect,
+}: {
+  airborne: Aircraft[];
+  kind: "alert" | "clear";
+  onSelect: (tail: string) => void;
+}) {
+  const isAlert = kind === "alert";
+  const visibleAircraft = airborne.slice(0, MAP_HEADER_ICON_LIMIT);
+  const overflowCount = Math.max(0, airborne.length - visibleAircraft.length);
+
+  return (
+    <header
+      role="status"
+      aria-live="polite"
+      aria-label={
+        airborne.length === 0
+          ? "No active flights"
+          : `${airborne.length} active flight${airborne.length === 1 ? "" : "s"}`
+      }
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 16,
+        background: "rgba(0, 0, 0, 0.94)",
+        color: "#ffffff",
+        borderBottom: "0.5px solid rgba(244, 196, 48, 0.34)",
+        boxShadow: "0 12px 30px rgba(0, 0, 0, 0.28)",
+        backdropFilter: "blur(18px) saturate(1.08)",
+        WebkitBackdropFilter: "blur(18px) saturate(1.08)",
+        fontFamily: "var(--font-header-ui)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 560,
+          margin: "0 auto",
+          height: "calc(env(safe-area-inset-top, 0px) + clamp(58px, 15vw, 72px))",
+          padding: "env(safe-area-inset-top, 0px) clamp(14px, 4vw, 18px) 0",
+          display: "grid",
+          gridTemplateColumns:
+            visibleAircraft.length > 0 ? "auto minmax(0, 1fr)" : "1fr auto 1fr",
+          alignItems: "center",
+          gap: "clamp(12px, 3.8vw, 18px)",
+        }}
+      >
+        <LogoMark
+          height="clamp(27px, 6.8vw, 36px)"
+          width="clamp(40px, 10.2vw, 54px)"
+          variant={isAlert ? "open" : "closed"}
+          style={{
+            justifySelf: "start",
+          }}
+        />
+        {visibleAircraft.length > 0 && (
+          <nav
+            aria-label="Active aircraft"
+            className="ss-scroll"
+            style={{
+              minHeight: 36,
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              overflowX: "auto",
+              paddingBottom: 2,
+              WebkitOverflowScrolling: "touch",
+            }}
+          >
+            {visibleAircraft.map((aircraft) => (
+              <MapHeaderAircraftButton
+                key={aircraft.tail}
+                aircraft={aircraft}
+                onSelect={onSelect}
+              />
+            ))}
+            {overflowCount > 0 && (
+              <span
+                className="ss-mono"
+                aria-label={`${overflowCount} more active aircraft`}
+                style={{
+                  flex: "0 0 auto",
+                  height: 32,
+                  minWidth: 34,
+                  padding: "0 8px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255, 255, 255, 0.16)",
+                  background: "rgba(255, 255, 255, 0.08)",
+                  color: SS_TOKENS.fg2,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 10.5,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                }}
+              >
+                +{overflowCount}
+              </span>
+            )}
+          </nav>
+        )}
+      </div>
+    </header>
+  );
+}
+
+function MapHeaderAircraftButton({
+  aircraft,
+  onSelect,
+}: {
+  aircraft: Aircraft;
+  onSelect: (tail: string) => void;
+}) {
+  const color = aircraftColorForTail(aircraft.tail);
+  const displayName = aircraft.nickname ?? aircraft.tail;
+  const ariaLabel = `Center ${displayName} on the map`;
+
+  return (
+    <Tooltip content={displayName}>
+      <button
+        type="button"
+        onClick={() => onSelect(aircraft.tail)}
+        aria-label={ariaLabel}
+        style={{
+          flex: "0 0 auto",
+          width: 36,
+          height: 32,
+          padding: 0,
+          borderRadius: 8,
+          border: `1.5px solid ${color}`,
+          background: "rgba(255, 255, 255, 0.08)",
+          color,
+          boxShadow: `0 0 0 3px ${color}1f, 0 10px 22px rgba(0, 0, 0, 0.28)`,
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          touchAction: "manipulation",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <PlaneIcon
+          size={23}
+          role={aircraft.role}
+          heading={aircraft.heading ?? 0}
+          tone="radar"
+          color={color}
+        />
+      </button>
+    </Tooltip>
+  );
 }
 
 function flashToast(

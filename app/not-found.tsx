@@ -74,9 +74,8 @@ export default function NotFound() {
           justifyContent: "center",
         }}
       >
-        <NavBtn href="/">Home</NavBtn>
+        <NavBtn href="/home">Home</NavBtn>
         <NavBtn href="/map">Map</NavBtn>
-        <NavBtn href="/dash#recent-events">Recent events</NavBtn>
       </nav>
     </main>
   );

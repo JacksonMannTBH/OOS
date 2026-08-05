@@ -21,6 +21,13 @@ type CurrentStateRow = {
   airborne_candidate_started_at: string | null;
 };
 
+type FlightSessionRow = {
+  id: string;
+  detected_takeoff_at: string | null;
+  tracking_started_at: string | null;
+  last_seen_at: string | null;
+};
+
 type CatalogRow = {
   id: string;
   tail: string;
@@ -63,6 +70,7 @@ export type StateIngestionSummary = {
 const TAKEOFF_CONFIRMATION_SAMPLES = 2;
 const LANDING_CONFIRMATION_SAMPLES = 2;
 const CURRENT_OBSERVATION_MAX_AGE_MS = 2 * 60 * 1_000;
+const MAX_OPEN_FLIGHT_SESSION_MS = 18 * 60 * 60 * 1_000;
 
 export async function ensureCatalogSeeded(): Promise<void> {
   if (!isSupabaseConfigured()) return;
@@ -388,6 +396,23 @@ export async function ingestSnapshot(
   const currentByAircraft = new Map(
     ((currentData ?? []) as CurrentStateRow[]).map((row) => [row.aircraft_id, row]),
   );
+  const openFlightSessionIds = [
+    ...new Set(
+      ((currentData ?? []) as CurrentStateRow[])
+        .map((row) => row.flight_session_id)
+        .filter((id): id is string => typeof id === "string" && id.length > 0),
+    ),
+  ];
+  const { data: sessionData, error: sessionError } = openFlightSessionIds.length
+    ? await db
+        .from("flight_sessions")
+        .select("id,detected_takeoff_at,tracking_started_at,last_seen_at")
+        .in("id", openFlightSessionIds)
+    : { data: [], error: null };
+  if (sessionError) throw new Error(`Open-session read failed: ${sessionError.message}`);
+  const openSessionById = new Map(
+    ((sessionData ?? []) as FlightSessionRow[]).map((row) => [row.id, row]),
+  );
 
   const stateRows: Record<string, unknown>[] = [];
   const positionRows: Record<string, unknown>[] = [];
@@ -407,9 +432,20 @@ export async function ingestSnapshot(
     const wasObserved = aircraft.observed !== false;
     if (!wasObserved) {
       if (!shouldClearUnobservedState(previous)) continue;
+      if (previous?.flight_session_id) {
+        const closeAt =
+          previous.last_seen_at ?? previous.observed_at ?? snapshotObservedAt;
+        await closeOpenFlightSession(
+          db,
+          previous.flight_session_id,
+          closeAt,
+          snapshotObservedAt,
+          "Closed after aircraft disappeared from provider snapshot.",
+        );
+      }
       stateRows.push({
         aircraft_id: catalogRow.id,
-        flight_session_id: previous?.flight_session_id ?? null,
+        flight_session_id: null,
         observation_status: "unknown",
         consecutive_airborne: 0,
         consecutive_grounded: 0,
@@ -442,22 +478,51 @@ export async function ingestSnapshot(
       aircraftObservedAt,
     );
 
+    const previousOpenSession = previous?.flight_session_id
+      ? openSessionById.get(previous.flight_session_id)
+      : undefined;
+    const hasStaleOpenSession = isStaleOpenFlightSession(
+      previousOpenSession,
+      snapshotObservedAt,
+    );
+    const hasStaleAirborneCandidate = isStaleAirborneCandidate(
+      previous,
+      snapshotObservedAt,
+    );
+    if (hasStaleOpenSession && previous?.flight_session_id) {
+      const closeAt =
+        previous.last_seen_at ??
+        previousOpenSession?.last_seen_at ??
+        previous.observed_at ??
+        snapshotObservedAt;
+      await closeOpenFlightSession(
+        db,
+        previous.flight_session_id,
+        closeAt,
+        snapshotObservedAt,
+        "Closed after exceeding maximum plausible open-flight duration.",
+      );
+    }
+    const continuityPrevious =
+      hasStaleOpenSession || hasStaleAirborneCandidate ? undefined : previous;
     const isAirborne = aircraft.airborne;
     const consecutiveAirborne = isAirborne
-      ? (previous?.consecutive_airborne ?? 0) + 1
+      ? (continuityPrevious?.consecutive_airborne ?? 0) + 1
       : 0;
     const consecutiveGrounded = !isAirborne
-      ? (previous?.consecutive_grounded ?? 0) + 1
+      ? (continuityPrevious?.consecutive_grounded ?? 0) + 1
       : 0;
     const lastGroundedAt = isAirborne
-      ? previous?.last_grounded_at ?? null
+      ? continuityPrevious?.last_grounded_at ?? null
       : aircraftObservedAt;
     const airborneCandidateStartedAt = isAirborne
-      ? previous?.consecutive_airborne
-        ? previous.airborne_candidate_started_at ?? aircraftObservedAt
+      ? continuityPrevious?.consecutive_airborne
+        ? continuityPrevious.airborne_candidate_started_at ?? aircraftObservedAt
         : aircraftObservedAt
       : null;
-    let flightSessionId = previous?.flight_session_id ?? null;
+    let flightSessionId = hasStaleOpenSession
+      ? null
+      : previous?.flight_session_id ?? null;
     let status: Aircraft["observation_status"] = isAirborne
       ? "airborne_candidate"
       : "grounded";
@@ -479,12 +544,14 @@ export async function ingestSnapshot(
           : null;
       const detectedTakeoffAt =
         interpolatedTakeoffAt ?? airborneCandidateStartedAt ?? aircraftObservedAt;
+      const trackingStartedAt =
+        continuityPrevious?.observed_at ?? aircraftObservedAt;
       const { data: session, error: sessionError } = await db
         .from("flight_sessions")
         .insert({
           aircraft_id: catalogRow.id,
           status: "airborne",
-          tracking_started_at: previous?.observed_at ?? aircraftObservedAt,
+          tracking_started_at: trackingStartedAt,
           detected_takeoff_at: detectedTakeoffAt,
           last_seen_at: aircraftObservedAt,
           takeoff_time_source: interpolatedTakeoffAt
@@ -509,6 +576,17 @@ export async function ingestSnapshot(
       }
 
       if (flightSessionId) {
+        const { error: backfillError } = await db
+          .from("aircraft_positions")
+          .update({ flight_session_id: flightSessionId })
+          .eq("aircraft_id", catalogRow.id)
+          .is("flight_session_id", null)
+          .gte("observed_at", trackingStartedAt)
+          .lte("observed_at", aircraftObservedAt);
+        if (backfillError) {
+          throw new Error(`Position session backfill failed: ${backfillError.message}`);
+        }
+
         const { error: eventError } = await db.from("notification_events").upsert(
           {
             flight_session_id: flightSessionId,
@@ -712,13 +790,61 @@ function parseTime(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+async function closeOpenFlightSession(
+  db: ReturnType<typeof getSupabaseAdmin>,
+  flightSessionId: string,
+  closedAt: string,
+  updatedAt: string,
+  note: string,
+): Promise<void> {
+  const { error } = await db
+    .from("flight_sessions")
+    .update({
+      status: "unknown",
+      detected_landing_at: closedAt,
+      last_seen_at: closedAt,
+      updated_at: updatedAt,
+      notes: note,
+    })
+    .eq("id", flightSessionId)
+    .is("detected_landing_at", null);
+  if (error) {
+    throw new Error(`Open-session close failed: ${error.message}`);
+  }
+}
+
+export function isStaleOpenFlightSession(
+  session: Pick<FlightSessionRow, "detected_takeoff_at" | "tracking_started_at"> | undefined,
+  nowIso: string,
+): boolean {
+  const startedAt =
+    parseTime(session?.detected_takeoff_at) ??
+    parseTime(session?.tracking_started_at);
+  const now = parseTime(nowIso);
+  return startedAt != null &&
+    now != null &&
+    now - startedAt > MAX_OPEN_FLIGHT_SESSION_MS;
+}
+
+export function isStaleAirborneCandidate(
+  previous: Pick<CurrentStateRow, "airborne_candidate_started_at"> | undefined,
+  nowIso: string,
+): boolean {
+  const startedAt = parseTime(previous?.airborne_candidate_started_at);
+  const now = parseTime(nowIso);
+  return startedAt != null &&
+    now != null &&
+    now - startedAt > MAX_OPEN_FLIGHT_SESSION_MS;
+}
+
 export function shouldClearUnobservedState(
   previous?: Pick<
     CurrentStateRow,
-    "observation_status" | "observed_at"
+    "observation_status" | "observed_at" | "flight_session_id"
   >,
 ): boolean {
   return !previous ||
+    previous.flight_session_id != null ||
     previous.observation_status !== "unknown" ||
     previous.observed_at != null;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { filterOpsAircraftByState } from "@/lib/aircraft-directory";
 import { useAircraft } from "@/lib/hooks/useAircraft";
@@ -11,37 +11,28 @@ import { FEATURED_TAIL } from "@/lib/seed";
 import { haversineNm } from "@/lib/geo";
 import { proximityBandForDistance } from "@/lib/proximity-display";
 import { computeStatus } from "@/lib/status";
+import { aircraftVehicleType } from "@/lib/aircraft-type";
 import { AlertsOptInCard } from "./AlertsOptInCard";
 import { ProximityFlash } from "./ProximityFlash";
 import { TakeOffButton } from "./TakeOffButton";
-import { ActivityEventsSection } from "./ActivityFeed";
 import { StatusHero } from "./StatusHero";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
-import type { ActivityEntry } from "@/lib/activity";
 
 const TABBAR_HEIGHT = 66;
 const NEAR_NM = 5;
 const HOME_BACKGROUND_IMAGE = "/images/home-map-background.png";
-// Top-N airborne planes to surface in the watcher list. Three is enough
-// to convey crowdedness without dominating the screen.
-const NEAREST_LIST_LIMIT = 3;
 type WatcherEntry = { plane: Aircraft; distanceNm: number | null };
 
 type Props = {
   initial: Snapshot;
-  initialActivity: ActivityEntry[];
   mockOn?: boolean;
+  mockParam?: string;
 };
 
-export function DashShell({ initial, initialActivity, mockOn = false }: Props) {
+export function DashShell({ initial, mockOn = false, mockParam }: Props) {
   const snap = useAircraft(initial, mockOn);
   const stateId = useSelectedStateId();
   const { pos } = useRiderPos();
-  const [activity, setActivity] = useState<ActivityEntry[]>(initialActivity);
-  const stateActivity = useMemo(
-    () => filterOpsAircraftByState(activity, stateId),
-    [activity, stateId],
-  );
 
   const stateAircraft = useMemo(
     () => filterOpsAircraftByState(snap.aircraft, stateId),
@@ -66,61 +57,35 @@ export function DashShell({ initial, initialActivity, mockOn = false }: Props) {
   const featuredAircraft = stateAircraft.find((a) => a.tail === FEATURED_TAIL);
   const featuredAircraftUp = Boolean(featuredAircraft?.airborne);
 
-  // Top-N airborne planes by Haversine distance — sorted ascending so
-  // nearestList[0] is the single closest. Drives both the watcher list
-  // and the proximity-flash trigger.
+  // All airborne planes, sorted by Haversine distance when rider location is
+  // available. The first positioned entry still drives the proximity flash.
   const watcherList = useMemo<WatcherEntry[]>(() => {
     if (!pos) {
-      return airborne.slice(0, NEAREST_LIST_LIMIT).map((plane) => ({
+      return airborne.map((plane) => ({
         plane,
         distanceNm: null,
       }));
     }
     const ranked: Array<{ plane: Aircraft; distanceNm: number }> = [];
+    const unpositioned: WatcherEntry[] = [];
     for (const a of airborne) {
-      if (a.lat == null || a.lon == null) continue;
+      if (a.lat == null || a.lon == null) {
+        unpositioned.push({ plane: a, distanceNm: null });
+        continue;
+      }
       ranked.push({
         plane: a,
         distanceNm: haversineNm(pos.lat, pos.lon, a.lat, a.lon),
       });
     }
     ranked.sort((x, y) => x.distanceNm - y.distanceNm);
-    return ranked.slice(0, NEAREST_LIST_LIMIT);
+    return [...ranked, ...unpositioned];
   }, [pos, airborne]);
   const nearest = watcherList.find((entry) => entry.distanceNm != null) ?? null;
   const nearestBand = nearest?.distanceNm != null
     ? proximityBandForDistance(nearest.distanceNm)
     : null;
 
-  // Poll /api/activity every 10s.
-  useEffect(() => {
-    let cancelled = false;
-    const fetchActivity = async () => {
-      if (document.visibilityState === "hidden") return;
-      try {
-        const r = await fetch(
-          `/api/activity?limit=5&state_id=${encodeURIComponent(stateId)}`,
-          { cache: "no-store" },
-        );
-        if (!r.ok) return;
-        const data = (await r.json()) as { entries: ActivityEntry[] };
-        if (!cancelled) setActivity(data.entries);
-      } catch {
-        // transient — try again next tick
-      }
-    };
-    const id = setInterval(fetchActivity, 10_000);
-    void fetchActivity();
-    const onVis = () => {
-      if (document.visibilityState === "visible") void fetchActivity();
-    };
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", onVis);
-    };
-  }, [stateId]);
 
   return (
     <>
@@ -170,22 +135,10 @@ export function DashShell({ initial, initialActivity, mockOn = false }: Props) {
           riderHasFix={Boolean(pos)}
           featuredAircraftUp={featuredAircraftUp}
           airborneCount={airborne.length}
+          mockParam={mockParam}
         />
-
-        {airborne.length > 0 && (
-          <ContextLine
-            airborneCount={airborne.length}
-            nearest={nearest}
-          />
-        )}
 
         <AlertsOptInCard frameless />
-
-        <ActivityEventsSection
-          entries={stateActivity}
-          id="recent-events"
-          frameless
-        />
 
         <ProximityFlash
           active={
@@ -206,23 +159,72 @@ function NearestCard({
   riderHasFix,
   featuredAircraftUp,
   airborneCount,
+  mockParam,
 }: {
   watcherList: WatcherEntry[];
   riderHasFix: boolean;
   featuredAircraftUp: boolean;
   airborneCount: number;
+  mockParam?: string;
 }) {
+  const planeEntries = watcherList.filter(
+    (entry) => aircraftVehicleType(entry.plane.model) !== "Helicopter",
+  );
+  const heliEntries = watcherList.filter(
+    (entry) => aircraftVehicleType(entry.plane.model) === "Helicopter",
+  );
+
+  const hasWatchers = watcherList.length > 0;
+
   return (
-    <section>
-      <div style={{ padding: "12px 14px 8px" }}>
-        <span className="ss-eyebrow">
-          {riderHasFix ? "Nearest watchers" : "Airborne now"}
-        </span>
-      </div>
-      {watcherList.length > 0 ? (
-        watcherList.map((entry, i) => (
-          <NearestRow key={entry.plane.tail} entry={entry} primary={i === 0} />
-        ))
+    <section
+      aria-labelledby={hasWatchers ? "active-air-support-heading" : undefined}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        marginTop: 8,
+        width: "100%",
+        maxWidth: 360,
+        alignSelf: "center",
+      }}
+    >
+      {hasWatchers ? (
+        <>
+          <h2
+            id="active-air-support-heading"
+            style={{
+              margin: 0,
+              padding: "17px 0",
+              color: SS_TOKENS.fg0,
+              fontSize: 18,
+              fontWeight: 800,
+              lineHeight: 1.05,
+              textAlign: "center",
+            }}
+          >
+            Active Air Support
+          </h2>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: 26,
+              alignItems: "start",
+            }}
+          >
+            <AircraftColumn
+              title="Heli"
+              entries={heliEntries}
+              mockParam={mockParam}
+            />
+            <AircraftColumn
+              title="Plane"
+              entries={planeEntries}
+              mockParam={mockParam}
+            />
+          </div>
+        </>
       ) : (
         <NearestEmpty
           riderHasFix={riderHasFix}
@@ -234,70 +236,140 @@ function NearestCard({
   );
 }
 
+function AircraftColumn({
+  title,
+  entries,
+  mockParam,
+}: {
+  title: string;
+  entries: WatcherEntry[];
+  mockParam?: string;
+}) {
+  return (
+    <div style={{ minWidth: 0, textAlign: "center" }}>
+      <div
+        className="ss-mono"
+        style={{
+          color: SS_TOKENS.alert,
+          fontSize: 10.5,
+          fontWeight: 800,
+          letterSpacing: ".08em",
+          marginBottom: 5,
+          textTransform: "uppercase",
+        }}
+      >
+        {title}
+      </div>
+      {entries.length > 0 ? (
+        entries.map((entry) => (
+          <NearestRow
+            key={entry.plane.tail}
+            entry={entry}
+            showKind={false}
+            compact
+            mockParam={mockParam}
+          />
+        ))
+      ) : (
+        <div
+          style={{
+            color: SS_TOKENS.fg3,
+            fontSize: 12,
+            lineHeight: 1.35,
+            padding: "8px 0",
+            textAlign: "center",
+          }}
+        >
+          None active
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NearestRow({
   entry,
-  primary,
+  showKind = true,
+  compact = false,
+  mockParam,
 }: {
   entry: WatcherEntry;
-  primary: boolean;
+  showKind?: boolean;
+  compact?: boolean;
+  mockParam?: string;
 }) {
-  const inRange = entry.distanceNm != null && entry.distanceNm <= NEAR_NM;
   const distanceNm = entry.distanceNm;
   const isLiveOnly = distanceNm == null;
+  const kindLabel =
+    aircraftVehicleType(entry.plane.model) === "Helicopter" ? "Heli" : "Plane";
   return (
     <Link
-      href={`/plane/${entry.plane.tail}`}
+      href={{
+        pathname: "/map",
+        query: mockParam
+          ? { tail: entry.plane.tail, mock: mockParam }
+          : { tail: entry.plane.tail },
+      }}
       prefetch={false}
       style={{
         display: "flex",
-        gap: 12,
+        gap: compact ? 7 : 12,
         alignItems: "baseline",
-        justifyContent: "space-between",
-        padding: "10px 14px",
+        justifyContent: compact && isLiveOnly ? "center" : "space-between",
+        width: compact ? "100%" : undefined,
+        maxWidth: compact ? 148 : undefined,
+        minHeight: compact ? 25 : undefined,
+        margin: compact ? "0 auto" : undefined,
+        padding: compact ? "5px 2px" : "10px 14px",
         textDecoration: "none",
         color: "inherit",
       }}
     >
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+      <div style={{ minWidth: 0, textAlign: compact && isLiveOnly ? "center" : "left" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: compact ? 5 : 8,
+            justifyContent: compact && isLiveOnly ? "center" : "flex-start",
+          }}
+        >
           <span
             className="ss-mono"
             style={{
-              fontSize: primary ? 15 : 13,
+              fontSize: 13,
               fontWeight: 700,
               color: SS_TOKENS.fg0,
             }}
           >
             {entry.plane.tail}
           </span>
-          {entry.plane.nickname && (
+          {showKind && (
             <span
+              className="ss-mono"
               style={{
                 fontSize: 11.5,
+                fontWeight: 700,
                 color: SS_TOKENS.fg2,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
               }}
             >
-              {entry.plane.nickname}
+              {kindLabel}
             </span>
           )}
         </div>
-        <div style={{ fontSize: 11, color: SS_TOKENS.fg2, marginTop: 1 }}>
-          {entry.plane.operator} · {entry.plane.model}
-        </div>
       </div>
-      <span
-        className="ss-mono"
-        style={{
-          fontSize: primary && !isLiveOnly ? 18 : 14,
-          fontWeight: 700,
-          color: inRange ? SS_TOKENS.alert : SS_TOKENS.fg1,
-        }}
-      >
-        {isLiveOnly ? "LIVE" : `${distanceNm.toFixed(1)} nm`}
-      </span>
+      {!isLiveOnly && (
+        <span
+          className="ss-mono"
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: SS_TOKENS.fg1,
+          }}
+        >
+          {distanceNm.toFixed(1)} nm
+        </span>
+      )}
     </Link>
   );
 }
@@ -351,40 +423,6 @@ function NearestEmpty({
   return (
     <div style={{ ...baseStyle, fontSize: 13, color: SS_TOKENS.fg2 }}>
       A plane is up but we don&rsquo;t have its position yet.
-    </div>
-  );
-}
-
-function ContextLine({
-  airborneCount,
-  nearest,
-}: {
-  airborneCount: number;
-  nearest: WatcherEntry | null;
-}) {
-  let text: string;
-  let color: string;
-  if (nearest?.distanceNm != null && nearest.distanceNm <= NEAR_NM) {
-    const display = nearest.plane.nickname || nearest.plane.tail;
-    text = `Heads up · ${display} ${nearest.distanceNm.toFixed(1)}nm away`;
-    color = SS_TOKENS.warn;
-  } else if (airborneCount > 0) {
-    text = "Watchers aloft, not nearby";
-    color = SS_TOKENS.fg1;
-  } else {
-    text = "Clear skies";
-    color = SS_TOKENS.clear;
-  }
-  return (
-    <div
-      style={{
-        padding: "10px 14px",
-        fontSize: 13,
-        color,
-        textAlign: "center",
-      }}
-    >
-      {text}
     </div>
   );
 }

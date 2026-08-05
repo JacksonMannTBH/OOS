@@ -121,6 +121,8 @@ export async function getLiveTrackWindow(
   _nowMs = Date.now(),
   windowSeconds = LIVE_TRACK_WINDOW_SECONDS,
 ): Promise<TrackPoint[]> {
+  // Raw retention window: use getCurrentFlightTrack for live aircraft trails
+  // so separate flights inside the one-hour retention period are not stitched.
   return readRecentPoints(tail, Math.min(windowSeconds, LIVE_TRACK_WINDOW_SECONDS));
 }
 

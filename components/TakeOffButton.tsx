@@ -16,7 +16,6 @@ export function TakeOffButton({ variant = "hero" }: Props) {
   const [busy, setBusy] = useState(false);
   const compact = variant === "compact";
   const plain = variant === "plain";
-  const iconSize = compact || plain ? 18 : 23;
 
   const onTakeOff = async () => {
     setBusy(true);
@@ -30,7 +29,7 @@ export function TakeOffButton({ variant = "hero" }: Props) {
       type="button"
       onClick={onTakeOff}
       disabled={busy}
-      aria-label="Take Off and enter Riding Mode"
+      aria-label="Start Ride"
       style={{
         boxSizing: "border-box",
         width: compact || plain ? "auto" : "min(100%, 360px)",
@@ -64,21 +63,7 @@ export function TakeOffButton({ variant = "hero" }: Props) {
         WebkitTapHighlightColor: "transparent",
       }}
     >
-      <svg
-        aria-hidden
-        width={iconSize}
-        height={iconSize}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M12 19V5" />
-        <path d="m5 12 7-7 7 7" />
-      </svg>
-      <span>{busy ? "Taking Off..." : "Take Off"}</span>
+      <span>{busy ? "Starting Ride..." : "Start Ride"}</span>
     </button>
   );
 }
