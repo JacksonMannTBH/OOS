@@ -36,6 +36,14 @@
   --ss-radius-md: 14px;
   --ss-radius-lg: 18px;
   --ss-radius-xl: 24px;
+  --ss-tabbar-bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 18px));
+  --ss-tabbar-bottom-map: var(--ss-tabbar-bottom);
+}
+
+@media (display-mode: standalone) {
+  :root {
+    --ss-tabbar-bottom-map: max(2px, calc(env(safe-area-inset-bottom, 0px) - 32px));
+  }
 }
 
 body[data-theme="dark"] {

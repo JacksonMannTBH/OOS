@@ -45,6 +45,10 @@ export function TabBar() {
   const searchParams = useSearchParams();
   const runRideLaunchPreflight = useRideLaunchPreflight();
   const [rideBusy, setRideBusy] = useState(false);
+  const tabbarBottom =
+    pathname === "/map" || pathname.startsWith("/map/")
+      ? "var(--ss-tabbar-bottom-map)"
+      : "var(--ss-tabbar-bottom)";
   const rideHref = useMemo(() => {
     const mock = searchParams.get("mock");
     return mock ? `/ride?mock=${encodeURIComponent(mock)}` : "/ride";
@@ -66,7 +70,7 @@ export function TabBar() {
           position: "fixed",
           left: "max(12px, env(safe-area-inset-left))",
           right: "max(12px, env(safe-area-inset-right))",
-          bottom: "max(8px, calc(env(safe-area-inset-bottom, 0px) - 18px))",
+          bottom: tabbarBottom,
           boxSizing: "border-box",
           maxWidth: 390,
           margin: "0 auto",
