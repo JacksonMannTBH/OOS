@@ -71,8 +71,6 @@ export const FLEET: FleetEntry[] = [
   // All four classified as patrol — federal LE under the Bird umbrella.
   { tail: "N1977G", hex: null,     operator: "CBP",          model: "Airbus AS350 / H125",            nickname: "TROY 188",          roleDescription: "Federal patrol / interdiction (helicopter)", base: "KBLI Bellingham AMB",            role: "patrol",    roleConfidence: "confirmed", roleNote: "CBP AMO Bellingham AS350 (TROY 188)" },
   { tail: "N2108J", hex: null,     operator: "CBP",          model: "Airbus AS350 / H125",            nickname: "TROY 169",          roleDescription: "Federal patrol / interdiction (helicopter)", base: "KBLI Bellingham AMB",            role: "patrol",    roleConfidence: "confirmed", roleNote: "CBP AMO Bellingham AS350 (TROY 169)" },
-  { tail: "N741C",  hex: null,     operator: "CBP",          model: "Airbus AS350 / H125",            nickname: "TROY 170",          roleDescription: "Federal patrol / interdiction (helicopter)", base: "KBLI Bellingham AMB",            role: "patrol",    roleConfidence: "confirmed", roleNote: "CBP AMO Bellingham AS350 (TROY 170)" },
-  { tail: "N128J",  hex: null,     operator: "CBP",          model: "Beechcraft B300C MEA",           nickname: "TROY 301",          roleDescription: "Federal multi-enforcement aircraft (fixed-wing)", base: "KBLI Bellingham AMB",        role: "patrol",    roleConfidence: "confirmed", roleNote: "CBP AMO Bellingham B300C surveillance (TROY 301)" },
 
   // US Coast Guard — Air Station Port Angeles, KCLM
   // Non-FAA registered (military serial); hex is authoritative. Air Station
@@ -97,11 +95,18 @@ export const FLEET: FleetEntry[] = [
  * v4 (2026-06-12): Adds N411KS so the fixed public tracking list is
  * complete on seed-only deployments.
  *
+ * v7 (2026-08-04): Retires N741C from active tracking.
+ *
+ * v8 (2026-08-04): Retires N128J from active tracking.
+ *
+ * v9 (2026-08-04): Expands WA, CA, TX, FL, OH, and CO law-enforcement
+ * aircraft coverage from the FAA public aircraft registry cross-check.
+ *
  * Round-2 research (2026-05-07, no version bump): see the notes block
  * below documenting which agencies were investigated and why they
  * couldn't be added in this pass. The FLEET array did not change.
  */
-export const SEED_VERSION = 6;
+export const SEED_VERSION = 9;
 
 // Round-2 registry research notes (2026-05-07).
 //

@@ -1,4 +1,5 @@
 import type { AppStateId } from "./app-states";
+import { FAA_PUBLIC_SAFETY_AIRCRAFT_ROWS } from "./faa-public-safety-aircraft";
 import type { FleetEntry, FleetRole } from "./types";
 
 export type OpsAircraft = {
@@ -55,9 +56,14 @@ const WA_ROWS: WaAircraftTuple[] = [
   ["N67880", "Bell 206B / TH-67A type", "KCSO", "118 kts / 136 mph", "Approx. 3.0-3.3 hours range-derived", 189],
   ["N78906", "Bell 206B / TH-67A type", "KCSO", "118 kts / 136 mph", "Approx. 3.0-3.3 hours range-derived", 189],
   ["N790RJ", "Bell UH-1H Huey", "KCSO", "117 kts / 135 mph", "Approx. 2.5 hours range-derived", 150],
+  ["N71KP", "Bell UH-1H Iroquois", "KCSO reserve", "117 kts / 135 mph", "Approx. 2.5 hours range-derived", 150],
   ["N815SC", "Bell UH-1H Huey", "Snohomish SO", "117 kts / 135 mph", "Approx. 2.5 hours range-derived", 150],
   ["N9446P", "Cessna T206H Turbo Stationair", "Pierce SO", "161 ktas / 185 mph", "Approx. 4.4-5.0 hours range-derived", 282],
   ["N422CT", "Bell 407 / 407GXi", "KCSO", "133 kts / 153 mph max cruise", "Approx. 4.0 hours", 240],
+  ["N509DV", "Bell 505 Jet Ranger X", "Spokane SO", "133 kt / 153 mph", "Approx. 4.5 hours with auxiliary fuel", 270],
+  ["N1977G", "Airbus AS350 / H125", "CBP AMO Bellingham", "136 kt fast cruise", "Approx. 4.0 hours", 240],
+  ["N2108J", "Airbus AS350 / H125", "CBP AMO Bellingham", "136 kt fast cruise", "Approx. 4.0 hours", 240],
+  ["CGNR6594", "Eurocopter MH-65E Dolphin", "USCG Port Angeles", "148 kt cruise", "Approx. 3.5 hours", 210],
 ];
 
 const WA: OpsAircraft[] = WA_ROWS.map(
@@ -380,7 +386,35 @@ const LOCAL_ROWS: OpsAircraft[] = LOCAL_ROW_DATA.map(
   }),
 );
 
-export const OPS_AIRCRAFT: OpsAircraft[] = [...WA, ...NEW_ROWS, ...LOCAL_ROWS];
+const FAA_PUBLIC_SAFETY_ROWS: OpsAircraft[] = FAA_PUBLIC_SAFETY_AIRCRAFT_ROWS.map(
+  ([
+    stateId,
+    tail,
+    ,
+    model,
+    unit,
+    fuelText,
+    speedText,
+    enduranceText,
+    durationMin,
+  ]) => ({
+    stateId,
+    tail,
+    model,
+    unit,
+    fuelText,
+    speedText,
+    enduranceText,
+    durationMin,
+  }),
+);
+
+export const OPS_AIRCRAFT: OpsAircraft[] = [
+  ...WA,
+  ...NEW_ROWS,
+  ...LOCAL_ROWS,
+  ...FAA_PUBLIC_SAFETY_ROWS,
+];
 
 const OPS_AIRCRAFT_STATE_BY_TAIL = new Map(
   OPS_AIRCRAFT.map((row) => [row.tail, row.stateId]),
@@ -403,9 +437,11 @@ export function filterOpsAircraftByState<T extends { tail: string }>(
   });
 }
 
-export const ADDITIONAL_TRACKED_TAILS = [...NEW_ROWS, ...LOCAL_ROWS].map(
-  (row) => row.tail,
-);
+export const ADDITIONAL_TRACKED_TAILS = [
+  ...NEW_ROWS,
+  ...LOCAL_ROWS,
+  ...FAA_PUBLIC_SAFETY_ROWS,
+].map((row) => row.tail);
 
 export const AIRCRAFT_DURATION_MINUTES = Object.fromEntries(
   OPS_AIRCRAFT.map((row) => [row.tail, row.durationMin]),
@@ -444,6 +480,27 @@ export const ADDITIONAL_FLEET: FleetEntry[] = [
       role,
       roleConfidence: "tentative",
       roleNote: `${row.unit} local agency aircraft`,
+    } satisfies FleetEntry;
+  }),
+  ...FAA_PUBLIC_SAFETY_AIRCRAFT_ROWS.map((row) => {
+    const [stateId, tail, hex, model, unit] = row;
+    const role = roleForModel(model);
+    const statewideOperator = operatorForState(stateId);
+    const operator = unit.includes(statewideOperator) ? statewideOperator : unit;
+    return {
+      tail,
+      hex,
+      operator,
+      model,
+      nickname: null,
+      roleDescription:
+        role === "patrol"
+          ? "Patrol / air support"
+          : "Law enforcement / surveillance",
+      base: unit,
+      role,
+      roleConfidence: "tentative",
+      roleNote: `${unit} FAA public-safety registry aircraft`,
     } satisfies FleetEntry;
   }),
 ];
