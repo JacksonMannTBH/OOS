@@ -69,6 +69,7 @@ export type StateIngestionSummary = {
 
 const TAKEOFF_CONFIRMATION_SAMPLES = 2;
 const LANDING_CONFIRMATION_SAMPLES = 2;
+const TAKEOFF_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1_000;
 const CURRENT_OBSERVATION_MAX_AGE_MS = 2 * 60 * 1_000;
 const MAX_OPEN_FLIGHT_SESSION_MS = 18 * 60 * 60 * 1_000;
 
@@ -587,25 +588,33 @@ export async function ingestSnapshot(
           throw new Error(`Position session backfill failed: ${backfillError.message}`);
         }
 
-        const { error: eventError } = await db.from("notification_events").upsert(
-          {
-            flight_session_id: flightSessionId,
-            aircraft_id: catalogRow.id,
-            state_code: catalogRow.home_state_code,
-            event_type: "takeoff",
-            occurred_at: detectedTakeoffAt,
-            payload: {
-              tail: catalogRow.tail,
-              nickname: catalogRow.nickname,
-              model: catalogRow.model,
-              state_code: catalogRow.home_state_code,
-            },
-          },
-          { onConflict: "flight_session_id,event_type", ignoreDuplicates: true },
+        const suppressNotification = await shouldSuppressTakeoffNotification(
+          db,
+          catalogRow.id,
+          flightSessionId,
+          detectedTakeoffAt,
         );
-        if (!eventError) {
-          takeoffsCreated += 1;
-          stateSummary.takeoffsCreated += 1;
+        if (!suppressNotification) {
+          const { error: eventError } = await db.from("notification_events").upsert(
+            {
+              flight_session_id: flightSessionId,
+              aircraft_id: catalogRow.id,
+              state_code: catalogRow.home_state_code,
+              event_type: "takeoff",
+              occurred_at: detectedTakeoffAt,
+              payload: {
+                tail: catalogRow.tail,
+                nickname: catalogRow.nickname,
+                model: catalogRow.model,
+                state_code: catalogRow.home_state_code,
+              },
+            },
+            { onConflict: "flight_session_id,event_type", ignoreDuplicates: true },
+          );
+          if (!eventError) {
+            takeoffsCreated += 1;
+            stateSummary.takeoffsCreated += 1;
+          }
         }
       }
     }
@@ -860,6 +869,22 @@ export function isNewerAircraftObservation(
     (previousObservedAt == null || incomingObservedAt > previousObservedAt);
 }
 
+export function shouldSuppressTakeoffNotificationForTimes(
+  detectedTakeoffAt: string,
+  previousNotificationAt?: string | null,
+  previousLandingAt?: string | null,
+): boolean {
+  const takeoffMs = parseTime(detectedTakeoffAt);
+  if (takeoffMs == null) return false;
+
+  return [previousNotificationAt, previousLandingAt].some((value) => {
+    const previousMs = parseTime(value);
+    return previousMs != null &&
+      previousMs <= takeoffMs &&
+      takeoffMs - previousMs < TAKEOFF_NOTIFICATION_COOLDOWN_MS;
+  });
+}
+
 function normalizedAircraftTimestamp(
   value: string | null | undefined,
   snapshotFetchedAt: number,
@@ -868,6 +893,63 @@ function normalizedAircraftTimestamp(
   const parsed = parseTime(value);
   if (parsed == null) return fallback;
   return new Date(Math.min(parsed, snapshotFetchedAt)).toISOString();
+}
+
+async function shouldSuppressTakeoffNotification(
+  db: ReturnType<typeof getSupabaseAdmin>,
+  aircraftId: string,
+  flightSessionId: string,
+  detectedTakeoffAt: string,
+): Promise<boolean> {
+  const takeoffMs = parseTime(detectedTakeoffAt);
+  if (takeoffMs == null) return false;
+
+  const cooldownStartedAt = new Date(
+    takeoffMs - TAKEOFF_NOTIFICATION_COOLDOWN_MS,
+  ).toISOString();
+  const [
+    { data: previousEvent, error: eventError },
+    { data: previousSession, error: sessionError },
+  ] = await Promise.all([
+    db
+      .from("notification_events")
+      .select("occurred_at")
+      .eq("aircraft_id", aircraftId)
+      .eq("event_type", "takeoff")
+      .gte("occurred_at", cooldownStartedAt)
+      .lt("occurred_at", detectedTakeoffAt)
+      .order("occurred_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    db
+      .from("flight_sessions")
+      .select("detected_landing_at")
+      .eq("aircraft_id", aircraftId)
+      .neq("id", flightSessionId)
+      .not("detected_landing_at", "is", null)
+      .gte("detected_landing_at", cooldownStartedAt)
+      .lt("detected_landing_at", detectedTakeoffAt)
+      .order("detected_landing_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (eventError) {
+    throw new Error(`Recent takeoff event read failed: ${eventError.message}`);
+  }
+  if (sessionError) {
+    throw new Error(`Recent landing read failed: ${sessionError.message}`);
+  }
+
+  return shouldSuppressTakeoffNotificationForTimes(
+    detectedTakeoffAt,
+    typeof previousEvent?.occurred_at === "string"
+      ? previousEvent.occurred_at
+      : null,
+    typeof previousSession?.detected_landing_at === "string"
+      ? previousSession.detected_landing_at
+      : null,
+  );
 }
 
 function inferSnapshotSource(rows: Record<string, unknown>[] | null): SnapshotSource {

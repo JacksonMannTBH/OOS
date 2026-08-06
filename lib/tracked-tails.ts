@@ -18,8 +18,6 @@ export const TRACKED_TAILS = [
   "N9446P",
   "N422CT",
   "N509DV",
-  "N1977G",
-  "N2108J",
   "CGNR6594",
   ...ADDITIONAL_TRACKED_TAILS,
 ] as const;

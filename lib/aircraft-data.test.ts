@@ -4,6 +4,7 @@ import {
   isStaleAirborneCandidate,
   isStaleOpenFlightSession,
   isNewerAircraftObservation,
+  shouldSuppressTakeoffNotificationForTimes,
   shouldClearUnobservedState,
 } from "./aircraft-data";
 
@@ -92,5 +93,40 @@ test("implausibly old airborne candidates are treated as stale", () => {
       "2026-08-03T06:01:00.000Z",
     ),
     true,
+  );
+});
+
+test("recent same-tail notification or landing suppresses duplicate takeoff alert", () => {
+  assert.equal(
+    shouldSuppressTakeoffNotificationForTimes(
+      "2026-08-06T01:33:06.801Z",
+      "2026-08-06T01:18:29.501Z",
+      null,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldSuppressTakeoffNotificationForTimes(
+      "2026-08-06T02:10:50.851Z",
+      null,
+      "2026-08-06T02:10:33.501Z",
+    ),
+    true,
+  );
+  assert.equal(
+    shouldSuppressTakeoffNotificationForTimes(
+      "2026-08-06T02:10:50.851Z",
+      "2026-08-06T01:47:28.801Z",
+      null,
+    ),
+    true,
+  );
+  assert.equal(
+    shouldSuppressTakeoffNotificationForTimes(
+      "2026-08-06T02:10:50.851Z",
+      "2026-08-06T01:39:50.851Z",
+      null,
+    ),
+    false,
   );
 });

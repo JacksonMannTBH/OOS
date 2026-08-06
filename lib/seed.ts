@@ -58,14 +58,6 @@ export const FLEET: FleetEntry[] = [
   // confirmed — omitted to avoid mis-labeling.
   { tail: "N509DV", hex: "A65BBE", operator: "Spokane SO",   model: "Bell 505 Jet Ranger X",          nickname: "Air 1",             roleDescription: "Patrol / SAR / fugitive apprehension", base: "KSFF Felts Field, Spokane",     role: "patrol",    roleConfidence: "tentative", roleNote: "Spokane SO Bell 505 — likely Air 1 since 2024" },
 
-  // CBP Air and Marine Operations — Bellingham Air and Marine Branch
-  // (BAMB), KBLI. Tails + TROY callsigns from RadioReference Wiki. AS350
-  // helicopters do interagency support with WCSO + state agencies; the
-  // B300C MEA is a fixed-wing Multi-Enforcement Aircraft for surveillance.
-  // All four classified as patrol — federal LE under the Bird umbrella.
-  { tail: "N1977G", hex: null,     operator: "CBP",          model: "Airbus AS350 / H125",            nickname: "TROY 188",          roleDescription: "Federal patrol / interdiction (helicopter)", base: "KBLI Bellingham AMB",            role: "patrol",    roleConfidence: "confirmed", roleNote: "CBP AMO Bellingham AS350 (TROY 188)" },
-  { tail: "N2108J", hex: null,     operator: "CBP",          model: "Airbus AS350 / H125",            nickname: "TROY 169",          roleDescription: "Federal patrol / interdiction (helicopter)", base: "KBLI Bellingham AMB",            role: "patrol",    roleConfidence: "confirmed", roleNote: "CBP AMO Bellingham AS350 (TROY 169)" },
-
   // US Coast Guard — Air Station Port Angeles, KCLM
   // Non-FAA registered (military serial); hex is authoritative. Air Station
   // Port Angeles operates three MH-65E Dolphins per the 2021 transition
@@ -81,8 +73,7 @@ export const FLEET: FleetEntry[] = [
  * Bump when seed shape changes — read by the admin migration route to
  * decide whether to re-merge seed values into the KV-stored registry.
  *
- * v3 (2026-05-07): Statewide expansion — adds 4 CBP/AMO Bellingham
- * entries (N1977G, N2108J, N741C, N128J) and 1 USCG Air Station Port
+ * v3 (2026-05-07): Statewide expansion — adds 1 USCG Air Station Port
  * Angeles entry (CGNR6594, MH-65E). Pierce One confidence promoted to
  * confirmed. WSP King Air operator note clarified.
  *
@@ -96,11 +87,14 @@ export const FLEET: FleetEntry[] = [
  * v9 (2026-08-04): Expands WA, CA, TX, FL, OH, and CO law-enforcement
  * aircraft coverage from the FAA public aircraft registry cross-check.
  *
+ * v10 (2026-08-06): Removes Customs/CBP-specific aircraft from active
+ * tracking scope.
+ *
  * Round-2 research (2026-05-07, no version bump): see the notes block
  * below documenting which agencies were investigated and why they
  * couldn't be added in this pass. The FLEET array did not change.
  */
-export const SEED_VERSION = 9;
+export const SEED_VERSION = 10;
 
 // Round-2 registry research notes (2026-05-07).
 //
@@ -135,7 +129,7 @@ export const SEED_VERSION = 9;
 // Researched and confirmed NOT to operate own aircraft (rely on
 // partners or regional consortium):
 //
-//   - Whatcom County Sheriff (uses CBP/AMO Bellingham)
+//   - Whatcom County Sheriff (uses federal aviation partners)
 //   - Clark County Sheriff (uses Portland Air Support)
 //   - Kitsap County Sheriff (regional consortium member)
 //   - Yakima County Sheriff (no aviation unit found)

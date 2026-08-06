@@ -280,10 +280,8 @@ function LeadIdentity({
   nickname: string | null;
   operator: string;
 }) {
-  // Lead-identity line under the stat chips so a rider knows whether
-  // the fixed_wing at 4m aloft is the WSP Cessna near Olympia or the CBP
-  // B300C at FL190. Tappable — drills into /plane/[tail] for live
-  // map + history.
+  // Lead-identity line under the stat chips so a rider knows which tracked
+  // aircraft is currently active. Tappable — drills into /plane/[tail].
   const middle = nickname ? ` · "${nickname}" · ` : " · ";
   return (
     <Link

@@ -61,8 +61,6 @@ const WA_ROWS: WaAircraftTuple[] = [
   ["N9446P", "Cessna T206H Turbo Stationair", "Pierce SO", "161 ktas / 185 mph", "Approx. 4.4-5.0 hours range-derived", 282],
   ["N422CT", "Bell 407 / 407GXi", "KCSO", "133 kts / 153 mph max cruise", "Approx. 4.0 hours", 240],
   ["N509DV", "Bell 505 Jet Ranger X", "Spokane SO", "133 kt / 153 mph", "Approx. 4.5 hours with auxiliary fuel", 270],
-  ["N1977G", "Airbus AS350 / H125", "CBP AMO Bellingham", "136 kt fast cruise", "Approx. 4.0 hours", 240],
-  ["N2108J", "Airbus AS350 / H125", "CBP AMO Bellingham", "136 kt fast cruise", "Approx. 4.0 hours", 240],
   ["CGNR6594", "Eurocopter MH-65E Dolphin", "USCG Port Angeles", "148 kt cruise", "Approx. 3.5 hours", 210],
 ];
 

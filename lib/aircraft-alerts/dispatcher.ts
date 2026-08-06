@@ -3,6 +3,7 @@ import { isStateCode } from "@/lib/app-states";
 import { sendAircraftAlertPush } from "./web-push";
 
 const MAX_DELIVERIES_PER_RUN = 100;
+const NOTIFICATION_TAG_WINDOW_MS = 30 * 60 * 1_000;
 
 export type NotificationDispatchSummary = {
   claimed: number;
@@ -81,7 +82,7 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
         title: `${label} took off`,
         body: `${tail} began a tracked flight.`,
         url: detailUrl,
-        tag: `takeoff-${String(delivery.id)}`,
+        tag: takeoffNotificationTag(tail, event.occurred_at),
         aircraftTail: tail,
       },
     );
@@ -139,6 +140,21 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
     summary.failed += 1;
   }
   return summary;
+}
+
+export function takeoffNotificationTag(
+  tail: string,
+  occurredAt: unknown,
+): string {
+  const normalizedTail = tail.trim().toUpperCase().replace(/[^A-Z0-9-]/g, "");
+  const occurredMs = typeof occurredAt === "string"
+    ? Date.parse(occurredAt)
+    : NaN;
+  const windowMs = Number.isFinite(occurredMs)
+    ? Math.floor(occurredMs / NOTIFICATION_TAG_WINDOW_MS) *
+      NOTIFICATION_TAG_WINDOW_MS
+    : 0;
+  return `takeoff-${normalizedTail || "AIRCRAFT"}-${windowMs}`;
 }
 
 async function markFailed(
