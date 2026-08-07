@@ -2,23 +2,23 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { LogoMark } from "./brand/Logo";
 import { filterOpsAircraftByState } from "@/lib/aircraft-directory";
 import { useAircraft } from "@/lib/hooks/useAircraft";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
 import { SS_TOKENS } from "@/lib/tokens";
-import { FEATURED_TAIL } from "@/lib/seed";
 import { haversineNm } from "@/lib/geo";
 import { proximityBandForDistance } from "@/lib/proximity-display";
 import { computeStatus } from "@/lib/status";
 import { aircraftVehicleType } from "@/lib/aircraft-type";
 import { AlertsOptInCard } from "./AlertsOptInCard";
 import { ProximityFlash } from "./ProximityFlash";
+import { SettingsButton } from "./SettingsButton";
 import { TakeOffButton } from "./TakeOffButton";
 import { StatusHero } from "./StatusHero";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
-const TABBAR_HEIGHT = 66;
 const NEAR_NM = 5;
 const HOME_BACKGROUND_IMAGE = "/images/home-map-background.png";
 type WatcherEntry = { plane: Aircraft; distanceNm: number | null };
@@ -54,8 +54,6 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
     () => computeStatus(stateSnap, fleetMap),
     [stateSnap, fleetMap],
   );
-  const featuredAircraft = stateAircraft.find((a) => a.tail === FEATURED_TAIL);
-  const featuredAircraftUp = Boolean(featuredAircraft?.airborne);
 
   // All airborne planes, sorted by Haversine distance when rider location is
   // available. The first positioned entry still drives the proximity flash.
@@ -85,6 +83,16 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
   const nearestBand = nearest?.distanceNm != null
     ? proximityBandForDistance(nearest.distanceNm)
     : null;
+  const eyeTarget = nearest?.plane ?? airborne[0] ?? null;
+  const eyeHref = eyeTarget
+    ? {
+        pathname: "/map",
+        query: {
+          ...(mockParam ? { mock: mockParam } : {}),
+          tail: eyeTarget.tail,
+        },
+      }
+    : "/home";
 
 
   return (
@@ -97,7 +105,7 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
           zIndex: 0,
           pointerEvents: "none",
           backgroundColor: "#050607",
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.84)), url(${HOME_BACKGROUND_IMAGE})`,
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.20), rgba(0, 0, 0, 0.45)), url(${HOME_BACKGROUND_IMAGE})`,
           backgroundPosition: "center top",
           backgroundRepeat: "no-repeat",
           backgroundSize: "cover",
@@ -111,7 +119,7 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
           // hides behind the fixed-position prompt on iOS Safari.
           boxSizing: "border-box",
           width: "100%",
-          padding: `clamp(16px, 4vw, 22px) clamp(14px, 5vw, 20px) ${TABBAR_HEIGHT + 136}px`,
+          padding: `clamp(52px, 13vw, 72px) clamp(14px, 5vw, 20px) 136px`,
           maxWidth: 430,
           margin: "0 auto",
           position: "relative",
@@ -121,22 +129,102 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
           gap: "clamp(14px, 4vw, 18px)",
         }}
       >
-        <StatusHero
-          status={status}
-          lastSampleMs={snap.fetched_at}
-          showPill={false}
-          frameless
+        <SettingsButton
+          label=""
+          variant="plain"
+          style={{
+            position: "absolute",
+            top: "max(8px, env(safe-area-inset-top))",
+            right: "clamp(14px, 5vw, 20px)",
+            width: 44,
+            minHeight: 44,
+            padding: 0,
+            marginTop: 0,
+            alignSelf: "auto",
+            zIndex: 2,
+          }}
         />
+        <Link
+          href={eyeHref}
+          prefetch={false}
+          aria-label={
+            eyeTarget
+              ? `View nearest active aircraft ${eyeTarget.tail}`
+              : "Home"
+          }
+          style={{
+            alignSelf: "center",
+            display: "block",
+            width: 300,
+            height: 200,
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          <LogoMark
+            height={200}
+            width={300}
+            variant={
+              snap.fetched_at <= 0 || snap.aircraft.some((aircraft) => aircraft.airborne)
+                ? "open"
+                : "closed"
+            }
+          />
+        </Link>
+        <div
+          style={{
+            position: "relative",
+            top: "clamp(16px, 4vw, 28px)",
+          }}
+        >
+          <StatusHero
+            status={status}
+            showPill={false}
+            frameless
+          />
+        </div>
 
-        <TakeOffButton />
-
-        <NearestCard
-          watcherList={watcherList}
-          riderHasFix={Boolean(pos)}
-          featuredAircraftUp={featuredAircraftUp}
-          airborneCount={airborne.length}
-          mockParam={mockParam}
-        />
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 460,
+            alignSelf: "center",
+            marginTop: "clamp(44px, 12vw, 72px)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+          }}
+        >
+          <TakeOffButton />
+          <Link
+            href={
+              mockParam
+                ? { pathname: "/map", query: { mock: mockParam } }
+                : "/map"
+            }
+            prefetch={false}
+            style={{
+              width: "100%",
+              minHeight: 56,
+              boxSizing: "border-box",
+              borderRadius: 18,
+              border: "1px solid #fffdf8",
+              background: "#fffdf8",
+              color: SS_TOKENS.alert,
+              fontFamily: "inherit",
+              fontSize: 18,
+              fontWeight: 900,
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 16px 50px rgba(0, 0, 0, 0.18)",
+              touchAction: "manipulation",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            View Map
+          </Link>
+        </div>
 
         <AlertsOptInCard frameless />
 
@@ -157,13 +245,11 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
 function NearestCard({
   watcherList,
   riderHasFix,
-  featuredAircraftUp,
   airborneCount,
   mockParam,
 }: {
   watcherList: WatcherEntry[];
   riderHasFix: boolean;
-  featuredAircraftUp: boolean;
   airborneCount: number;
   mockParam?: string;
 }) {
@@ -228,7 +314,6 @@ function NearestCard({
       ) : (
         <NearestEmpty
           riderHasFix={riderHasFix}
-          featuredAircraftUp={featuredAircraftUp}
           airborneCount={airborneCount}
         />
       )}
@@ -376,11 +461,9 @@ function NearestRow({
 
 function NearestEmpty({
   riderHasFix,
-  featuredAircraftUp,
   airborneCount,
 }: {
   riderHasFix: boolean;
-  featuredAircraftUp: boolean;
   airborneCount: number;
 }) {
   const baseStyle: React.CSSProperties = {
@@ -400,30 +483,6 @@ function NearestEmpty({
       </div>
     );
   }
-  if (!featuredAircraftUp) {
-    return (
-      <div
-        style={{ ...baseStyle, display: "flex", alignItems: "center", gap: 10 }}
-      >
-        <span
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: SS_TOKENS.clear,
-            boxShadow: `0 0 8px ${SS_TOKENS.clear}`,
-          }}
-        />
-        <span style={{ fontSize: 14, color: SS_TOKENS.fg1 }}>
-          No watchers aloft
-        </span>
-      </div>
-    );
-  }
-  return (
-    <div style={{ ...baseStyle, fontSize: 13, color: SS_TOKENS.fg2 }}>
-      A plane is up but we don&rsquo;t have its position yet.
-    </div>
-  );
+  return null;
 }
 

@@ -26,7 +26,7 @@ const WATCH_OPTS: PositionOptions = {
 /**
  * Subscribes to navigator.geolocation.watchPosition. Mounting this hook is
  * what triggers the permission prompt — only do that on rider-facing pages
- * (/map, /dash), never on the home glanceable.
+ * (/map), never on the home glanceable.
  */
 export function useRiderPos(): RiderState {
   const [pos, setPos] = useState<RiderPos | null>(null);

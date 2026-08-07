@@ -1,7 +1,7 @@
 // Run: npx tsx --test lib/time.test.ts
 //
 // Pins the contract for fmtAgoTs against the regression that shipped on
-// /dash: a forked formatter treated millisecond timestamps as seconds and
+// A forked formatter treated millisecond timestamps as seconds and
 // collapsed every Recent activity row into "just now". The activity feed
 // (lib/activity.ts) emits ms-since-epoch, so callers must read ms here too.
 

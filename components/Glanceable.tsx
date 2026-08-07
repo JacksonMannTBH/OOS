@@ -134,7 +134,7 @@ export function Glanceable({
         maxWidth: 430,
       }}
     >
-      <StatusHero status={status} lastSampleMs={lastSampleMs ?? snap.fetched_at} />
+      <StatusHero status={status} />
 
       <TakeOffButton />
 

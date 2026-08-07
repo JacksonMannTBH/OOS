@@ -171,7 +171,7 @@ test("coherence: SAR/transport plane copy doesn't use speed-enforcement language
 // ASSERT 5: time-ago labels are non-negative + not future-tense
 test("coherence: time-ago labels are non-negative", async ({ page }, testInfo) => {
   if (testInfo.project.name !== "chromium-desktop") test.skip();
-  const surfaces = ["/", "/map", "/activity"];
+  const surfaces = ["/", "/map"];
   const violations: unknown[] = [];
   for (const surface of surfaces) {
     try {
@@ -277,25 +277,3 @@ test("coherence: every snapshot tail appears on /about registry list", async ({
   writeViolations("tail-registry-sync", violations);
 });
 
-// ASSERT 10: empty-state copy fires when /api/activity is empty
-test("coherence: empty states present appropriate copy", async ({ page, request }, testInfo) => {
-  if (testInfo.project.name !== "chromium-desktop") test.skip();
-  const violations: unknown[] = [];
-  await page.goto("/activity", { waitUntil: "networkidle" });
-  await page.waitForTimeout(1500);
-  const activityText = await page.locator("main").innerText();
-  const r = await request.get("/api/activity");
-  if (r.ok()) {
-    const data = await r.json();
-    const events = Array.isArray(data) ? data : (data.entries ?? []);
-    if (events.length === 0) {
-      if (!/quiet|nothing|no\s+events|no\s+activity|all\s+clear/i.test(activityText)) {
-        violations.push({
-          surface: "/activity",
-          bug: "zero events but no empty-state copy detected",
-        });
-      }
-    }
-  }
-  writeViolations("empty-states", violations);
-});

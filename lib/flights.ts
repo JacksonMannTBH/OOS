@@ -187,14 +187,12 @@ async function sessionFromDatabase(row: SessionRow): Promise<FlightSession> {
 async function pointsForFlightSession(
   flightSessionId: string,
 ): Promise<TrackPoint[]> {
-  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { data, error } = await getSupabaseAdmin()
     .from("aircraft_positions")
     .select(
       "latitude,longitude,altitude_ft,ground_speed_kt,heading_deg,observed_at",
     )
     .eq("flight_session_id", flightSessionId)
-    .gte("observed_at", cutoff)
     .order("observed_at", { ascending: true });
   if (error) return [];
   return (data ?? []).map((row) => ({

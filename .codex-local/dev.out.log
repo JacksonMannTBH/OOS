@@ -1,0 +1,97 @@
+
+> out-of-sight@0.1.0 predev
+> node scripts/check-env.mjs
+
+
+> out-of-sight@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3000
+
+ ✓ Starting...
+ ✓ Ready in 1022ms
+ ○ Compiling /map ...
+ ✓ Compiled /map in 2.5s (771 modules)
+ GET /map?mock=mixed 200 in 2897ms
+ ○ Compiling /home ...
+ ✓ Compiled /api/aircraft in 1559ms (812 modules)
+ GET /api/aircraft?state=WA&_=1786078247594 200 in 1297ms
+ GET /api/aircraft?state=WA&mock=mixed&_=1786078247593 200 in 1300ms
+ GET /home 200 in 1829ms
+ GET /api/aircraft?state=CA&_=1786078249891 200 in 193ms
+ GET /api/aircraft?state=WA&mock=mixed&_=1786078250428 200 in 5ms
+ ✓ Compiled /api/trails in 60ms (461 modules)
+ GET /api/trails?tails=N305DK,N422CT 200 in 142ms
+ GET /api/aircraft?state=CA&_=1786078251790 200 in 200ms
+ GET /api/aircraft?state=WA&_=1786078257603 200 in 6ms
+ GET /api/aircraft?state=CA&_=1786078260157 200 in 5ms
+ GET /api/aircraft?state=WA&_=1786078261241 200 in 6ms
+ GET /api/aircraft?state=WA&_=1786078267604 200 in 215ms
+ GET /api/aircraft?state=CA&_=1786078270151 200 in 194ms
+ GET /api/aircraft?state=CA&_=1786078280158 200 in 6ms
+ GET /api/aircraft?state=CA&_=1786078290159 200 in 203ms
+ GET /api/aircraft?state=CA&_=1786078300152 200 in 5ms
+ GET /api/aircraft?state=CA&_=1786078310153 200 in 211ms
+ ✓ Compiled in 288ms (812 modules)
+ GET /api/aircraft?state=CA&_=1786078346155 200 in 190ms
+ GET /api/aircraft?state=CA&_=1786078356156 200 in 6ms
+ GET /api/aircraft?state=WA&_=1786078378332 200 in 206ms
+ GET /home 200 in 63ms
+ GET /api/aircraft?state=WA&_=1786078384386 200 in 6ms
+ GET /api/aircraft?state=CA&_=1786078416152 200 in 212ms
+ GET /api/aircraft?state=WA&_=1786078452341 200 in 210ms
+ GET /api/aircraft?state=WA&_=1786078462339 200 in 5ms
+ GET /api/aircraft?state=WA&_=1786078472340 200 in 211ms
+ GET /api/aircraft?state=CA&_=1786078476156 200 in 193ms
+ GET /api/aircraft?state=WA&_=1786078511473 200 in 202ms
+ GET /api/aircraft?state=WA&_=1786078521487 200 in 5ms
+ GET /api/aircraft?state=WA&_=1786078531507 200 in 205ms
+ GET /api/aircraft?state=CA&_=1786078536153 200 in 188ms
+ GET /api/aircraft?state=WA&_=1786078541527 200 in 6ms
+ GET /api/aircraft?state=WA&_=1786078551546 200 in 572ms
+ GET /api/aircraft?state=CA&_=1786078596150 200 in 209ms
+ GET /api/aircraft?state=CA&_=1786078656154 200 in 207ms
+ GET /api/aircraft?state=CA&_=1786078716154 200 in 211ms
+ GET /api/aircraft?state=CA&_=1786078776155 200 in 203ms
+ GET /api/aircraft?state=CA&_=1786078836152 200 in 220ms
+ GET /api/aircraft?state=CA&_=1786078896157 200 in 223ms
+ GET /api/aircraft?state=CA&_=1786078956153 200 in 204ms
+ GET /api/aircraft?state=CA&_=1786079016156 200 in 332ms
+ GET /api/aircraft?state=WA&_=1786079059474 200 in 211ms
+ GET /api/aircraft?state=WA&_=1786079071826 200 in 5ms
+ GET /home 200 in 29ms
+ GET /api/aircraft?state=WA&_=1786079073263 200 in 6ms
+ GET /api/aircraft?state=CA&_=1786079076153 200 in 474ms
+ GET /api/aircraft?state=WA&_=1786079084527 200 in 227ms
+ GET /api/aircraft?state=CA&_=1786079136150 200 in 550ms
+ GET /api/aircraft?state=CA&_=1786079196156 200 in 207ms
+ GET /api/aircraft?state=CA&_=1786079256151 200 in 204ms
+ GET /api/aircraft?state=WA&_=1786079267114 200 in 206ms
+ GET /api/aircraft?state=CA&_=1786079316155 200 in 223ms
+ GET /api/aircraft?state=CA&_=1786079376152 200 in 248ms
+ GET /api/aircraft?state=CA&_=1786079436155 200 in 212ms
+ GET /api/aircraft?state=CA&_=1786079496153 200 in 214ms
+ GET /api/aircraft?state=CA&_=1786079556157 200 in 206ms
+ GET /api/aircraft?state=CA&_=1786079616153 200 in 208ms
+ GET /api/aircraft?state=CA&_=1786079676150 200 in 209ms
+ GET /api/aircraft?state=CA&_=1786079736154 200 in 234ms
+ GET /api/aircraft?state=CA&_=1786079796151 200 in 235ms
+ GET /api/aircraft?state=CA&_=1786079856151 200 in 208ms
+ GET /api/aircraft?state=CA&_=1786079916153 200 in 207ms
+ GET /api/aircraft?state=CA&_=1786079976156 200 in 210ms
+ GET /api/aircraft?state=CA&_=1786080036153 200 in 208ms
+ GET /api/aircraft?state=CA&_=1786080096156 200 in 208ms
+ GET /api/aircraft?state=CA&_=1786080156153 200 in 320ms
+ GET /home 200 in 259ms
+ GET /api/aircraft?state=WA&_=1786080196677 200 in 5ms
+ GET /api/aircraft?state=WA&_=1786080206687 200 in 5ms
+ GET /api/aircraft?state=CA&_=1786080216157 200 in 212ms
+ GET /api/aircraft?state=CA&_=1786080276154 200 in 208ms
+ GET /api/aircraft?state=CA&_=1786080336151 200 in 202ms
+ GET /api/aircraft?state=CA&_=1786080396155 200 in 208ms
+ GET /api/aircraft?state=CA&_=1786080456155 200 in 203ms
+ GET /api/aircraft?state=CA&_=1786080516156 200 in 214ms
+ GET /api/aircraft?state=CA&_=1786080576160 200 in 209ms
+ GET /api/aircraft?state=CA&_=1786080636156 200 in 324ms
+ GET /api/aircraft?state=CA&_=1786080696154 200 in 203ms

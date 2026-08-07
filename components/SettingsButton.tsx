@@ -20,6 +20,7 @@ export function SettingsButton({
     <Link
       href={href}
       prefetch={false}
+      aria-label={label || "Settings"}
       style={{
         boxSizing: "border-box",
         width: plain ? "auto" : "min(100%, 360px)",
@@ -46,7 +47,7 @@ export function SettingsButton({
       }}
     >
       <GearIcon />
-      <span>{label}</span>
+      {label && <span>{label}</span>}
     </Link>
   );
 }

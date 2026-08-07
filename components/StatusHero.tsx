@@ -1,24 +1,18 @@
-import Link from "next/link";
 import { SS_TOKENS } from "@/lib/tokens";
-import { fmtAloft, formatTsBare } from "@/lib/time";
 import type { StatusState } from "@/lib/status";
 
 type Props = {
   status: StatusState;
-  lastSampleMs?: number | null;
   showPill?: boolean;
   frameless?: boolean;
 };
 
 export function StatusHero({
   status,
-  lastSampleMs,
   showPill = true,
   frameless = false,
 }: Props) {
   const isAlert = status.kind === "alert";
-  const sampleTime = lastSampleMs ? formatTsBare(lastSampleMs, "hour-min") : null;
-
   return (
     <section
       className="ss-hero-bg"
@@ -56,16 +50,16 @@ export function StatusHero({
 
         <h1
           style={{
-            maxWidth: 330,
+            maxWidth: frameless ? 360 : 330,
             width: "100%",
             margin: showPill ? "clamp(26px, 7.2vw, 44px) 0 0" : "0",
-            color: "#ffe49a",
+            color: "#ffffff",
             fontFamily: "var(--font-brand)",
-            fontSize: "clamp(48px, 13vw, 74px)",
+            fontSize: frameless ? "clamp(42px, 12vw, 68px)" : "clamp(48px, 13vw, 74px)",
             fontWeight: 800,
             letterSpacing: 0,
-            lineHeight: 1.06,
-            textShadow: "0 0 26px rgba(246, 196, 49, 0.18)",
+            lineHeight: frameless ? 1.14 : 1.06,
+            textTransform: "uppercase",
           }}
         >
           {status.headline}
@@ -84,21 +78,6 @@ export function StatusHero({
           />
         )}
 
-        <p
-          style={{
-            maxWidth: 330,
-            width: "100%",
-            margin: "14px 0 0",
-            paddingTop: "clamp(32px, 7vw, 44px)",
-            color: SS_TOKENS.fg1,
-            fontSize: "clamp(20px, 5vw, 22px)",
-            fontWeight: 700,
-            lineHeight: 1.45,
-          }}
-        >
-          {status.body}
-        </p>
-
         {status.footnote && (
           <p
             style={{
@@ -115,58 +94,6 @@ export function StatusHero({
           </p>
         )}
 
-        {status.lead && isAlert && (
-          <>
-            <div
-              style={{
-                marginTop: 18,
-                display: "flex",
-                justifyContent: "center",
-                gap: 8,
-                flexWrap: "wrap",
-              }}
-            >
-              {status.lead.aircraft.time_aloft_min != null && (
-                <HeroMetricPill
-                  label={fmtAloft(status.lead.aircraft.time_aloft_min)}
-                  frameless={frameless}
-                />
-              )}
-              {status.lead.aircraft.ground_speed_kt != null && (
-                <HeroMetricPill
-                  label={`${status.lead.aircraft.ground_speed_kt} kt`}
-                  frameless={frameless}
-                />
-              )}
-            </div>
-            <LeadIdentity
-              tail={status.lead.aircraft.tail}
-              nickname={status.lead.entry.nickname}
-              operator={status.lead.entry.operator}
-            />
-          </>
-        )}
-      </div>
-
-      <div
-        className="ss-mono"
-        style={{
-          position: "relative",
-          zIndex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 10,
-          color: SS_TOKENS.fg3,
-          fontSize: "clamp(11.5px, 3vw, 13px)",
-          fontWeight: 700,
-          letterSpacing: 0,
-          flexWrap: "wrap",
-        }}
-      >
-        <span>Last sample</span>
-        <span aria-hidden>{"\u00b7"}</span>
-        <span>{sampleTime ? `${sampleTime} PT` : "Unknown"}</span>
       </div>
     </section>
   );
@@ -220,77 +147,6 @@ function StatusPill({ label, alert }: { label: string; alert: boolean }) {
         {label}
       </span>
     </div>
-  );
-}
-
-function HeroMetricPill({
-  label,
-  frameless = false,
-}: {
-  label: string;
-  frameless?: boolean;
-}) {
-  return (
-    <span
-      className="ss-mono"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        padding: frameless ? "0" : "6px 10px",
-        borderRadius: frameless ? 0 : 999,
-        background: frameless ? "transparent" : "rgba(246, 196, 49, 0.10)",
-        border: frameless ? 0 : "1px solid rgba(246, 196, 49, 0.26)",
-        color: SS_TOKENS.fg0,
-        fontSize: 11,
-        fontWeight: 800,
-        letterSpacing: 0,
-      }}
-    >
-      <span
-        aria-hidden
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: SS_TOKENS.alert,
-        }}
-      />
-      <span>{label}</span>
-    </span>
-  );
-}
-
-function LeadIdentity({
-  tail,
-  nickname,
-  operator,
-}: {
-  tail: string;
-  nickname: string | null;
-  operator: string;
-}) {
-  const separator = " \u00b7 ";
-  const middle = nickname ? `${separator}"${nickname}"${separator}` : separator;
-  return (
-    <Link
-      href={`/plane/${tail}`}
-      prefetch={false}
-      aria-label={`View ${nickname ?? tail} details`}
-      className="ss-mono"
-      style={{
-        display: "inline-block",
-        marginTop: 9,
-        fontSize: 11.5,
-        color: SS_TOKENS.fg1,
-        letterSpacing: 0,
-        textDecoration: "none",
-      }}
-    >
-      {tail}
-      {middle}
-      {operator}
-    </Link>
   );
 }
 

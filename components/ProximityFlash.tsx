@@ -1,6 +1,6 @@
 "use client";
 
-// Ambient amber flash overlay rendered on /dash when a fixed_wing or patrol
+// Ambient amber flash overlay rendered on /home when a fixed_wing or patrol
 // aircraft is within PROXIMITY_NM nautical miles of the rider. Pulses
 // gently via CSS keyframes so it's noticeable in peripheral vision
 // without strobing — sits as a fixed-position overlay above the page
@@ -12,7 +12,7 @@ import { SS_TOKENS } from "@/lib/tokens";
 
 const KEYFRAME_ID = "ss-proximity-flash-keyframes";
 // One-time global keyframe injection — guarded so multiple mounts of
-// ProximityFlash (e.g. fast nav back to /dash) don't pile up <style>
+// ProximityFlash (e.g. fast navigation) don't pile up <style>
 // tags. The rule itself is idempotent.
 function ensureKeyframes() {
   if (typeof document === "undefined") return;

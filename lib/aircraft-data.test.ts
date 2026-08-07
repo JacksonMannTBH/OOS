@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   isStaleAirborneCandidate,
   isStaleOpenFlightSession,
+  isUnseenFlightSessionExpired,
   isNewerAircraftObservation,
   shouldSuppressTakeoffNotificationForTimes,
   shouldClearUnobservedState,
@@ -92,6 +93,23 @@ test("implausibly old airborne candidates are treated as stale", () => {
       { airborne_candidate_started_at: "2026-08-02T12:00:00.000Z" },
       "2026-08-03T06:01:00.000Z",
     ),
+    true,
+  );
+});
+
+test("a missing provider row gets a recovery grace period before purging a flight", () => {
+  const previous = {
+    flight_session_id: "session-1",
+    last_seen_at: "2026-08-02T12:00:00.000Z",
+    observed_at: "2026-08-02T12:00:00.000Z",
+  };
+
+  assert.equal(
+    isUnseenFlightSessionExpired(previous, "2026-08-02T12:14:59.999Z"),
+    false,
+  );
+  assert.equal(
+    isUnseenFlightSessionExpired(previous, "2026-08-02T12:15:00.000Z"),
     true,
   );
 });

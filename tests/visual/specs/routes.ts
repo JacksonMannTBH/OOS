@@ -14,7 +14,6 @@ export const ROUTES: Route[] = [
   { name: "home-mock-down", path: "/?mock=down", settleMs: 1500, riderFacing: true, a11y: true },
   { name: "map", path: "/map", settleMs: 3500, riderFacing: true, a11y: true, testsTz: true },
   { name: "forecast", path: "/forecast", settleMs: 1500, riderFacing: true, a11y: true, testsTz: true },
-  { name: "activity", path: "/activity", settleMs: 1500, riderFacing: true, a11y: true, testsTz: true },
   { name: "about", path: "/about", settleMs: 1000, riderFacing: true, a11y: true },
   { name: "legal", path: "/legal", settleMs: 1000, riderFacing: true, a11y: true },
   { name: "help", path: "/help", settleMs: 1000, riderFacing: true, a11y: true },

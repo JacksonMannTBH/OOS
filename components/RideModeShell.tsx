@@ -110,7 +110,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
   const nearestSpeedText = nearest
     ? formatGroundSpeed(nearest.plane.ground_speed_kt)
     : null;
-  const nearestSummary = nearest ? formatNearestAircraftSummary(nearest) : null;
+  const nearestSummary = formatNearestAircraftSummary(nearest);
   const withinRideRange =
     nearest != null && nearest.distanceNm <= rideThresholds.watchNm;
   const watchRangeText = formatNm(rideThresholds.watchNm);
@@ -121,11 +121,6 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
     : withinRideRange && nearest
       ? `${aircraftLabel}: ${nearest.distanceNm.toFixed(1)} nm ${nearest.cardinal}${nearestSpeedText ? ` - GS ${nearestSpeedText}` : ""}`
       : `No tracked aircraft within ${watchRangeText} nm`;
-  const secondaryCopy = nearest
-    ? nearestSummary
-    : pos
-      ? `No tracked aircraft within ${watchRangeText} nm`
-      : "Distances show in nm once GPS resolves";
   const nearestFuelText = useMemo(() => {
     if (!nearest) return null;
     return estimateFuelRemaining(nearest.plane)?.label ?? null;
@@ -258,7 +253,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
         <div
           style={{
             width: "min(100%, 460px)",
-            padding: "10px 12px",
+            padding: "14px 12px 16px",
             borderRadius: 16,
             border: "1px solid rgba(255,255,255,0.12)",
             background: "rgba(255,255,255,0.06)",
@@ -268,12 +263,23 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
         >
           <div
             style={{
-              fontSize: "clamp(17px, 5vw, 20px)",
-              fontWeight: 900,
-              lineHeight: 1.2,
+              display: "grid",
+              gridTemplateColumns: "1.1fr 1.5fr 0.9fr 1fr",
+              alignItems: "end",
+              gap: 8,
             }}
           >
-            {secondaryCopy}
+            <RideSummaryMetric label="Type" value={nearestSummary.aircraftType} />
+            <RideSummaryMetric
+              label="Distance"
+              value={nearestSummary.distance}
+              accent
+            />
+            <RideSummaryMetric
+              label="Direction"
+              value={nearestSummary.direction}
+            />
+            <RideSummaryMetric label="GS" value={nearestSummary.groundSpeed} />
           </div>
         </div>
         <button
@@ -366,11 +372,67 @@ function formatAircraftLabel(plane: { tail: string; nickname?: string | null }):
   return plane.nickname ? `${plane.tail} - ${plane.nickname}` : plane.tail;
 }
 
-function formatNearestAircraftSummary(contact: RideContact): string {
-  const aircraftType = aircraftTypeLabel(contact.plane.model);
-  const direction = cardinal4FromDeg(contact.bearingDeg);
-  const speed = formatGroundSpeed(contact.plane.ground_speed_kt) ?? "-- kt";
-  return `${aircraftType}: ${contact.plane.tail} - ${contact.distanceNm.toFixed(1)} nm ${direction} - GS ${speed}`;
+type RideSummary = {
+  aircraftType: string;
+  distance: string;
+  direction: string;
+  groundSpeed: string;
+};
+
+function formatNearestAircraftSummary(contact: RideContact | null): RideSummary {
+  if (!contact) {
+    return {
+      aircraftType: "--",
+      distance: "-- nm",
+      direction: "--",
+      groundSpeed: "--",
+    };
+  }
+
+  return {
+    aircraftType: aircraftTypeLabel(contact.plane.model),
+    distance: `${contact.distanceNm.toFixed(1)} nm`,
+    direction:
+      typeof contact.plane.heading === "number"
+        ? cardinal4FromDeg(contact.plane.heading)
+        : "--",
+    groundSpeed: formatGroundSpeed(contact.plane.ground_speed_kt) ?? "--",
+  };
+}
+
+function RideSummaryMetric({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      style={{
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+      aria-label={`${label}: ${value}`}
+    >
+      <div
+        style={{
+          color: accent ? "#f6c431" : "#f5f2e8",
+          fontSize: accent ? "clamp(24px, 7vw, 34px)" : "clamp(14px, 3.8vw, 18px)",
+          fontWeight: 950,
+          letterSpacing: accent ? "-0.03em" : 0,
+          lineHeight: 1,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
 }
 
 function aircraftTypeLabel(model: string | null | undefined): "Helicopter" | "Plane" {

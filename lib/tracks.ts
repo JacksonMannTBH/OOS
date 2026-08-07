@@ -11,7 +11,6 @@ export type TrackPoint = {
   ts: number;
 };
 
-const LIVE_TRACK_WINDOW_SECONDS = 60 * 60;
 export const CURRENT_FLIGHT_GAP_SECONDS = 2 * 60;
 
 export type CurrentFlightDuration = {
@@ -34,7 +33,7 @@ export async function logTracks(snap: Snapshot): Promise<void> {
 }
 
 export async function listTrackKeys(tail: string): Promise<string[]> {
-  const points = await readRecentPoints(tail, LIVE_TRACK_WINDOW_SECONDS);
+  const points = await readCurrentFlightPoints(tail);
   return [...new Set(points.map((point) => utcDateKey(new Date(point.ts * 1000))))]
     .sort()
     .reverse();
@@ -44,7 +43,7 @@ export async function getTracksForDay(
   tail: string,
   date: string,
 ): Promise<TrackPoint[]> {
-  return (await readRecentPoints(tail, LIVE_TRACK_WINDOW_SECONDS)).filter(
+  return (await readCurrentFlightPoints(tail)).filter(
     (point) => utcDateKey(new Date(point.ts * 1000)) === date,
   );
 }
@@ -112,18 +111,24 @@ export async function getCurrentFlightTrack(
   tail: string,
   nowMs = Date.now(),
 ): Promise<CurrentFlightTrack | null> {
-  const points = await readRecentPoints(tail, LIVE_TRACK_WINDOW_SECONDS);
-  return getCurrentFlightTrackFromPoints(points, nowMs);
+  const points = await readCurrentFlightPoints(tail);
+  const track = getCurrentFlightTrackFromPoints(
+    points,
+    nowMs,
+    Number.MAX_SAFE_INTEGER,
+  );
+  if (!track || nowMs - track.lastSampleMs > CURRENT_FLIGHT_GAP_SECONDS * 1_000) {
+    return null;
+  }
+  return track;
 }
 
 export async function getLiveTrackWindow(
   tail: string,
   _nowMs = Date.now(),
-  windowSeconds = LIVE_TRACK_WINDOW_SECONDS,
+  _windowSeconds?: number,
 ): Promise<TrackPoint[]> {
-  // Raw retention window: use getCurrentFlightTrack for live aircraft trails
-  // so separate flights inside the one-hour retention period are not stitched.
-  return readRecentPoints(tail, Math.min(windowSeconds, LIVE_TRACK_WINDOW_SECONDS));
+  return readCurrentFlightPoints(tail);
 }
 
 export type TrackSummary = {
@@ -134,7 +139,7 @@ export type TrackSummary = {
 };
 
 export async function getTrackSummary(tail: string): Promise<TrackSummary> {
-  const points = await readRecentPoints(tail, LIVE_TRACK_WINDOW_SECONDS);
+  const points = await readCurrentFlightPoints(tail);
   return {
     totalSamples: points.length,
     daysWithData: new Set(
@@ -145,10 +150,7 @@ export async function getTrackSummary(tail: string): Promise<TrackSummary> {
   };
 }
 
-async function readRecentPoints(
-  tail: string,
-  windowSeconds: number,
-): Promise<TrackPoint[]> {
+async function readCurrentFlightPoints(tail: string): Promise<TrackPoint[]> {
   if (!isSupabaseConfigured()) return [];
   const db = getSupabaseAdmin();
   const { data: aircraft, error: aircraftError } = await db
@@ -158,16 +160,19 @@ async function readRecentPoints(
     .maybeSingle();
   if (aircraftError || !aircraft) return [];
 
-  const cutoff = new Date(
-    Date.now() - Math.min(windowSeconds, LIVE_TRACK_WINDOW_SECONDS) * 1000,
-  ).toISOString();
+  const { data: current, error: currentError } = await db
+    .from("aircraft_current_state")
+    .select("flight_session_id")
+    .eq("aircraft_id", aircraft.id)
+    .maybeSingle();
+  if (currentError || !current?.flight_session_id) return [];
+
   const { data, error } = await db
     .from("aircraft_positions")
     .select(
       "latitude,longitude,altitude_ft,ground_speed_kt,heading_deg,observed_at",
     )
-    .eq("aircraft_id", aircraft.id)
-    .gte("observed_at", cutoff)
+    .eq("flight_session_id", current.flight_session_id)
     .order("observed_at", { ascending: true });
   if (error) {
     console.warn(`[tracks] read failed for ${tail}:`, error.message);

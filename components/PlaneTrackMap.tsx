@@ -28,7 +28,6 @@ const PUGET_SOUND: [number, number] = [-122.3, 47.6];
 const FALLBACK_ZOOM = 9;
 const SHORT_TRACK_ZOOM = 11;
 const POLL_MS = 10_000;
-const TRAIL_MINUTES = 30;
 
 type Coord = [number, number];
 
@@ -211,7 +210,7 @@ export default function PlaneTrackMap({
     const fetchOnce = async () => {
       try {
         const r = await fetch(
-          `/api/trails?tails=${encodeURIComponent(tail)}&minutes=${TRAIL_MINUTES}`,
+          `/api/trails?tails=${encodeURIComponent(tail)}`,
           { cache: "no-store" },
         );
         if (!r.ok || cancelled) return;

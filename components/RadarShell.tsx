@@ -45,9 +45,8 @@ const RadarMap = nextDynamic(() => import("./RadarMap"), {
   ),
 });
 
-const TABBAR_HEIGHT = 66;
+const MAP_BOTTOM_INSET = 18;
 const GLASS_BG_STRONG = SS_TOKENS.surface;
-const MAP_HEADER_ICON_LIMIT = 10;
 
 type Props = {
   initial: Snapshot;
@@ -161,7 +160,7 @@ export function RadarShell({
       style={{
         position: "fixed",
         inset: 0,
-        paddingBottom: TABBAR_HEIGHT + 18,
+        paddingBottom: MAP_BOTTOM_INSET,
         background: SS_TOKENS.bg0,
       }}
     >
@@ -197,6 +196,42 @@ export function RadarShell({
         onReturnToLocation={() => setRiderFocusRequest((seq) => seq + 1)}
         locationDisabled={!rider || !map}
       />
+      <Link
+        href="/ride"
+        aria-label="Start Ride"
+        style={{
+          position: "absolute",
+          right: "max(14px, env(safe-area-inset-right, 0px))",
+          bottom:
+            "calc(18px + env(safe-area-inset-bottom, 0px) + var(--ss-install-prompt-h, 0px))",
+          zIndex: 13,
+          width: 72,
+          height: 72,
+          borderRadius: "50%",
+          background: "#f4b41a",
+          border: "1px solid rgba(244, 180, 26, 0.9)",
+          color: "#090909",
+          boxShadow: "0 14px 34px rgba(0, 0, 0, 0.38)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textDecoration: "none",
+          touchAction: "manipulation",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        <span
+          style={{
+            width: 36,
+            height: 36,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <MapRideIcon />
+        </span>
+      </Link>
       <AircraftTrailLayer
         map={map}
         airborne={airborne}
@@ -217,6 +252,25 @@ export function RadarShell({
   );
 }
 
+function MapRideIcon() {
+  return (
+    <svg
+      width="34"
+      height="34"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      style={{ display: "block" }}
+    >
+      <path d="m21 3-7.1 18-3.5-7.4L3 10.1 21 3Z" />
+    </svg>
+  );
+}
+
 function MapHeader({
   airborne,
   kind,
@@ -227,8 +281,7 @@ function MapHeader({
   onSelect: (tail: string) => void;
 }) {
   const isAlert = kind === "alert";
-  const visibleAircraft = airborne.slice(0, MAP_HEADER_ICON_LIMIT);
-  const overflowCount = Math.max(0, airborne.length - visibleAircraft.length);
+  const visibleAircraft = airborne;
 
   return (
     <header
@@ -245,10 +298,10 @@ function MapHeader({
         left: 0,
         right: 0,
         zIndex: 16,
-        background: "rgba(0, 0, 0, 0.94)",
+        background:
+          "linear-gradient(to bottom, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.88) 58%, rgba(0, 0, 0, 0.42) 82%, rgba(0, 0, 0, 0) 100%)",
         color: "#ffffff",
-        borderBottom: "0.5px solid rgba(244, 196, 48, 0.34)",
-        boxShadow: "0 12px 30px rgba(0, 0, 0, 0.28)",
+        boxShadow: "0 10px 24px rgba(0, 0, 0, 0.14)",
         backdropFilter: "blur(18px) saturate(1.08)",
         WebkitBackdropFilter: "blur(18px) saturate(1.08)",
         fontFamily: "var(--font-header-ui)",
@@ -262,8 +315,8 @@ function MapHeader({
           width: "100%",
           maxWidth: 560,
           margin: "0 auto",
-          height: "calc(env(safe-area-inset-top, 0px) + clamp(58px, 15vw, 72px))",
-          padding: "env(safe-area-inset-top, 0px) clamp(14px, 4vw, 18px) 0",
+          height: "calc(env(safe-area-inset-top, 0px) + clamp(78px, 20vw, 92px))",
+          padding: "env(safe-area-inset-top, 0px) clamp(14px, 4vw, 18px) 10px",
           display: "grid",
           gridTemplateColumns:
             visibleAircraft.length > 0 ? "auto minmax(0, 1fr)" : "1fr auto 1fr",
@@ -271,25 +324,33 @@ function MapHeader({
           gap: "clamp(12px, 3.8vw, 18px)",
         }}
       >
-        <LogoMark
-          height="clamp(27px, 6.8vw, 36px)"
-          width="clamp(40px, 10.2vw, 54px)"
-          variant={isAlert ? "open" : "closed"}
+        <Link
+          href="/home"
+          aria-label="Home"
           style={{
             justifySelf: "start",
+            marginLeft: "clamp(4px, 1.5vw, 8px)",
+            display: "block",
+            lineHeight: 0,
           }}
-        />
+        >
+          <LogoMark
+            height="clamp(36px, 9vw, 48px)"
+            width="clamp(54px, 13.5vw, 72px)"
+            variant={isAlert ? "open" : "closed"}
+          />
+        </Link>
         {visibleAircraft.length > 0 && (
           <nav
             aria-label="Active aircraft"
             className="ss-scroll"
             style={{
-              minHeight: 36,
+              minHeight: 42,
               display: "flex",
               alignItems: "center",
               gap: 7,
               overflowX: "auto",
-              paddingBottom: 2,
+              paddingBottom: 1,
               WebkitOverflowScrolling: "touch",
             }}
           >
@@ -300,30 +361,6 @@ function MapHeader({
                 onSelect={onSelect}
               />
             ))}
-            {overflowCount > 0 && (
-              <span
-                className="ss-mono"
-                aria-label={`${overflowCount} more active aircraft`}
-                style={{
-                  flex: "0 0 auto",
-                  height: 32,
-                  minWidth: 34,
-                  padding: "0 8px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255, 255, 255, 0.16)",
-                  background: "rgba(255, 255, 255, 0.08)",
-                  color: SS_TOKENS.fg2,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 10.5,
-                  fontWeight: 800,
-                  lineHeight: 1,
-                }}
-              >
-                +{overflowCount}
-              </span>
-            )}
           </nav>
         )}
       </div>
@@ -396,7 +433,7 @@ function Toast({
 }) {
   // Sit just above whatever's currently anchored to the bottom â€” carousel
   // when present, tab bar otherwise.
-  const bottomOffset = TABBAR_HEIGHT + 16 + bottomBoost;
+  const bottomOffset = MAP_BOTTOM_INSET + 16 + bottomBoost;
   return (
     <div
       role="status"
@@ -530,7 +567,7 @@ function Carousel({
           style={{
             position: "absolute",
             left: 12,
-            bottom: `calc(${TABBAR_HEIGHT + 16}px + var(--ss-install-prompt-h, 0px))`,
+            bottom: `calc(${MAP_BOTTOM_INSET + 16}px + var(--ss-install-prompt-h, 0px))`,
             zIndex: 14,
             width: 56,
             height: 56,
@@ -568,7 +605,7 @@ function Carousel({
         position: "absolute",
         left: 0,
         right: 0,
-        bottom: TABBAR_HEIGHT,
+        bottom: MAP_BOTTOM_INSET,
         padding: collapsed ? "10px 14px 12px" : "14px 14px 18px",
         background: "rgba(255,255,255,0.88)",
         borderTop: `.5px solid ${SS_TOKENS.hairline}`,

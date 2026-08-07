@@ -54,14 +54,14 @@ export function LogoMark({
           ...frameStyle,
           position: "relative",
           overflow: "hidden",
-          background: "#000000",
+          background: "transparent",
         }}
       >
         <Image
           src="/icons/no-aircraft-logo.png"
           alt=""
           fill
-          sizes="63px"
+          sizes={typeof renderedWidth === "number" ? `${renderedWidth}px` : "63px"}
           priority
           style={{
             objectFit: "cover",

@@ -20,7 +20,7 @@ const TABS: TabItem[] = [
     id: "home",
     label: "Home",
     href: "/home",
-    activePaths: ["/", "/home", "/dash"],
+    activePaths: ["/", "/home"],
     icon: <HomeIcon />,
   },
   {
@@ -53,6 +53,15 @@ export function TabBar() {
     const mock = searchParams.get("mock");
     return mock ? `/ride?mock=${encodeURIComponent(mock)}` : "/ride";
   }, [searchParams]);
+
+  if (
+    pathname === "/" ||
+    pathname === "/home" ||
+    pathname === "/map" ||
+    pathname.startsWith("/map/")
+  ) {
+    return null;
+  }
 
   const onRideClick = async (event: MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();

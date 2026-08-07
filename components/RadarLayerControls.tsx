@@ -1,15 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { SS_TOKENS } from "@/lib/tokens";
 import { Tooltip } from "./Tooltip";
 
-const TABBAR_HEIGHT = 66;
 const PATH_ICON = "/icons/radar-path.svg";
 const RINGS_ICON = "/icons/radar-rings.svg";
 const LOCATION_ICON = "/icons/radar-location.svg";
 
 type Props = {
-  /** Extra px above the tab bar; pass when the airborne carousel is on. */
+  /** Extra px above the lower map controls; pass when the airborne carousel is on. */
   bottomBoost?: number;
   ringsActive: boolean;
   onToggleRings: () => void;
@@ -30,7 +30,7 @@ export function RadarLayerControls({
   onReturnToLocation,
   locationDisabled = false,
 }: Props) {
-  const bottom = TABBAR_HEIGHT + 14 + bottomBoost;
+  const bottom = 14 + bottomBoost;
   const offsetCss = (extra: number) =>
     `calc(${bottom + extra}px + var(--ss-install-prompt-h, 0px))`;
 
@@ -46,6 +46,13 @@ export function RadarLayerControls({
         gap: 8,
       }}
     >
+      <Link
+        href="/home"
+        aria-label="Home"
+        style={iconButtonStyle(false)}
+      >
+        <HomeIcon />
+      </Link>
       <Tooltip
         side="right"
         align="start"
@@ -176,5 +183,19 @@ function IconGlyph({
         mask: `url(${src}) center / contain no-repeat`,
       }}
     />
+  );
+}
+
+function HomeIcon() {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M3.2 11.2 12 3.6l8.8 7.6v8.3c0 .8-.7 1.5-1.5 1.5h-4.5v-6.2H9.2V21H4.7c-.8 0-1.5-.7-1.5-1.5v-8.3Z" />
+    </svg>
   );
 }

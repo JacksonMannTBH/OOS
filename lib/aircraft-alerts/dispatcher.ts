@@ -1,5 +1,4 @@
 import { getSupabaseAdmin } from "@/lib/supabase/server";
-import { isStateCode } from "@/lib/app-states";
 import { sendAircraftAlertPush } from "./web-push";
 
 const MAX_DELIVERIES_PER_RUN = 100;
@@ -64,12 +63,7 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
     const payload = (event.payload ?? {}) as Record<string, unknown>;
     const tail = String(payload.tail ?? "Aircraft");
     const label = String(payload.nickname ?? tail);
-    const stateCode = isStateCode(payload.state_code)
-      ? payload.state_code.toUpperCase()
-      : null;
-    const detailUrl = `/plane/${encodeURIComponent(tail)}${
-      stateCode ? `?state=${encodeURIComponent(stateCode)}` : ""
-    }`;
+    const detailUrl = `/map?tail=${encodeURIComponent(tail)}`;
     const result = await sendAircraftAlertPush(
       {
         endpoint: String(endpoint.endpoint),

@@ -71,6 +71,7 @@ const TAKEOFF_CONFIRMATION_SAMPLES = 2;
 const LANDING_CONFIRMATION_SAMPLES = 2;
 const TAKEOFF_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1_000;
 const CURRENT_OBSERVATION_MAX_AGE_MS = 2 * 60 * 1_000;
+const FLIGHT_SESSION_LOST_GRACE_MS = 15 * 60 * 1_000;
 const MAX_OPEN_FLIGHT_SESSION_MS = 18 * 60 * 60 * 1_000;
 
 export async function ensureCatalogSeeded(): Promise<void> {
@@ -417,6 +418,10 @@ export async function ingestSnapshot(
 
   const stateRows: Record<string, unknown>[] = [];
   const positionRows: Record<string, unknown>[] = [];
+  const flightSessionsToFinalize = new Map<
+    string,
+    { status: "landed" | "unknown"; endedAt: string }
+  >();
   const byState: Record<string, StateIngestionSummary> = {};
   let takeoffsCreated = 0;
 
@@ -433,16 +438,21 @@ export async function ingestSnapshot(
     const wasObserved = aircraft.observed !== false;
     if (!wasObserved) {
       if (!shouldClearUnobservedState(previous)) continue;
+      // A missing provider row is not a landing. Keep the active session
+      // through transient coverage gaps; the public read path already hides
+      // observations once they exceed CURRENT_OBSERVATION_MAX_AGE_MS.
+      if (
+        previous?.flight_session_id &&
+        !isUnseenFlightSessionExpired(previous, snapshotObservedAt)
+      ) {
+        continue;
+      }
       if (previous?.flight_session_id) {
-        const closeAt =
-          previous.last_seen_at ?? previous.observed_at ?? snapshotObservedAt;
-        await closeOpenFlightSession(
-          db,
-          previous.flight_session_id,
-          closeAt,
-          snapshotObservedAt,
-          "Closed after aircraft disappeared from provider snapshot.",
-        );
+        flightSessionsToFinalize.set(previous.flight_session_id, {
+          status: "unknown",
+          endedAt:
+            previous.last_seen_at ?? previous.observed_at ?? snapshotObservedAt,
+        });
       }
       stateRows.push({
         aircraft_id: catalogRow.id,
@@ -491,18 +501,14 @@ export async function ingestSnapshot(
       snapshotObservedAt,
     );
     if (hasStaleOpenSession && previous?.flight_session_id) {
-      const closeAt =
-        previous.last_seen_at ??
-        previousOpenSession?.last_seen_at ??
-        previous.observed_at ??
-        snapshotObservedAt;
-      await closeOpenFlightSession(
-        db,
-        previous.flight_session_id,
-        closeAt,
-        snapshotObservedAt,
-        "Closed after exceeding maximum plausible open-flight duration.",
-      );
+      flightSessionsToFinalize.set(previous.flight_session_id, {
+        status: "unknown",
+        endedAt:
+          previous.last_seen_at ??
+          previousOpenSession?.last_seen_at ??
+          previous.observed_at ??
+          snapshotObservedAt,
+      });
     }
     const continuityPrevious =
       hasStaleOpenSession || hasStaleAirborneCandidate ? undefined : previous;
@@ -634,15 +640,10 @@ export async function ingestSnapshot(
       flightSessionId &&
       consecutiveGrounded >= LANDING_CONFIRMATION_SAMPLES
     ) {
-      await db
-        .from("flight_sessions")
-        .update({
-          status: "landed",
-          detected_landing_at: aircraftObservedAt,
-          last_seen_at: aircraftObservedAt,
-          updated_at: snapshotObservedAt,
-        })
-        .eq("id", flightSessionId);
+      flightSessionsToFinalize.set(flightSessionId, {
+        status: "landed",
+        endedAt: aircraftObservedAt,
+      });
       flightSessionId = null;
       status = "grounded";
     } else if (!isAirborne && flightSessionId) {
@@ -725,6 +726,29 @@ export async function ingestSnapshot(
     }
   }
 
+  for (const [flightSessionId, finalState] of flightSessionsToFinalize) {
+    const { error: positionDeleteError } = await db
+      .from("aircraft_positions")
+      .delete()
+      .eq("flight_session_id", flightSessionId);
+    if (positionDeleteError) {
+      throw new Error(`Flight-position purge failed: ${positionDeleteError.message}`);
+    }
+    const { error: sessionFinalizeError } = await db
+      .from("flight_sessions")
+      .update({
+        status: finalState.status,
+        detected_landing_at: finalState.endedAt,
+        last_seen_at: finalState.endedAt,
+        updated_at: snapshotObservedAt,
+      })
+      .eq("id", flightSessionId)
+      .is("detected_landing_at", null);
+    if (sessionFinalizeError) {
+      throw new Error(`Flight-session finalization failed: ${sessionFinalizeError.message}`);
+    }
+  }
+
   const { error: healthError } = await db.from("data_source_health").upsert(
     {
       source: snapshot.source,
@@ -799,29 +823,6 @@ function parseTime(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-async function closeOpenFlightSession(
-  db: ReturnType<typeof getSupabaseAdmin>,
-  flightSessionId: string,
-  closedAt: string,
-  updatedAt: string,
-  note: string,
-): Promise<void> {
-  const { error } = await db
-    .from("flight_sessions")
-    .update({
-      status: "unknown",
-      detected_landing_at: closedAt,
-      last_seen_at: closedAt,
-      updated_at: updatedAt,
-      notes: note,
-    })
-    .eq("id", flightSessionId)
-    .is("detected_landing_at", null);
-  if (error) {
-    throw new Error(`Open-session close failed: ${error.message}`);
-  }
-}
-
 export function isStaleOpenFlightSession(
   session: Pick<FlightSessionRow, "detected_takeoff_at" | "tracking_started_at"> | undefined,
   nowIso: string,
@@ -833,6 +834,16 @@ export function isStaleOpenFlightSession(
   return startedAt != null &&
     now != null &&
     now - startedAt > MAX_OPEN_FLIGHT_SESSION_MS;
+}
+
+export function isUnseenFlightSessionExpired(
+  previous: Pick<CurrentStateRow, "flight_session_id" | "last_seen_at" | "observed_at"> | undefined,
+  nowIso: string,
+): boolean {
+  if (!previous?.flight_session_id) return false;
+  const lastSeenAt = parseTime(previous.last_seen_at) ?? parseTime(previous.observed_at);
+  const now = parseTime(nowIso);
+  return lastSeenAt != null && now != null && now - lastSeenAt >= FLIGHT_SESSION_LOST_GRACE_MS;
 }
 
 export function isStaleAirborneCandidate(

@@ -1,0 +1,4 @@
+Out Of Sight: Supabase/background work is disabled until these values are set in .env.local: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET
+Out Of Sight: push notifications are incomplete without: NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+ ⚠ Cross origin request detected from 100.110.197.79 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins

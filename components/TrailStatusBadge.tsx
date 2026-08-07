@@ -15,7 +15,6 @@ import { SS_TOKENS } from "@/lib/tokens";
 import type { Aircraft } from "@/lib/types";
 
 const POLL_MS = 10_000;
-const TRAIL_MINUTES = 30;
 
 type Status =
   | { kind: "idle" }
@@ -43,7 +42,7 @@ export function TrailStatusBadge({ airborne }: { airborne: Aircraft[] }) {
       setStatus({ kind: "fetching" });
       try {
         const r = await fetch(
-          `/api/trails?tails=${tailsKey}&minutes=${TRAIL_MINUTES}`,
+          `/api/trails?tails=${tailsKey}`,
           { cache: "no-store" },
         );
         if (!r.ok) {

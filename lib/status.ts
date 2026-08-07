@@ -14,8 +14,6 @@ export type StatusState = {
   pillSub?: string;
   /** Big home-page hero h1. */
   headline: string;
-  /** Home-page subtitle paragraph. */
-  body: string;
   /** Optional small footnote line under body. */
   footnote?: string;
   /** Lead aircraft + fleet entry, for callers that need raw context. */
@@ -45,7 +43,6 @@ export function computeStatus(
       pill: "BIRD UP",
       pillSub: up.length > 1 ? `${up.length} up` : undefined,
       headline: "Active Air Support",
-      body: "Watch out",
       lead,
       alertCount: up.length,
       totalAirborne: airborne.length,
@@ -56,7 +53,6 @@ export function computeStatus(
     kind: "clear",
     pill: "ALL CLEAR",
     headline: "No Eyes",
-    body: "Send it.",
     lead: null,
     alertCount: 0,
     totalAirborne: 0,

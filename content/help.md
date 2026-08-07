@@ -12,8 +12,8 @@ There are no sub-state notification groups.
 ## Map and flight paths
 
 The Map refreshes aircraft data every 30 seconds. A line connects each retained
-coordinate for the active flight. Coordinates are deleted after one hour, so
-paths intentionally show only the most recent hour.
+coordinate for the active flight. When landing is confirmed, the flight and its
+coordinates are cleared from the active view.
 
 ## Aircraft catalog
 
@@ -32,9 +32,11 @@ from there before granting permission.
 
 ## Flight time and fuel
 
-Out Of Sight records a flight session when an aircraft transitions from grounded
-to airborne. The detected takeoff time is retained after the one-hour coordinate
-window expires. Fuel remaining is an estimate based on elapsed flight time and
+Out Of Sight creates an active flight session when an aircraft transitions from
+grounded to airborne. The session powers the flight clock, live position,
+speed, direction, and estimated fuel remaining. After landing is confirmed, the
+active-flight track is cleared and the session is finalized so the next flight
+starts fresh. Fuel remaining is an estimate based on elapsed flight time and
 the aircraft performance profile; it is not telemetry from the aircraft.
 
 ## Privacy and limitations

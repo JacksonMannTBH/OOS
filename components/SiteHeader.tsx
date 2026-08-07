@@ -12,6 +12,8 @@ import {
 export function SiteHeader() {
   const pathname = usePathname();
   const hidden =
+    pathname === "/" ||
+    pathname === "/home" ||
     pathname === "/map" ||
     pathname === "/ride" ||
     pathname.startsWith("/map/") ||
@@ -70,7 +72,7 @@ export function SiteHeader() {
           <Link
             href="/home"
             prefetch={false}
-            aria-label="Out Of Sight home"
+            aria-label="ØUT ØF SIGHT home"
             style={{
               fontFamily: "var(--font-header-brand)",
               fontSize: "clamp(28px, 6.4vw, 38px)",
@@ -85,34 +87,8 @@ export function SiteHeader() {
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            Out Of Sight
+            ØUT ØF SIGHT
           </Link>
-          <div
-            style={{
-              justifySelf: "end",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            <Link
-              href="/settings"
-              prefetch={false}
-              aria-label="Settings"
-              style={{
-                width: 44,
-                height: 44,
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--ss-alert)",
-                textDecoration: "none",
-                WebkitTapHighlightColor: "transparent",
-              }}
-            >
-              <SettingsIcon />
-            </Link>
-          </div>
         </div>
       </div>
     </header>
@@ -166,24 +142,5 @@ function HeaderLogoMark({ variant }: { variant: "open" | "closed" }) {
         justifySelf: "start",
       }}
     />
-  );
-}
-
-function SettingsIcon() {
-  return (
-    <svg
-      aria-hidden
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 1 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9L4.2 7A2 2 0 1 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 1 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
-    </svg>
   );
 }

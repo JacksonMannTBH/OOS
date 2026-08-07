@@ -1,8 +1,8 @@
 # Supabase
 
 Supabase is the durable data service for the aircraft catalog, live state,
-one-hour coordinate trails, flight sessions, notification subscriptions,
-delivery records, and worker health.
+the active flight's coordinate trail, notification subscriptions, delivery
+records, and worker health.
 
 Live project:
 
@@ -42,10 +42,14 @@ Upstream observation timestamps are stored with positions so an unchanged
 provider sample does not create another coordinate row. Operational ingestion
 and notification-worker runs are retained for seven days.
 
+Completed flight positions are purged when landing is confirmed. The minimal
+session remains only until any notification retries finish, then is removed. A
+short ingestion grace period handles temporary provider coverage gaps; it is
+not a historical retention window.
+
 Import official state boundary polygons into `states.boundary` before enabling
 coordinate-derived state display. Subscription matching uses an aircraft's
 catalog `home_state_code`; physical state is informational.
 
-The cleanup job removes live coordinate rows older than one hour every minute.
-Database backups can retain deleted rows according to the Supabase
-project's backup policy.
+The cleanup job no longer removes aircraft positions by age. Database backups
+can retain deleted rows according to the Supabase project's backup policy.

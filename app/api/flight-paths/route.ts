@@ -48,7 +48,6 @@ export async function GET(req: Request) {
       type: "FeatureCollection",
       features,
       state: stateCode,
-      window_minutes: 60,
     },
     {
       headers: liveDataHeaders("query=state|tails"),

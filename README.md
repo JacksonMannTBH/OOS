@@ -2,16 +2,16 @@
 
 Out Of Sight is a Netlify-hosted aircraft situational-awareness PWA. It tracks
 a curated public-safety aircraft catalog, shows live state-scoped positions and
-one-hour flight paths, records flight sessions and takeoff times, and sends
-state-wide takeoff notifications.
+the active flight path, estimates flight time and fuel, and sends state-wide
+takeoff notifications.
 
 ## Architecture
 
 - Next.js 14 App Router for the application and API routes
 - Netlify for hosting, builds, scheduled work, and background functions
-- Supabase Postgres/PostGIS for the aircraft catalog, current state, flight
-  sessions, one-hour position history, notification subscriptions, delivery
-  records, settings, and operational health
+- Supabase Postgres/PostGIS for the aircraft catalog, current state, active
+  flight session, notification subscriptions, delivery records, settings, and
+  operational health
 - adsb.fi with OpenSky fallback for live aircraft observations
 - Web Push with VAPID for notifications
 
@@ -46,9 +46,10 @@ sample fetches the complete tracked fleet in rate-limited ICAO batches and
 writes it to Supabase in one combined ingestion pass. Source observation times
 deduplicate unchanged positions, and already-unknown aircraft are not rewritten
 on every pass. Notification retries run once per minute and immediately after a
-detected takeoff. The database retains aircraft coordinates for one hour and
-worker-run logs for seven days. Flight sessions, detected takeoff/landing times,
-notification history, and catalog records remain available after cleanup.
+detected takeoff. The database retains only the active flight's aircraft
+coordinates. Confirmed landing purges the coordinates and finalizes the flight
+session; the minimal session is removed after any notification retries finish.
+Worker-run logs remain available for seven days.
 
 See [supabase/README.md](supabase/README.md) for database details and state
 boundary import guidance.

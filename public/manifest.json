@@ -2,7 +2,7 @@
   "name": "Out Of Sight",
   "short_name": "Out Of Sight",
   "description": "Live aircraft tracker for Washington state riders.",
-  "start_url": "/dash",
+  "start_url": "/home",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#000000",

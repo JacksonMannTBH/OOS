@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 
 export function SkipLink() {
   const pathname = usePathname();
-  if (pathname === "/map" || pathname === "/home" || pathname === "/dash") {
+  if (pathname === "/map" || pathname === "/home") {
     return null;
   }
   return (
