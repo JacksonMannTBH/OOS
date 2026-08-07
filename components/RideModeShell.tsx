@@ -7,6 +7,7 @@ import { useRiderPos } from "@/lib/hooks/useRiderPos";
 import { useDeviceHeading } from "@/lib/hooks/useDeviceHeading";
 import {
   classifyRideStatus,
+  cardinalWordFromDeg,
   DEFAULT_RIDE_STATUS_THRESHOLDS,
   getRideContacts,
   isSameCardinalTrack,
@@ -119,7 +120,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
       ? "Location unavailable"
       : "Waiting for rider location"
     : withinRideRange && nearest
-      ? `${aircraftLabel}: ${nearest.distanceNm.toFixed(1)} nm ${nearest.cardinal}${nearestSpeedText ? ` - GS ${nearestSpeedText}` : ""}`
+      ? `${aircraftLabel}: ${nearest.distanceNm.toFixed(1)} nm ${cardinalWordFromDeg(nearest.bearingDeg)}${nearestSpeedText ? ` - GS ${nearestSpeedText}` : ""}`
       : `No tracked aircraft within ${watchRangeText} nm`;
   const nearestFuelText = useMemo(() => {
     if (!nearest) return null;
@@ -216,6 +217,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
           contact={nearest}
           displayBearingDeg={displayBearing}
           clearDistanceNm={rideThresholds.watchNm}
+          distanceBands={rideThresholds}
           highlightTrackingArrow={shouldHighlightTrackingArrow}
         />
         {nearestFuelText && (
@@ -394,7 +396,7 @@ function formatNearestAircraftSummary(contact: RideContact | null): RideSummary 
     distance: `${contact.distanceNm.toFixed(1)} nm`,
     direction:
       typeof contact.plane.heading === "number"
-        ? cardinal4FromDeg(contact.plane.heading)
+        ? cardinalWordFromDeg(contact.plane.heading)
         : "--",
     groundSpeed: formatGroundSpeed(contact.plane.ground_speed_kt) ?? "--",
   };
@@ -442,14 +444,6 @@ function aircraftTypeLabel(model: string | null | undefined): "Helicopter" | "Pl
   )
     ? "Helicopter"
     : "Plane";
-}
-
-function cardinal4FromDeg(deg: number): "N" | "E" | "S" | "W" {
-  const normalized = ((deg % 360) + 360) % 360;
-  if (normalized >= 45 && normalized < 135) return "E";
-  if (normalized >= 135 && normalized < 225) return "S";
-  if (normalized >= 225 && normalized < 315) return "W";
-  return "N";
 }
 
 function formatAge(ageMs: number): string {

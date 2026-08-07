@@ -67,6 +67,21 @@ export function cardinalFromDeg(degrees: number): string {
   return labels[index]!;
 }
 
+export function cardinalWordFromDeg(degrees: number): string {
+  const labels = [
+    "North",
+    "Northeast",
+    "East",
+    "Southeast",
+    "South",
+    "Southwest",
+    "West",
+    "Northwest",
+  ];
+  const index = Math.round(normalizeDeg(degrees) / 45) % labels.length;
+  return labels[index]!;
+}
+
 export function cardinalTrackFromDeg(degrees: number | null | undefined): "N" | "E" | "S" | "W" | null {
   if (typeof degrees !== "number" || !Number.isFinite(degrees)) return null;
   const labels = ["N", "E", "S", "W"] as const;

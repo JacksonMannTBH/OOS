@@ -20,6 +20,7 @@ import { StatusHero } from "./StatusHero";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
 const NEAR_NM = 5;
+const HOME_TOP_OFFSET_PX = 50;
 const HOME_BACKGROUND_IMAGE = "/images/home-map-background.png";
 type WatcherEntry = { plane: Aircraft; distanceNm: number | null };
 
@@ -119,7 +120,7 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
           // hides behind the fixed-position prompt on iOS Safari.
           boxSizing: "border-box",
           width: "100%",
-          padding: `clamp(52px, 13vw, 72px) clamp(14px, 5vw, 20px) 136px`,
+          padding: `calc(clamp(52px, 13vw, 72px) + ${HOME_TOP_OFFSET_PX}px) clamp(14px, 5vw, 20px) 136px`,
           maxWidth: 430,
           margin: "0 auto",
           position: "relative",
@@ -134,7 +135,7 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
           variant="plain"
           style={{
             position: "absolute",
-            top: "max(8px, env(safe-area-inset-top))",
+            top: `calc(max(8px, env(safe-area-inset-top)) + ${HOME_TOP_OFFSET_PX}px)`,
             right: "clamp(14px, 5vw, 20px)",
             width: 44,
             minHeight: 44,

@@ -5,6 +5,7 @@ import assert from "node:assert";
 import {
   bearingDeg,
   cardinalFromDeg,
+  cardinalWordFromDeg,
   cardinalTrackFromDeg,
   classifyRideStatus,
   getRideContacts,
@@ -45,6 +46,17 @@ test("cardinalFromDeg returns eight-way direction labels", () => {
   assert.equal(cardinalFromDeg(225), "SW");
   assert.equal(cardinalFromDeg(270), "W");
   assert.equal(cardinalFromDeg(315), "NW");
+});
+
+test("cardinalWordFromDeg returns full eight-way direction words", () => {
+  assert.equal(cardinalWordFromDeg(0), "North");
+  assert.equal(cardinalWordFromDeg(45), "Northeast");
+  assert.equal(cardinalWordFromDeg(90), "East");
+  assert.equal(cardinalWordFromDeg(135), "Southeast");
+  assert.equal(cardinalWordFromDeg(180), "South");
+  assert.equal(cardinalWordFromDeg(225), "Southwest");
+  assert.equal(cardinalWordFromDeg(270), "West");
+  assert.equal(cardinalWordFromDeg(315), "Northwest");
 });
 
 test("cardinalTrackFromDeg reduces headings to N/E/S/W travel tracks", () => {

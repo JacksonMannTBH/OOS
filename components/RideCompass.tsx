@@ -1,6 +1,10 @@
 "use client";
 
-import type { RideContact, RideStatus } from "@/lib/ride-mode";
+import type {
+  RideContact,
+  RideStatus,
+  RideStatusThresholds,
+} from "@/lib/ride-mode";
 
 const STATUS_COLORS: Record<RideStatus, string> = {
   clear: "#39d98a",
@@ -14,6 +18,7 @@ type Props = {
   contact: RideContact | null;
   displayBearingDeg: number | null;
   clearDistanceNm: number;
+  distanceBands: RideStatusThresholds;
   highlightTrackingArrow?: boolean;
 };
 
@@ -22,6 +27,7 @@ export function RideCompass({
   contact,
   displayBearingDeg,
   clearDistanceNm,
+  distanceBands,
   highlightTrackingArrow = false,
 }: Props) {
   const color = STATUS_COLORS[status];
@@ -56,7 +62,7 @@ export function RideCompass({
         overflow: "hidden",
       }}
     >
-      <CompassRing color={color} />
+      <CompassRing color={color} distanceBands={distanceBands} />
 
       {hasMarker && marker && (
         <>
@@ -159,16 +165,63 @@ function markerPosition(degrees: number): { x: number; y: number } {
   };
 }
 
-function CompassRing({ color }: { color: string }) {
+function CompassRing({
+  color,
+  distanceBands,
+}: {
+  color: string;
+  distanceBands: RideStatusThresholds;
+}) {
+  const maxDistanceNm = distanceBands.watchNm;
+  return (
+    <>
+      <DistanceBandRing
+        color={color}
+        distanceNm={distanceBands.watchNm}
+        maxDistanceNm={maxDistanceNm}
+        opacity={34}
+        boxShadow="inset 0 0 0 1px rgba(255,255,255,0.04)"
+      />
+      <DistanceBandRing
+        color={color}
+        distanceNm={distanceBands.warningNm}
+        maxDistanceNm={maxDistanceNm}
+        opacity={40}
+      />
+      <DistanceBandRing
+        color={color}
+        distanceNm={distanceBands.stopNm}
+        maxDistanceNm={maxDistanceNm}
+        opacity={52}
+      />
+    </>
+  );
+}
+
+function DistanceBandRing({
+  color,
+  distanceNm,
+  maxDistanceNm,
+  opacity,
+  boxShadow,
+}: {
+  color: string;
+  distanceNm: number;
+  maxDistanceNm: number;
+  opacity: number;
+  boxShadow?: string;
+}) {
+  const ratio = Math.min(1, Math.max(0, distanceNm / maxDistanceNm));
+  const inset = `${(1 - ratio) * 50}%`;
   return (
     <div
       aria-hidden
       style={{
         position: "absolute",
-        inset: "11%",
+        inset,
         borderRadius: "50%",
-        border: `1px solid color-mix(in srgb, ${color} 34%, rgba(255,255,255,0.16))`,
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.04)",
+        border: `1px solid color-mix(in srgb, ${color} ${opacity}%, rgba(255,255,255,0.16))`,
+        boxShadow,
       }}
     />
   );
