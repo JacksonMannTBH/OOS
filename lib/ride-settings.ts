@@ -7,6 +7,7 @@ import {
 } from "./ride-mode";
 
 export const RIDE_STATUS_THRESHOLDS_KEY = "ss_ride_status_thresholds";
+export const RIDE_STATUS_THRESHOLDS_EVENT = "ss_ride_status_thresholds_change";
 
 export function getRideStatusThresholds(): RideStatusThresholds {
   if (typeof window === "undefined") return DEFAULT_RIDE_STATUS_THRESHOLDS;
@@ -28,6 +29,11 @@ export function setRideStatusThresholds(
     window.localStorage.setItem(
       RIDE_STATUS_THRESHOLDS_KEY,
       JSON.stringify(normalized),
+    );
+    window.dispatchEvent(
+      new CustomEvent<RideStatusThresholds>(RIDE_STATUS_THRESHOLDS_EVENT, {
+        detail: normalized,
+      }),
     );
   }
   return normalized;

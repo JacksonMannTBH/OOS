@@ -1,10 +1,8 @@
-// Public, unauthenticated flight share page. /flight/[tail]/[flightId]
-// renders the polyline + metadata for a single completed flight session.
-// Lives OUTSIDE the (tabs) group on purpose — no bottom nav, no
-// rider-screen chrome, social-friendly canonical URL.
+// Public, unauthenticated flight detail page. It keeps the share-friendly URL
+// and lightweight chrome, while providing deterministic routes back into the
+// aircraft and live-map experience.
 
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import nextDynamic from "next/dynamic";
 import { getRegistry } from "@/lib/registry";
 import { fleetHex } from "@/lib/seed";
@@ -14,24 +12,29 @@ import {
   parseFlightId,
 } from "@/lib/flights";
 import { SS_TOKENS } from "@/lib/tokens";
-import { ShareLinkButton } from "@/components/ShareLinkButton";
+import { Card } from "@/components/Card";
+import { StatusPill } from "@/components/StatusPill";
 import { fmtDurationHuman, formatTs } from "@/lib/time";
 import { getTimeFormatPref, isHour12 } from "@/lib/user-prefs";
 import { BASE_URL } from "@/lib/config";
+import {
+  DetailActionLink,
+  DetailBreadcrumbs,
+  DetailContextNav,
+  DetailMapLoading,
+  DetailMetricList,
+  DetailSectionHeading,
+  DetailTechnicalDetails,
+  type DetailMetric,
+} from "@/components/AircraftDetailUI";
+import { DetailShareButton } from "@/components/DetailShareButton";
+import type { RecentFlightForTail } from "@/lib/flights";
 
 export const dynamic = "force-dynamic";
 
 const PlaneTrackMap = nextDynamic(() => import("@/components/PlaneTrackMap"), {
   ssr: false,
-  loading: () => (
-    <div
-      style={{
-        height: 320,
-        background: SS_TOKENS.bg0,
-        borderRadius: 12,
-      }}
-    />
-  ),
+  loading: () => <DetailMapLoading height={380} />,
 });
 
 type Props = {
@@ -41,272 +44,322 @@ type Props = {
 export async function generateMetadata({ params }: Props) {
   const tail = params.tail.toUpperCase();
   const fleet = await getRegistry();
-  const entry = fleet.find((f) => f.tail === tail);
-  const niceName = entry?.nickname ? ` "${entry.nickname}"` : "";
+  const entry = fleet.find((aircraft) => aircraft.tail === tail);
+  const niceName = entry?.nickname ? ` “${entry.nickname}”` : "";
   return {
-    title: `${tail}${niceName} · Flight ${params.flightId} · Out Of Sight`,
+    title: `${tail}${niceName} flight`,
     description: `Flight track for ${tail}${niceName}, captured by Out Of Sight.`,
     openGraph: {
-      title: `${tail}${niceName} · Flight ${params.flightId}`,
-      description: `Flight track captured by Out Of Sight.`,
+      title: `${tail}${niceName} flight`,
+      description: "Aircraft flight track captured by Out Of Sight.",
       url: `${BASE_URL}/flight/${tail}/${params.flightId}`,
       type: "article",
     },
   };
 }
 
-export default async function FlightSharePage({ params }: Props) {
+export default async function FlightDetailPage({ params }: Props) {
   const tail = params.tail.toUpperCase();
   const fleet = await getRegistry();
-  const entry = fleet.find((f) => f.tail === tail);
+  const entry = fleet.find((aircraft) => aircraft.tail === tail);
   if (!entry) notFound();
-
-  const parsed = parseFlightId(params.flightId);
-  if (!parsed) notFound();
+  if (!parseFlightId(params.flightId)) notFound();
 
   const flight = await getFlightById(tail, entry.nickname, params.flightId);
   if (!flight) {
-    return <Missing tail={tail} />;
+    return <MissingFlight tail={tail} flightId={params.flightId} />;
   }
 
-  const { session, points } = flight;
+  const { session, points, inProgress } = flight;
   const hour12 = isHour12(getTimeFormatPref());
-  const avgGroundSpeed = averageGroundSpeedKt(points);
+  const flightPath = `/flight/${entry.tail}/${params.flightId}`;
+  const aircraftPath = `/plane/${entry.tail}`;
+  const mapPath = `/map?tail=${encodeURIComponent(entry.tail)}`;
 
   return (
     <main
       style={{
         minHeight: "100dvh",
-        padding: "16px 18px 40px",
+        width: "100%",
         maxWidth: 720,
+        boxSizing: "border-box",
         margin: "0 auto",
+        padding: "14px 18px 64px",
         display: "flex",
         flexDirection: "column",
-        gap: 16,
+        gap: 22,
         color: SS_TOKENS.fg0,
       }}
     >
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "baseline",
-          gap: 12,
-          flexWrap: "wrap",
-        }}
-      >
+      <DetailBreadcrumbs
+        items={[
+          { href: "/aircraft", label: "Aircraft" },
+          { href: aircraftPath, label: entry.tail },
+          { label: inProgress ? "Current flight" : "Flight detail" },
+        ]}
+      />
+
+      <header style={{ display: "grid", gap: 10 }}>
         <div>
-          <div
+          <h1
             style={{
+              margin: 0,
               display: "flex",
               alignItems: "baseline",
               gap: 10,
               flexWrap: "wrap",
+              color: SS_TOKENS.fg0,
+              fontSize: "clamp(30px, 8vw, 44px)",
+              fontWeight: 850,
+              lineHeight: 1.04,
+              letterSpacing: 0,
             }}
           >
+            <span className="ss-mono">{entry.tail}</span>
             <span
-              className="ss-mono"
               style={{
-                fontSize: 24,
+                color: SS_TOKENS.fg1,
+                fontSize: "clamp(18px, 4.8vw, 24px)",
                 fontWeight: 700,
-                color: SS_TOKENS.fg0,
-                letterSpacing: "-.02em",
               }}
             >
-              {entry.tail}
+              flight
             </span>
-            {entry.nickname && (
-              <span
-                style={{
-                  fontSize: 14,
-                  color: SS_TOKENS.fg1,
-                  fontStyle: "italic",
-                }}
-              >
-                &ldquo;{entry.nickname}&rdquo;
-              </span>
-            )}
-          </div>
-          <div
-            className="ss-mono"
+          </h1>
+          <p
             style={{
-              fontSize: 11,
-              color: SS_TOKENS.fg2,
-              marginTop: 4,
-              letterSpacing: ".04em",
+              margin: "8px 0 0",
+              color: SS_TOKENS.fg1,
+              fontSize: 14,
+              lineHeight: 1.5,
             }}
           >
+            {entry.nickname ? `“${entry.nickname}” · ` : ""}
             {entry.operator} · {entry.model}
-          </div>
+          </p>
         </div>
-        <ShareLinkButton
-          path={`/flight/${entry.tail}/${params.flightId}`}
-          label="Copy share link"
+
+        <StatusPill
+          kind={inProgress ? "alert" : "clear"}
+          label={inProgress ? "IN PROGRESS" : "COMPLETED"}
+          sub={`${formatTs(session.start_ts, "date-short")} · ${fmtDurationHuman(
+            session.duration_s,
+          )}`}
+          big
         />
       </header>
 
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "5px 11px",
-          borderRadius: 999,
-          background: SS_TOKENS.alertDim,
-          border: `.5px solid color-mix(in srgb, ${SS_TOKENS.alert} 34%, transparent)`,
-          color: SS_TOKENS.alert,
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: ".04em",
-          alignSelf: "flex-start",
-        }}
-      >
-        Completed flight · {formatTs(session.start_ts, "date-short")} ·{" "}
-        {fmtDurationHuman(session.duration_s)}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {inProgress ? (
+          <DetailActionLink href={mapPath} primary>
+            View live on Map
+          </DetailActionLink>
+        ) : (
+          <DetailActionLink href={aircraftPath} primary>
+            View {entry.tail}
+          </DetailActionLink>
+        )}
+        {inProgress && (
+          <DetailActionLink href={aircraftPath}>Aircraft details</DetailActionLink>
+        )}
+        <DetailShareButton path={flightPath} />
       </div>
 
-      <PlaneTrackMap tail={tail} points={points} inProgress={false} height={320} />
-
       <section
-        style={{
-          background: SS_TOKENS.bg1,
-          border: `.5px solid ${SS_TOKENS.hairline}`,
-          borderRadius: 12,
-          padding: "16px 18px",
-        }}
+        aria-labelledby="flight-track-heading"
+        style={{ display: "grid", gap: 12 }}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 12,
-          }}
-        >
-          <KV label="FIRST SEEN" value={formatTs(session.start_ts, "datetime", { hour12 })} />
-          <KV label="LAST SEEN" value={formatTs(session.end_ts, "datetime", { hour12 })} />
-          <KV label="DURATION" value={fmtDurationHuman(session.duration_s)} />
-          <KV label="SAMPLES" value={String(session.sample_count)} />
-          <KV
-            label="AVG GS"
-            value={avgGroundSpeed != null ? `${Math.round(avgGroundSpeed)} kt` : "—"}
+        <DetailSectionHeading
+          id="flight-track-heading"
+          eyebrow="Flight track"
+          title={inProgress ? "Live route" : "Recorded route"}
+          description={
+            inProgress
+              ? "The endpoint refreshes while this flight remains active."
+              : "Public ADS-B observations from the retained flight session."
+          }
+        />
+        {points.length > 0 ? (
+          <PlaneTrackMap
+            tail={tail}
+            points={points}
+            inProgress={inProgress}
+            height={380}
           />
-          <KV
-            label="MAX ALT"
-            value={
-              session.max_alt_ft > 0
-                ? `${session.max_alt_ft.toLocaleString()}′`
-                : "—"
-            }
-          />
-          <KV
-            label="HEX"
-            value={fleetHex(entry).toUpperCase()}
-          />
-        </div>
+        ) : (
+          <Card>
+            <p
+              style={{
+                margin: 0,
+                padding: "22px 8px",
+                color: SS_TOKENS.fg1,
+                fontSize: 14,
+                lineHeight: 1.5,
+                textAlign: "center",
+              }}
+            >
+              This flight has no retained coordinates to draw yet.
+            </p>
+          </Card>
+        )}
       </section>
 
-      <footer
-        className="ss-mono"
-        style={{
-          marginTop: 8,
-          fontSize: 11,
-          color: SS_TOKENS.fg2,
-          letterSpacing: ".04em",
-          textAlign: "center",
-          lineHeight: 1.6,
-        }}
+      <section
+        aria-labelledby="flight-summary-heading"
+        style={{ display: "grid", gap: 12 }}
       >
-        Tracked by{" "}
-        <Link
-          href="/"
-          style={{ color: SS_TOKENS.fg1, textDecoration: "underline" }}
-        >
-          Out Of Sight
-        </Link>
-        <br />
-        <Link
-          href="/"
-          style={{ color: SS_TOKENS.fg1, textDecoration: "underline" }}
-        >
-          View live tracker →
-        </Link>
-      </footer>
+        <DetailSectionHeading
+          id="flight-summary-heading"
+          eyebrow={inProgress ? "Live session" : "Flight session"}
+          title="Flight summary"
+          description="Times describe the first and last retained ADS-B observations, not official wheels-up or landing times."
+        />
+        <Card>
+          <DetailMetricList items={flightMetrics(flight, hour12)} />
+        </Card>
+      </section>
+
+      <section
+        aria-labelledby="flight-technical-heading"
+        style={{ display: "grid", gap: 12 }}
+      >
+        <DetailSectionHeading
+          id="flight-technical-heading"
+          eyebrow="Reference"
+          title="Technical details"
+        />
+        <DetailTechnicalDetails summary="Show session identifiers and data notes">
+          <DetailMetricList
+            items={[
+              { label: "Track samples", value: String(session.sample_count) },
+              { label: "ICAO24", value: fleetHex(entry).toUpperCase() },
+              { label: "Flight ID", value: params.flightId },
+              { label: "Source", value: "Public ADS-B observations" },
+            ]}
+          />
+          <p
+            style={{
+              margin: "4px 0 12px",
+              color: SS_TOKENS.fg1,
+              fontSize: 12,
+              lineHeight: 1.5,
+            }}
+          >
+            Reception can be delayed, incomplete, or intermittent. Shared flight
+            links remain available only while their underlying session is retained.
+          </p>
+        </DetailTechnicalDetails>
+      </section>
+
+      <DetailContextNav
+        links={[
+          { href: aircraftPath, label: `${entry.tail} details` },
+          { href: "/aircraft", label: "Aircraft catalog" },
+          { href: mapPath, label: "Map" },
+          { href: "/home", label: "Home" },
+        ]}
+      />
     </main>
   );
 }
 
-function Missing({ tail }: { tail: string }) {
+function MissingFlight({ tail, flightId }: { tail: string; flightId: string }) {
+  const aircraftPath = `/plane/${tail}`;
   return (
     <main
       style={{
         minHeight: "100dvh",
-        padding: 32,
-        maxWidth: 480,
+        width: "100%",
+        maxWidth: 720,
+        boxSizing: "border-box",
         margin: "0 auto",
-        color: SS_TOKENS.fg1,
-        textAlign: "center",
+        padding: "14px 18px 64px",
         display: "flex",
         flexDirection: "column",
-        gap: 16,
+        gap: 22,
       }}
     >
-      <h1
-        style={{
-          fontSize: 22,
-          color: SS_TOKENS.fg0,
-          fontWeight: 700,
-          margin: 0,
-        }}
-      >
-        Flight not available
-      </h1>
-      <p style={{ fontSize: 14, lineHeight: 1.5 }}>
-        This flight is no longer in our window. We keep flight tracks for
-        the most recent 30 days and prune older ones to keep storage
-        light.
-      </p>
-      <Link
-        href={`/plane/${tail}`}
-        className="ss-mono"
-        style={{
-          fontSize: 12,
-          color: SS_TOKENS.alert,
-          textDecoration: "underline",
-        }}
-      >
-        See {tail}&rsquo;s recent activity →
-      </Link>
+      <DetailBreadcrumbs
+        items={[
+          { href: "/aircraft", label: "Aircraft" },
+          { href: aircraftPath, label: tail },
+          { label: "Flight unavailable" },
+        ]}
+      />
+      <header style={{ display: "grid", gap: 8 }}>
+        <span className="ss-eyebrow">Flight track</span>
+        <h1
+          style={{
+            margin: 0,
+            color: SS_TOKENS.fg0,
+            fontSize: "clamp(30px, 8vw, 44px)",
+            lineHeight: 1.05,
+          }}
+        >
+          Flight not available
+        </h1>
+        <p
+          style={{
+            margin: 0,
+            maxWidth: 560,
+            color: SS_TOKENS.fg1,
+            fontSize: 14,
+            lineHeight: 1.55,
+          }}
+        >
+          This session may have expired, or its track may not have been retained.
+          The aircraft page shows the latest activity that is still available.
+        </p>
+      </header>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <DetailActionLink href={aircraftPath} primary>
+          View {tail}
+        </DetailActionLink>
+        <DetailActionLink href="/aircraft">Aircraft catalog</DetailActionLink>
+      </div>
+      <DetailTechnicalDetails summary="Show requested flight ID">
+        <DetailMetricList items={[{ label: "Flight ID", value: flightId }]} />
+      </DetailTechnicalDetails>
+      <DetailContextNav
+        links={[
+          { href: aircraftPath, label: `${tail} details` },
+          { href: "/map", label: "Map" },
+          { href: "/home", label: "Home" },
+        ]}
+      />
     </main>
   );
 }
 
-function KV({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      style={{
-        background: SS_TOKENS.bg2,
-        padding: "10px 12px",
-        borderRadius: 8,
-      }}
-    >
-      <div
-        className="ss-mono"
-        style={{ fontSize: 9.5, color: SS_TOKENS.fg2, letterSpacing: ".1em" }}
-      >
-        {label}
-      </div>
-      <div
-        className="ss-mono"
-        style={{
-          fontSize: 16,
-          fontWeight: 600,
-          color: SS_TOKENS.fg0,
-          marginTop: 3,
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
+function flightMetrics(
+  flight: RecentFlightForTail,
+  hour12: boolean,
+): DetailMetric[] {
+  const { session, inProgress } = flight;
+  const averageGroundSpeed = averageGroundSpeedKt(flight.points);
+  return [
+    {
+      label: "Started",
+      value: formatTs(session.start_ts, "datetime", { hour12 }),
+    },
+    {
+      label: inProgress ? "Latest observation" : "Ended",
+      value: formatTs(session.end_ts, "datetime", { hour12 }),
+    },
+    { label: "Duration", value: fmtDurationHuman(session.duration_s) },
+    {
+      label: "Average ground speed",
+      value:
+        averageGroundSpeed != null
+          ? `${Math.round(averageGroundSpeed)} kt`
+          : "Not reported",
+    },
+    {
+      label: "Maximum altitude",
+      value:
+        session.max_alt_ft > 0
+          ? `${session.max_alt_ft.toLocaleString()}′`
+          : "Not reported",
+    },
+  ];
 }
-

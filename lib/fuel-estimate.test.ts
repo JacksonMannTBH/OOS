@@ -10,10 +10,22 @@ import {
 } from "./fuel-estimate";
 
 test("formatFuelRemaining labels the value as an endurance estimate", () => {
-  assert.equal(formatFuelRemaining(125), "Est. Endurance - 2 Hours 5 Minutes");
-  assert.equal(formatFuelRemaining(60), "Est. Endurance - 1 Hour 0 Minutes");
-  assert.equal(formatFuelRemaining(1), "Est. Endurance - 0 Hours 1 Minute");
-  assert.equal(formatFuelRemaining(0), "Est. Endurance - 0 Hours 0 Minutes");
+  assert.equal(
+    formatFuelRemaining(125),
+    "Est. Endurance Upper Bound - 2 Hours 5 Minutes",
+  );
+  assert.equal(
+    formatFuelRemaining(60),
+    "Est. Endurance Upper Bound - 1 Hour 0 Minutes",
+  );
+  assert.equal(
+    formatFuelRemaining(1),
+    "Est. Endurance Upper Bound - 0 Hours 1 Minute",
+  );
+  assert.equal(
+    formatFuelRemaining(0),
+    "Est. Endurance Upper Bound - 0 Hours 0 Minutes",
+  );
 });
 
 test("normalizeTailNumber accepts small tail-number formatting differences", () => {
@@ -27,7 +39,9 @@ test("estimateFuelRemaining hides unknown and grounded aircraft", () => {
     estimateFuelRemaining({
       tail: "N00000",
       airborne: true,
-      time_aloft_min: 5,
+      detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+      takeoff_confidence: "high",
+      as_of: "2026-08-08T12:05:00.000Z",
     }),
     null,
   );
@@ -35,17 +49,21 @@ test("estimateFuelRemaining hides unknown and grounded aircraft", () => {
     estimateFuelRemaining({
       tail: "N305DK",
       airborne: false,
-      time_aloft_min: 5,
+      detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+      takeoff_confidence: "high",
+      as_of: "2026-08-08T12:05:00.000Z",
     }),
     null,
   );
 });
 
-test("estimateFuelRemaining hides airborne aircraft without source-derived elapsed duration", () => {
+test("estimateFuelRemaining requires exact takeoff and as-of timestamps", () => {
   assert.equal(
     estimateFuelRemaining({
       tail: "N305DK",
       airborne: true,
+      takeoff_confidence: "high",
+      time_aloft_min: 5,
     }),
     null,
   );
@@ -55,33 +73,89 @@ test("estimateFuelRemaining clamps exhausted duration at zero", () => {
   const estimate = estimateFuelRemaining({
     tail: "N305DK",
     airborne: true,
-    time_aloft_min: 9999,
+    detected_takeoff_at: "2026-08-01T00:00:00.000Z",
+    takeoff_confidence: "high",
+    as_of: "2026-08-08T00:00:00.000Z",
   });
-  assert.equal(estimate?.label, "Est. Endurance - 0 Hours 0 Minutes");
+  assert.equal(
+    estimate?.label,
+    "Est. Endurance Upper Bound - 0 Hours 0 Minutes",
+  );
   assert.equal(estimate?.minutesRemaining, 0);
+  assert.equal(estimate?.remainingSeconds, 0);
 });
 
-test("estimateFuelRemaining subtracts elapsed current-flight duration from mean max duration", () => {
+test("estimateFuelRemaining subtracts exact elapsed time from the catalog upper bound", () => {
   const estimate = estimateFuelRemaining({
     tail: "N422CT",
     airborne: true,
-    time_aloft_min: 5,
+    detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+    takeoff_confidence: "high",
+    as_of: "2026-08-08T12:05:00.000Z",
   });
 
+  assert.equal(estimate?.basis, "catalog_upper_bound");
+  assert.equal(estimate?.catalogUpperBoundMinutes, 240);
   assert.equal(estimate?.maxDurationMinutes, 240);
+  assert.equal(estimate?.elapsedSeconds, 300);
   assert.equal(estimate?.elapsedMinutes, 5);
+  assert.equal(estimate?.remainingSeconds, 14_100);
   assert.equal(estimate?.minutesRemaining, 235);
-  assert.equal(estimate?.label, "Est. Endurance - 3 Hours 55 Minutes");
+  assert.equal(
+    estimate?.label,
+    "Est. Endurance Upper Bound - 3 Hours 55 Minutes",
+  );
 });
 
 test("estimateFuelRemaining uses mean duration for aircraft with duration ranges", () => {
   const estimate = estimateFuelRemaining({
     tail: "N9446P",
     airborne: true,
-    time_aloft_min: 42,
+    detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+    takeoff_confidence: "medium",
+    as_of: "2026-08-08T12:42:00.000Z",
   });
 
   assert.equal(estimate?.maxDurationMinutes, 282);
   assert.equal(estimate?.minutesRemaining, 240);
-  assert.equal(estimate?.label, "Est. Endurance - 4 Hours 0 Minutes");
+  assert.equal(
+    estimate?.label,
+    "Est. Endurance Upper Bound - 4 Hours 0 Minutes",
+  );
+});
+
+test("estimateFuelRemaining floors only the final display after 5m59s", () => {
+  const estimate = estimateFuelRemaining({
+    tail: "N422CT",
+    airborne: true,
+    detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+    takeoff_confidence: "high",
+    as_of: "2026-08-08T12:05:59.000Z",
+    time_aloft_min: 9_999,
+  });
+
+  assert.equal(estimate?.elapsedSeconds, 359);
+  assert.equal(estimate?.elapsedMinutes, 359 / 60);
+  assert.equal(estimate?.remainingSeconds, 14_041);
+  assert.equal(estimate?.minutesRemaining, 14_041 / 60);
+  assert.equal(
+    estimate?.label,
+    "Est. Endurance Upper Bound - 3 Hours 54 Minutes",
+  );
+});
+
+test("estimateFuelRemaining suppresses low-confidence and unknown takeoffs", () => {
+  const exactTimes = {
+    tail: "N422CT",
+    airborne: true,
+    detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+    as_of: "2026-08-08T12:05:59.000Z",
+    time_aloft_min: 5,
+  } as const;
+
+  assert.equal(
+    estimateFuelRemaining({ ...exactTimes, takeoff_confidence: "low" }),
+    null,
+  );
+  assert.equal(estimateFuelRemaining(exactTimes), null);
 });

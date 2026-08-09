@@ -49,7 +49,10 @@ export function RadarLayerControls({
       <Link
         href="/home"
         aria-label="Home"
-        style={iconButtonStyle(false)}
+        style={{
+          ...iconButtonStyle(false),
+          border: `1px solid ${SS_TOKENS.alert}`,
+        }}
       >
         <HomeIcon />
       </Link>

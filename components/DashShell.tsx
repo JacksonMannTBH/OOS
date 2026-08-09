@@ -7,6 +7,7 @@ import { filterOpsAircraftByState } from "@/lib/aircraft-directory";
 import { useAircraft } from "@/lib/hooks/useAircraft";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
+import { useRideStatusThresholds } from "@/lib/hooks/useRideStatusThresholds";
 import { SS_TOKENS } from "@/lib/tokens";
 import { haversineNm } from "@/lib/geo";
 import { proximityBandForDistance } from "@/lib/proximity-display";
@@ -19,7 +20,6 @@ import { TakeOffButton } from "./TakeOffButton";
 import { StatusHero } from "./StatusHero";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
-const NEAR_NM = 5;
 const HOME_TOP_OFFSET_PX = 50;
 const HOME_BACKGROUND_IMAGE = "/images/home-map-background.png";
 type WatcherEntry = { plane: Aircraft; distanceNm: number | null };
@@ -34,6 +34,7 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
   const snap = useAircraft(initial, mockOn);
   const stateId = useSelectedStateId();
   const { pos } = useRiderPos();
+  const rideThresholds = useRideStatusThresholds();
 
   const stateAircraft = useMemo(
     () => filterOpsAircraftByState(snap.aircraft, stateId),
@@ -82,7 +83,7 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
   }, [pos, airborne]);
   const nearest = watcherList.find((entry) => entry.distanceNm != null) ?? null;
   const nearestBand = nearest?.distanceNm != null
-    ? proximityBandForDistance(nearest.distanceNm)
+    ? proximityBandForDistance(nearest.distanceNm, rideThresholds)
     : null;
   const eyeTarget = nearest?.plane ?? airborne[0] ?? null;
   const eyeHref = eyeTarget
@@ -93,7 +94,9 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
           tail: eyeTarget.tail,
         },
       }
-    : "/home";
+    : mockParam
+      ? { pathname: "/map", query: { mock: mockParam } }
+      : "/map";
 
 
   return (
@@ -114,17 +117,15 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
       />
       <main
         style={{
-          minHeight: "100dvh",
-          // Bottom padding = tab bar (66) + iOS install prompt overlay
-          // (~80) + breathing room. Without this the last dash card
-          // hides behind the fixed-position prompt on iOS Safari.
+          height: "100dvh",
           boxSizing: "border-box",
           width: "100%",
-          padding: `calc(clamp(52px, 13vw, 72px) + ${HOME_TOP_OFFSET_PX}px) clamp(14px, 5vw, 20px) 136px`,
+          padding: `calc(clamp(52px, 13vw, 72px) + ${HOME_TOP_OFFSET_PX}px) clamp(14px, 5vw, 20px) 82px`,
           maxWidth: 430,
           margin: "0 auto",
           position: "relative",
           zIndex: 1,
+          overflow: "hidden",
           display: "flex",
           flexDirection: "column",
           gap: "clamp(14px, 4vw, 18px)",
@@ -135,7 +136,7 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
           variant="plain"
           style={{
             position: "absolute",
-            top: `calc(max(8px, env(safe-area-inset-top)) + ${HOME_TOP_OFFSET_PX}px)`,
+            top: `calc(max(8px, env(safe-area-inset-top)) + ${HOME_TOP_OFFSET_PX - 30}px)`,
             right: "clamp(14px, 5vw, 20px)",
             width: 44,
             minHeight: 44,
@@ -151,7 +152,7 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
           aria-label={
             eyeTarget
               ? `View nearest active aircraft ${eyeTarget.tail}`
-              : "Home"
+              : "View map"
           }
           style={{
             alignSelf: "center",
@@ -182,6 +183,17 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
             showPill={false}
             frameless
           />
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              bottom: 0,
+              left: 0,
+              zIndex: 2,
+            }}
+          >
+            <AlertsOptInCard frameless />
+          </div>
         </div>
 
         <div
@@ -227,13 +239,11 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
           </Link>
         </div>
 
-        <AlertsOptInCard frameless />
-
         <ProximityFlash
           active={
             nearest != null &&
             nearest.distanceNm != null &&
-            nearest.distanceNm <= NEAR_NM &&
+            nearest.distanceNm <= rideThresholds.watchNm &&
             (nearest.plane.role === "fixed_wing" || nearest.plane.role === "patrol")
           }
           color={nearestBand?.color}

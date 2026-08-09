@@ -7,7 +7,13 @@ import {
 } from "./app-states";
 import { fleetHex, FLEET } from "./seed";
 import { getSupabaseAdmin, isSupabaseConfigured } from "./supabase/server";
-import type { Aircraft, FleetEntry, Snapshot, SnapshotSource } from "./types";
+import type {
+  Aircraft,
+  AircraftGroundState,
+  FleetEntry,
+  Snapshot,
+  SnapshotSource,
+} from "./types";
 
 type CurrentStateRow = {
   aircraft_id: string;
@@ -18,7 +24,9 @@ type CurrentStateRow = {
   observed_at: string | null;
   last_seen_at: string | null;
   last_grounded_at: string | null;
+  last_airborne_at: string | null;
   airborne_candidate_started_at: string | null;
+  landing_candidate_started_at: string | null;
 };
 
 type FlightSessionRow = {
@@ -26,6 +34,15 @@ type FlightSessionRow = {
   detected_takeoff_at: string | null;
   tracking_started_at: string | null;
   last_seen_at: string | null;
+  closed_at: string | null;
+};
+
+type FlightSessionFinalization = {
+  status: "landed" | "unknown";
+  closedAt: string;
+  endReason: "confirmed_landing" | "coverage_lost" | "stale_session";
+  detectedLandingAt: string | null;
+  landingConfirmedAt: string | null;
 };
 
 type CatalogRow = {
@@ -71,6 +88,7 @@ const TAKEOFF_CONFIRMATION_SAMPLES = 2;
 const LANDING_CONFIRMATION_SAMPLES = 2;
 const TAKEOFF_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1_000;
 const CURRENT_OBSERVATION_MAX_AGE_MS = 2 * 60 * 1_000;
+export const FLIGHT_TRANSITION_MAX_GAP_MS = CURRENT_OBSERVATION_MAX_AGE_MS;
 const FLIGHT_SESSION_LOST_GRACE_MS = 15 * 60 * 1_000;
 const MAX_OPEN_FLIGHT_SESSION_MS = 18 * 60 * 60 * 1_000;
 
@@ -259,12 +277,22 @@ export async function getDatabaseSnapshot(
       observedAt != null &&
       snapshotReadAt - observedAt <= CURRENT_OBSERVATION_MAX_AGE_MS;
     const status = row.observation_status as Aircraft["observation_status"];
+    // Keep a confirmed flight visible through the first grounded candidate.
+    // It stops being airborne only after the second grounded sample confirms
+    // the landing, or when the provider ground state is unknown.
     const airborne =
       hasCurrentObservation &&
-      (status === "airborne" || status === "airborne_candidate");
+      (status === "airborne" ||
+        status === "airborne_candidate" ||
+        status === "landing_candidate");
     const takeoffAt = parseTime(row.detected_takeoff_at);
-    const trackingStartedAt = parseTime(row.tracking_started_at);
-    const elapsedStart = takeoffAt ?? trackingStartedAt;
+    const takeoffConfidence =
+      (row.takeoff_confidence as Aircraft["takeoff_confidence"]) ?? null;
+    const elapsedStart =
+      takeoffAt != null &&
+      (takeoffConfidence === "medium" || takeoffConfidence === "high")
+        ? takeoffAt
+        : null;
     return {
       tail: String(row.tail),
       icao24: String(row.icao24),
@@ -293,9 +321,8 @@ export async function getDatabaseSnapshot(
         ? String(row.detected_takeoff_at)
         : null,
       takeoff_confidence:
-        hasCurrentObservation
-          ? (row.takeoff_confidence as Aircraft["takeoff_confidence"]) ?? null
-          : null,
+        hasCurrentObservation ? takeoffConfidence : null,
+      as_of: snapshotReadAt,
       starting_fuel_estimate_gal: finiteNumber(
         row.starting_fuel_estimate_gal,
       ),
@@ -376,21 +403,6 @@ export async function ingestSnapshot(
   const catalogByTail = new Map(catalog.map((row) => [row.tail, row]));
   const catalogById = new Map(catalog.map((row) => [row.id, row]));
   const ids = catalog.map((row) => row.id);
-  const { data: performanceData, error: performanceError } = ids.length
-    ? await db
-        .from("aircraft_performance_profiles")
-        .select("aircraft_id,usable_fuel_gallons")
-        .in("aircraft_id", ids)
-    : { data: [], error: null };
-  if (performanceError) {
-    throw new Error(`Performance-profile read failed: ${performanceError.message}`);
-  }
-  const performanceByAircraft = new Map(
-    (performanceData ?? []).map((row) => [
-      String(row.aircraft_id),
-      finiteNumber(row.usable_fuel_gallons),
-    ]),
-  );
   const { data: currentData, error: currentError } = ids.length
     ? await db.from("aircraft_current_state").select("*").in("aircraft_id", ids)
     : { data: [], error: null };
@@ -408,7 +420,7 @@ export async function ingestSnapshot(
   const { data: sessionData, error: sessionError } = openFlightSessionIds.length
     ? await db
         .from("flight_sessions")
-        .select("id,detected_takeoff_at,tracking_started_at,last_seen_at")
+        .select("id,detected_takeoff_at,tracking_started_at,last_seen_at,closed_at")
         .in("id", openFlightSessionIds)
     : { data: [], error: null };
   if (sessionError) throw new Error(`Open-session read failed: ${sessionError.message}`);
@@ -418,9 +430,16 @@ export async function ingestSnapshot(
 
   const stateRows: Record<string, unknown>[] = [];
   const positionRows: Record<string, unknown>[] = [];
+  const newFlightSessionRows: Record<string, unknown>[] = [];
+  const takeoffEventCandidates: Array<{
+    flightSessionId: string;
+    aircraftId: string;
+    detectedTakeoffAt: string;
+    catalogRow: CatalogRow;
+  }> = [];
   const flightSessionsToFinalize = new Map<
     string,
-    { status: "landed" | "unknown"; endedAt: string }
+    FlightSessionFinalization
   >();
   const byState: Record<string, StateIngestionSummary> = {};
   let takeoffsCreated = 0;
@@ -450,8 +469,11 @@ export async function ingestSnapshot(
       if (previous?.flight_session_id) {
         flightSessionsToFinalize.set(previous.flight_session_id, {
           status: "unknown",
-          endedAt:
+          closedAt:
             previous.last_seen_at ?? previous.observed_at ?? snapshotObservedAt,
+          endReason: "coverage_lost",
+          detectedLandingAt: null,
+          landingConfirmedAt: null,
         });
       }
       stateRows.push({
@@ -463,8 +485,12 @@ export async function ingestSnapshot(
         current_state_code: null,
         observed_at: null,
         last_seen_at: previous?.last_seen_at ?? null,
-        last_grounded_at: previous?.last_grounded_at ?? null,
+        // A provider gap invalidates transition continuity. Retaining either
+        // boundary would manufacture a takeoff/landing midpoint on reacquisition.
+        last_grounded_at: null,
+        last_airborne_at: null,
         airborne_candidate_started_at: null,
+        landing_candidate_started_at: null,
         latitude: null,
         longitude: null,
         altitude_ft: null,
@@ -500,19 +526,68 @@ export async function ingestSnapshot(
       previous,
       snapshotObservedAt,
     );
+    const hasStaleLandingCandidate = isStaleLandingCandidate(
+      previous,
+      snapshotObservedAt,
+    );
     if (hasStaleOpenSession && previous?.flight_session_id) {
       flightSessionsToFinalize.set(previous.flight_session_id, {
         status: "unknown",
-        endedAt:
+        closedAt:
           previous.last_seen_at ??
           previousOpenSession?.last_seen_at ??
           previous.observed_at ??
           snapshotObservedAt,
+        endReason: "stale_session",
+        detectedLandingAt: null,
+        landingConfirmedAt: null,
       });
     }
     const continuityPrevious =
-      hasStaleOpenSession || hasStaleAirborneCandidate ? undefined : previous;
-    const isAirborne = aircraft.airborne;
+      hasStaleOpenSession ||
+      hasStaleAirborneCandidate ||
+      hasStaleLandingCandidate
+        ? undefined
+        : previous;
+    let flightSessionId = hasStaleOpenSession
+      ? null
+      : previous?.flight_session_id ?? null;
+    const groundState = aircraftObservationGroundState(aircraft);
+
+    if (groundState === "unknown") {
+      stateRows.push({
+        aircraft_id: catalogRow.id,
+        flight_session_id: flightSessionId,
+        observation_status: "unknown",
+        consecutive_airborne: 0,
+        consecutive_grounded: 0,
+        current_state_code: await resolveCurrentStateCode(
+          db,
+          aircraft.lat,
+          aircraft.lon,
+          catalogRow.home_state_code,
+        ),
+        observed_at: aircraftObservedAt,
+        last_seen_at: aircraftObservedAt,
+        // An ambiguous provider sample breaks both transition intervals. It
+        // updates contact/position without being evidence of air or ground.
+        last_grounded_at: null,
+        last_airborne_at: null,
+        airborne_candidate_started_at: null,
+        landing_candidate_started_at: null,
+        latitude: aircraft.lat ?? null,
+        longitude: aircraft.lon ?? null,
+        altitude_ft: aircraft.altitude_ft ?? null,
+        ground_speed_kt: aircraft.ground_speed_kt ?? null,
+        heading_deg: aircraft.heading ?? null,
+        squawk: aircraft.squawk ?? null,
+        source: snapshot.source,
+        updated_at: snapshotObservedAt,
+      });
+      continue;
+    }
+
+    const isAirborne = groundState === "airborne";
     const consecutiveAirborne = isAirborne
       ? (continuityPrevious?.consecutive_airborne ?? 0) + 1
       : 0;
@@ -527,9 +602,19 @@ export async function ingestSnapshot(
         ? continuityPrevious.airborne_candidate_started_at ?? aircraftObservedAt
         : aircraftObservedAt
       : null;
-    let flightSessionId = hasStaleOpenSession
-      ? null
-      : previous?.flight_session_id ?? null;
+    const lastAirborneAt = isAirborne
+      ? aircraftObservedAt
+      : continuityPrevious?.last_airborne_at ??
+        (continuityPrevious?.observation_status === "airborne" ||
+        continuityPrevious?.observation_status === "airborne_candidate"
+          ? continuityPrevious.observed_at
+          : null);
+    let landingCandidateStartedAt =
+      !isAirborne && flightSessionId
+        ? continuityPrevious?.consecutive_grounded
+          ? continuityPrevious.landing_candidate_started_at ?? aircraftObservedAt
+          : aircraftObservedAt
+        : null;
     let status: Aircraft["observation_status"] = isAirborne
       ? "airborne_candidate"
       : "grounded";
@@ -539,125 +624,60 @@ export async function ingestSnapshot(
       !flightSessionId &&
       consecutiveAirborne >= TAKEOFF_CONFIRMATION_SAMPLES
     ) {
-      const lastGroundedMs = parseTime(previous?.last_grounded_at);
-      const firstAirborneMs = parseTime(
-        previous?.airborne_candidate_started_at,
+      const detectedTakeoffAt = interpolateFlightTransition(
+        continuityPrevious?.last_grounded_at,
+        airborneCandidateStartedAt,
       );
-      const interpolatedTakeoffAt =
-        lastGroundedMs && firstAirborneMs
-          ? new Date(
-              Math.floor((lastGroundedMs + firstAirborneMs) / 2),
-            ).toISOString()
-          : null;
-      const detectedTakeoffAt =
-        interpolatedTakeoffAt ?? airborneCandidateStartedAt ?? aircraftObservedAt;
-      const trackingStartedAt =
-        continuityPrevious?.observed_at ?? aircraftObservedAt;
-      const { data: session, error: sessionError } = await db
-        .from("flight_sessions")
-        .insert({
-          aircraft_id: catalogRow.id,
-          status: "airborne",
-          tracking_started_at: trackingStartedAt,
-          detected_takeoff_at: detectedTakeoffAt,
-          last_seen_at: aircraftObservedAt,
-          takeoff_time_source: interpolatedTakeoffAt
-            ? "interpolated"
-            : "tracking_started_airborne",
-          confidence: interpolatedTakeoffAt ? "high" : "low",
-          starting_fuel_estimate_gal:
-            performanceByAircraft.get(catalogRow.id) ?? null,
-        })
-        .select("id")
-        .single();
-      if (sessionError) {
-        const { data: openSession } = await db
-          .from("flight_sessions")
-          .select("id")
-          .eq("aircraft_id", catalogRow.id)
-          .is("detected_landing_at", null)
-          .maybeSingle();
-        flightSessionId = openSession?.id ? String(openSession.id) : null;
-      } else {
-        flightSessionId = String(session.id);
-      }
-
-      if (flightSessionId) {
-        const { error: backfillError } = await db
-          .from("aircraft_positions")
-          .update({ flight_session_id: flightSessionId })
-          .eq("aircraft_id", catalogRow.id)
-          .is("flight_session_id", null)
-          .gte("observed_at", trackingStartedAt)
-          .lte("observed_at", aircraftObservedAt);
-        if (backfillError) {
-          throw new Error(`Position session backfill failed: ${backfillError.message}`);
-        }
-
-        const suppressNotification = await shouldSuppressTakeoffNotification(
-          db,
-          catalogRow.id,
+      const trackingStartedAt = airborneCandidateStartedAt ?? aircraftObservedAt;
+      flightSessionId = crypto.randomUUID();
+      newFlightSessionRows.push({
+        id: flightSessionId,
+        aircraft_id: catalogRow.id,
+        status: "airborne",
+        tracking_started_at: trackingStartedAt,
+        // First-seen-airborne is an observation boundary, not a takeoff.
+        detected_takeoff_at: detectedTakeoffAt,
+        last_seen_at: aircraftObservedAt,
+        takeoff_time_source: detectedTakeoffAt
+          ? "interpolated"
+          : "tracking_started_airborne",
+        confidence: detectedTakeoffAt ? "high" : "low",
+        starting_fuel_estimate_gal: null,
+      });
+      if (detectedTakeoffAt) {
+        takeoffEventCandidates.push({
           flightSessionId,
+          aircraftId: catalogRow.id,
           detectedTakeoffAt,
-        );
-        if (!suppressNotification) {
-          const { error: eventError } = await db.from("notification_events").upsert(
-            {
-              flight_session_id: flightSessionId,
-              aircraft_id: catalogRow.id,
-              state_code: catalogRow.home_state_code,
-              event_type: "takeoff",
-              occurred_at: detectedTakeoffAt,
-              payload: {
-                tail: catalogRow.tail,
-                nickname: catalogRow.nickname,
-                model: catalogRow.model,
-                state_code: catalogRow.home_state_code,
-              },
-            },
-            { onConflict: "flight_session_id,event_type", ignoreDuplicates: true },
-          );
-          if (!eventError) {
-            takeoffsCreated += 1;
-            stateSummary.takeoffsCreated += 1;
-          }
-        }
+          catalogRow,
+        });
       }
     }
 
     if (isAirborne && flightSessionId) {
       status = "airborne";
-      await db
-        .from("flight_sessions")
-        .update({
-          status: "airborne",
-          last_seen_at: aircraftObservedAt,
-          updated_at: snapshotObservedAt,
-        })
-        .eq("id", flightSessionId);
     } else if (
       !isAirborne &&
       flightSessionId &&
       consecutiveGrounded >= LANDING_CONFIRMATION_SAMPLES
     ) {
+      const detectedLandingAt =
+        estimateLandingTransitionAt(
+          lastAirborneAt,
+          landingCandidateStartedAt,
+        ) ?? aircraftObservedAt;
       flightSessionsToFinalize.set(flightSessionId, {
         status: "landed",
-        endedAt: aircraftObservedAt,
+        closedAt: aircraftObservedAt,
+        endReason: "confirmed_landing",
+        detectedLandingAt,
+        landingConfirmedAt: aircraftObservedAt,
       });
       flightSessionId = null;
+      landingCandidateStartedAt = null;
       status = "grounded";
     } else if (!isAirborne && flightSessionId) {
       status = "landing_candidate";
-    }
-
-    let currentStateCode: string | null = null;
-    if (aircraft.lat != null && aircraft.lon != null) {
-      const { data: resolvedState } = await db.rpc("resolve_state_code", {
-        input_latitude: aircraft.lat,
-        input_longitude: aircraft.lon,
-      });
-      currentStateCode =
-        typeof resolvedState === "string" ? resolvedState : catalogRow.home_state_code;
     }
 
     stateRows.push({
@@ -666,11 +686,20 @@ export async function ingestSnapshot(
       observation_status: status,
       consecutive_airborne: consecutiveAirborne,
       consecutive_grounded: consecutiveGrounded,
-      current_state_code: currentStateCode,
+      current_state_code: await resolveCurrentStateCode(
+        db,
+        aircraft.lat,
+        aircraft.lon,
+        catalogRow.home_state_code,
+      ),
       observed_at: aircraftObservedAt,
       last_seen_at: aircraftObservedAt,
       last_grounded_at: lastGroundedAt,
-      airborne_candidate_started_at: airborneCandidateStartedAt,
+      last_airborne_at: lastAirborneAt,
+      airborne_candidate_started_at: flightSessionId
+        ? null
+        : airborneCandidateStartedAt,
+      landing_candidate_started_at: landingCandidateStartedAt,
       latitude: aircraft.lat ?? null,
       longitude: aircraft.lon ?? null,
       altitude_ft: aircraft.altitude_ft ?? null,
@@ -700,52 +729,78 @@ export async function ingestSnapshot(
     }
   }
 
-  if (stateRows.length > 0) {
-    const { error } = await db
-      .from("aircraft_current_state")
-      .upsert(stateRows, { onConflict: "aircraft_id" });
-    if (error) throw new Error(`Current-state write failed: ${error.message}`);
+  const finalizationRows = [...flightSessionsToFinalize].map(
+    ([flightSessionId, finalState]) => ({
+      flight_session_id: flightSessionId,
+      status: finalState.status,
+      closed_at: finalState.closedAt,
+      end_reason: finalState.endReason,
+      detected_landing_at: finalState.detectedLandingAt,
+      landing_confirmed_at: finalState.landingConfirmedAt,
+      updated_at: snapshotObservedAt,
+    }),
+  );
+  const { data: lifecycleResult, error: lifecycleError } = await db.rpc(
+    "apply_aircraft_lifecycle_batch",
+    {
+      input_sessions: newFlightSessionRows,
+      input_state_rows: stateRows,
+      input_position_rows: positionRows,
+      input_finalizations: finalizationRows,
+    },
+  );
+  if (lifecycleError) {
+    throw new Error(`Aircraft lifecycle write failed: ${lifecycleError.message}`);
   }
-  let positionsInserted = 0;
-  if (positionRows.length > 0) {
-    const { data: insertedPositions, error } = await db
-      .from("aircraft_positions")
-      .upsert(positionRows, {
-        onConflict: "aircraft_id,observed_at",
-        ignoreDuplicates: true,
-      })
-      .select("aircraft_id");
-    if (error) throw new Error(`Position write failed: ${error.message}`);
-    positionsInserted = insertedPositions?.length ?? 0;
-    for (const position of insertedPositions ?? []) {
-      const catalogRow = catalogById.get(String(position.aircraft_id));
-      if (catalogRow) {
-        const stateSummary = byState[catalogRow.home_state_code];
-        if (stateSummary) stateSummary.positionsInserted += 1;
-      }
+
+  const lifecycleSummary = isRecord(lifecycleResult) ? lifecycleResult : {};
+  const positionsInserted =
+    finiteNumber(lifecycleSummary.positions_inserted) ?? 0;
+  const insertedAircraftIds = Array.isArray(
+    lifecycleSummary.inserted_aircraft_ids,
+  )
+    ? lifecycleSummary.inserted_aircraft_ids
+    : [];
+  for (const aircraftId of insertedAircraftIds) {
+    const catalogRow = catalogById.get(String(aircraftId));
+    if (catalogRow) {
+      const stateSummary = byState[catalogRow.home_state_code];
+      if (stateSummary) stateSummary.positionsInserted += 1;
     }
   }
 
-  for (const [flightSessionId, finalState] of flightSessionsToFinalize) {
-    const { error: positionDeleteError } = await db
-      .from("aircraft_positions")
-      .delete()
-      .eq("flight_session_id", flightSessionId);
-    if (positionDeleteError) {
-      throw new Error(`Flight-position purge failed: ${positionDeleteError.message}`);
-    }
-    const { error: sessionFinalizeError } = await db
-      .from("flight_sessions")
-      .update({
-        status: finalState.status,
-        detected_landing_at: finalState.endedAt,
-        last_seen_at: finalState.endedAt,
-        updated_at: snapshotObservedAt,
-      })
-      .eq("id", flightSessionId)
-      .is("detected_landing_at", null);
-    if (sessionFinalizeError) {
-      throw new Error(`Flight-session finalization failed: ${sessionFinalizeError.message}`);
+  // Only a bounded, ground-to-air transition is eligible for a takeoff alert.
+  // First-seen-airborne sessions intentionally have no detected takeoff event.
+  for (const candidate of takeoffEventCandidates) {
+    const suppressNotification = await shouldSuppressTakeoffNotification(
+      db,
+      candidate.aircraftId,
+      candidate.flightSessionId,
+      candidate.detectedTakeoffAt,
+    );
+    if (suppressNotification) continue;
+    const { error: eventError } = await db.from("notification_events").upsert(
+      {
+        flight_session_id: candidate.flightSessionId,
+        aircraft_id: candidate.aircraftId,
+        state_code: candidate.catalogRow.home_state_code,
+        event_type: "takeoff",
+        occurred_at: candidate.detectedTakeoffAt,
+        payload: {
+          tail: candidate.catalogRow.tail,
+          nickname: candidate.catalogRow.nickname,
+          model: candidate.catalogRow.model,
+          state_code: candidate.catalogRow.home_state_code,
+        },
+      },
+      { onConflict: "flight_session_id,event_type", ignoreDuplicates: true },
+    );
+    if (eventError) {
+      console.warn("[ingest] takeoff-event write failed:", eventError.message);
+    } else {
+      takeoffsCreated += 1;
+      const stateSummary = byState[candidate.catalogRow.home_state_code];
+      if (stateSummary) stateSummary.takeoffsCreated += 1;
     }
   }
 
@@ -817,16 +872,107 @@ function finiteNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function parseTime(value: unknown): number | null {
   if (typeof value !== "string") return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/**
+ * Returns a provider-backed tri-state. An ambiguous message is contact, not
+ * evidence of takeoff or landing, and therefore never advances counters.
+ */
+export function aircraftObservationGroundState(
+  aircraft: Pick<Aircraft, "airborne" | "observation_status">,
+): AircraftGroundState {
+  switch (aircraft.observation_status) {
+    case "airborne":
+    case "airborne_candidate":
+      return "airborne";
+    case "grounded":
+    case "landing_candidate":
+      return "grounded";
+    case "unknown":
+      return "unknown";
+    default:
+      // Compatibility for explicitly constructed snapshots. Feed adapters
+      // always set observation_status and therefore never use this fallback.
+      return aircraft.airborne ? "airborne" : "grounded";
+  }
+}
+
+/**
+ * Midpoint-estimates a transition only when the two explicit observations are
+ * contiguous. Coverage gaps intentionally return null rather than fabricating
+ * a precise event timestamp.
+ */
+export function interpolateFlightTransition(
+  beforeAt: string | null | undefined,
+  afterAt: string | null | undefined,
+  maxGapMs = FLIGHT_TRANSITION_MAX_GAP_MS,
+): string | null {
+  const beforeMs = parseTime(beforeAt);
+  const afterMs = parseTime(afterAt);
+  if (
+    beforeMs == null ||
+    afterMs == null ||
+    afterMs < beforeMs ||
+    afterMs - beforeMs > maxGapMs
+  ) {
+    return null;
+  }
+  return new Date(Math.floor((beforeMs + afterMs) / 2)).toISOString();
+}
+
+/**
+ * A confirmed landing is anchored to the first grounded sample when a precise
+ * midpoint cannot be justified. Confirmation time is stored separately.
+ */
+export function estimateLandingTransitionAt(
+  lastAirborneAt: string | null | undefined,
+  firstGroundedAt: string | null | undefined,
+): string | null {
+  const interpolated = interpolateFlightTransition(
+    lastAirborneAt,
+    firstGroundedAt,
+  );
+  if (interpolated) return interpolated;
+  const firstGroundedMs = parseTime(firstGroundedAt);
+  return firstGroundedMs == null
+    ? null
+    : new Date(firstGroundedMs).toISOString();
+}
+
+async function resolveCurrentStateCode(
+  db: ReturnType<typeof getSupabaseAdmin>,
+  latitude: number | undefined,
+  longitude: number | undefined,
+  fallbackStateCode: StateCode,
+): Promise<string | null> {
+  if (latitude == null || longitude == null) return null;
+  const { data, error } = await db.rpc("resolve_state_code", {
+    input_latitude: latitude,
+    input_longitude: longitude,
+  });
+  if (error) {
+    console.warn("[ingest] state-code resolution failed:", error.message);
+    return fallbackStateCode;
+  }
+  return typeof data === "string" ? data : fallbackStateCode;
+}
+
 export function isStaleOpenFlightSession(
-  session: Pick<FlightSessionRow, "detected_takeoff_at" | "tracking_started_at"> | undefined,
+  session:
+    | (Pick<FlightSessionRow, "detected_takeoff_at" | "tracking_started_at"> &
+        Partial<Pick<FlightSessionRow, "closed_at">>)
+    | undefined,
   nowIso: string,
 ): boolean {
+  if (session?.closed_at) return true;
   const startedAt =
     parseTime(session?.detected_takeoff_at) ??
     parseTime(session?.tracking_started_at);
@@ -854,7 +1000,18 @@ export function isStaleAirborneCandidate(
   const now = parseTime(nowIso);
   return startedAt != null &&
     now != null &&
-    now - startedAt > MAX_OPEN_FLIGHT_SESSION_MS;
+    now - startedAt > FLIGHT_TRANSITION_MAX_GAP_MS;
+}
+
+export function isStaleLandingCandidate(
+  previous: Pick<CurrentStateRow, "landing_candidate_started_at"> | undefined,
+  nowIso: string,
+): boolean {
+  const startedAt = parseTime(previous?.landing_candidate_started_at);
+  const now = parseTime(nowIso);
+  return startedAt != null &&
+    now != null &&
+    now - startedAt > FLIGHT_TRANSITION_MAX_GAP_MS;
 }
 
 export function shouldClearUnobservedState(

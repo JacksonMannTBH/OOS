@@ -11,6 +11,13 @@ import {
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const settingsFamilyRoutes = ["/aircraft", "/about", "/legal", "/store"];
+  const fadesIntoContent =
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/") ||
+    settingsFamilyRoutes.some(
+      (route) => pathname === route || pathname.startsWith(`${route}/`),
+    );
   const hidden =
     pathname === "/" ||
     pathname === "/home" ||
@@ -29,9 +36,22 @@ export function SiteHeader() {
         top: 0,
         zIndex: 48,
         fontFamily: "var(--font-header-ui)",
-        background: "#000000",
+        background: fadesIntoContent
+          ? "linear-gradient(to bottom, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.88) 58%, rgba(0, 0, 0, 0.42) 82%, rgba(0, 0, 0, 0) 100%)"
+          : "#000000",
         color: "#ffffff",
-        borderBottom: "0.5px solid rgba(244, 196, 48, 0.34)",
+        borderBottom: fadesIntoContent
+          ? "none"
+          : "0.5px solid rgba(244, 196, 48, 0.34)",
+        boxShadow: fadesIntoContent
+          ? "0 10px 24px rgba(0, 0, 0, 0.14)"
+          : "none",
+        backdropFilter: fadesIntoContent
+          ? "blur(18px) saturate(1.08)"
+          : undefined,
+        WebkitBackdropFilter: fadesIntoContent
+          ? "blur(18px) saturate(1.08)"
+          : undefined,
       }}
     >
       <div
@@ -72,7 +92,7 @@ export function SiteHeader() {
           <Link
             href="/home"
             prefetch={false}
-            aria-label="ØUT ØF SIGHT home"
+            aria-label="Out Of Sight home"
             style={{
               fontFamily: "var(--font-header-brand)",
               fontSize: "clamp(28px, 6.4vw, 38px)",
@@ -87,7 +107,7 @@ export function SiteHeader() {
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            ØUT ØF SIGHT
+            OUT OF SIGHT
           </Link>
         </div>
       </div>

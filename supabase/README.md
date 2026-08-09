@@ -42,10 +42,11 @@ Upstream observation timestamps are stored with positions so an unchanged
 provider sample does not create another coordinate row. Operational ingestion
 and notification-worker runs are retained for seven days.
 
-Completed flight positions are purged when landing is confirmed. The minimal
-session remains only until any notification retries finish, then is removed. A
-short ingestion grace period handles temporary provider coverage gaps; it is
-not a historical retention window.
+Completed flight positions are purged when landing is confirmed. Minimal
+session timestamps and closure reasons are retained for seven days so recent
+takeoff/landing activity remains available. Provider coverage loss closes a
+session without creating a landing timestamp; a short grace period preserves
+continuity through transient gaps.
 
 Import official state boundary polygons into `states.boundary` before enabling
 coordinate-derived state display. Subscription matching uses an aircraft's

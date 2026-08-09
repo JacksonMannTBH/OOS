@@ -9,6 +9,7 @@
     "build": "node scripts/clean-build-state.mjs && next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "tsx --test lib/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

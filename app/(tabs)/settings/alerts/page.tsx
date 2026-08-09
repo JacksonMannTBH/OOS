@@ -1,30 +1,21 @@
 import { AlertsSettings } from "@/components/AlertsSettings";
-import { ResetPreferencesButton } from "@/components/ResetPreferencesButton";
+import { SettingsPageShell } from "@/components/SettingsPageShell";
 
 export const metadata = {
-  title: "Settings",
-  description: "Tune Out Of Sight state alerts and device preferences.",
+  title: "Alerts",
+  description: "Choose an alert state and manage takeoff notifications.",
 };
 
 export const dynamic = "force-dynamic";
 
-const SECTION_WRAP = {
-  maxWidth: 460,
-  margin: "16px auto 0",
-  padding: "0 18px",
-} as const;
-
-const PAGE_WRAP = {
-  minHeight: "calc(100dvh + 764px)",
-} as const;
-
-export default async function AlertsPage() {
+export default function AlertsPage() {
   return (
-    <div style={PAGE_WRAP}>
+    <SettingsPageShell
+      eyebrow="Settings · Alerts"
+      title="Notifications & state"
+      description="Choose the state you track and whether this device receives confirmed takeoff notifications."
+    >
       <AlertsSettings />
-      <div style={{ ...SECTION_WRAP, marginBottom: 80 }}>
-        <ResetPreferencesButton />
-      </div>
-    </div>
+    </SettingsPageShell>
   );
 }

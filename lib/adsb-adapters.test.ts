@@ -23,6 +23,7 @@ test("adsb.fi parser reads current v2 ICAO responses", () => {
   assert.equal(aircraft.length, 1);
   assert.equal(aircraft[0]?.hex, "a3323a");
   assert.equal(aircraft[0]?.lat, 47.5);
+  assert.equal(aircraft[0]?.ground_state, "airborne");
   assert.equal(aircraft[0]?.seen_seconds, 2);
   assert.equal(aircraft[0]?.observed_at_ms, 1_799_999_998_000);
   assert.equal(aircraft[0]?.position_observed_at_ms, 1_799_999_997_000);
@@ -46,6 +47,18 @@ test("adsb.fi parser rejects stale observations and stale positions", () => {
   assert.equal(aircraft[0]?.hex, "a3335f");
   assert.equal(aircraft[0]?.lat, undefined);
   assert.equal(aircraft[0]?.lon, undefined);
+  assert.equal(aircraft[0]?.ground_state, "unknown");
+});
+
+test("adsb.fi keeps a missing barometric altitude ground state unknown", () => {
+  const aircraft = normalizeAdsbFiPayload({
+    now: 1_800_000_000_000,
+    ac: [{ hex: "a3323a", seen: 1, gs: 0 }],
+  });
+
+  assert.equal(aircraft.length, 1);
+  assert.equal(aircraft[0]?.alt_baro, undefined);
+  assert.equal(aircraft[0]?.ground_state, "unknown");
 });
 
 test("OpenSky URL repeats the icao24 parameter for every aircraft", () => {
@@ -73,6 +86,41 @@ test("OpenSky parser keeps provider timestamps and rejects stale data", () => {
   assert.equal(aircraft.length, 1);
   assert.equal(aircraft[0]?.observed_at_ms, 1_799_999_998_000);
   assert.equal(aircraft[0]?.position_observed_at_ms, 1_799_999_995_000);
+  assert.equal(aircraft[0]?.ground_state, "unknown");
+});
+
+test("OpenSky keeps a null on-ground field unknown", () => {
+  const state = Array(15).fill(null);
+  state[0] = "a3323a";
+  state[4] = 1_799_999_998;
+  state[7] = 0;
+  state[8] = null;
+
+  const aircraft = normalizeOpenSkyStates([state], 1_800_000_000);
+
+  assert.equal(aircraft.length, 1);
+  assert.equal(aircraft[0]?.alt_baro, 0);
+  assert.equal(aircraft[0]?.ground_state, "unknown");
+});
+
+test("OpenSky honors explicit boolean ground states without requiring altitude", () => {
+  const airborne = Array(15).fill(null);
+  airborne[0] = "a3323a";
+  airborne[4] = 1_799_999_998;
+  airborne[8] = false;
+  const grounded = [...airborne];
+  grounded[0] = "a3335f";
+  grounded[8] = true;
+
+  const aircraft = normalizeOpenSkyStates(
+    [airborne, grounded],
+    1_800_000_000,
+  );
+
+  assert.equal(aircraft[0]?.ground_state, "airborne");
+  assert.equal(aircraft[0]?.alt_baro, undefined);
+  assert.equal(aircraft[1]?.ground_state, "grounded");
+  assert.equal(aircraft[1]?.alt_baro, "ground");
 });
 
 test("fleet ICAOs are normalized, deduplicated, and split into bounded batches", () => {

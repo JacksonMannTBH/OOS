@@ -12,6 +12,10 @@ import { MAP_LABEL_FONT, MAP_STYLE_URL } from "@/lib/map-style";
 import { SS_TOKENS } from "@/lib/tokens";
 import type { Aircraft } from "@/lib/types";
 import {
+  DEFAULT_RIDE_STATUS_THRESHOLDS,
+  type RideStatusThresholds,
+} from "@/lib/ride-mode";
+import {
   aircraftSvg,
   glyphRoleFor,
   helicopterRotorSvg,
@@ -392,6 +396,7 @@ export default function RadarMap({
   aircraft,
   rider,
   showDistanceRings = false,
+  distanceRingThresholds = DEFAULT_RIDE_STATUS_THRESHOLDS,
   darkMode = false,
   showFuelEstimate = false,
   stateCode,
@@ -402,6 +407,7 @@ export default function RadarMap({
   aircraft: Aircraft[];
   rider: RiderPos | null;
   showDistanceRings?: boolean;
+  distanceRingThresholds?: RideStatusThresholds;
   showFuelEstimate?: boolean;
   darkMode?: boolean;
   /** Selected catalog state. Used for the default map center. */
@@ -421,6 +427,9 @@ export default function RadarMap({
   const stateCodeRef = useRef<StateCode | undefined>(stateCode);
   stateCodeRef.current = stateCode;
   const showDistanceRingsRef = useRef<boolean>(showDistanceRings);
+  const distanceRingThresholdsRef = useRef<RideStatusThresholds>(
+    distanceRingThresholds,
+  );
   const showFuelEstimateRef = useRef<boolean>(showFuelEstimate);
   const darkModeRef = useRef<boolean>(darkMode);
   const reducedMotionRef = useRef(false);
@@ -459,8 +468,26 @@ export default function RadarMap({
       minZoom: 3,
       maxBounds: NORTH_AMERICA_BOUNDS,
       renderWorldCopies: false,
-      attributionControl: { compact: true },
+      attributionControl: false,
     });
+    map.addControl(
+      new maplibregl.AttributionControl({ compact: true }),
+      "top-right",
+    );
+    let attributionPresetApplied = false;
+    const collapseAttributionPreset = () => {
+      if (attributionPresetApplied) return;
+      const attribution = containerRef.current?.querySelector<HTMLDetailsElement>(
+        ".maplibregl-ctrl-top-right .maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-attrib-empty)",
+      );
+      if (!attribution) return;
+      attribution.classList.remove("maplibregl-compact-show");
+      attribution.setAttribute("open", "");
+      attributionPresetApplied = true;
+      map.off("styledata", collapseAttributionPreset);
+    };
+    map.on("styledata", collapseAttributionPreset);
+    collapseAttributionPreset();
     mapRef.current = map;
     const motionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)") ?? null;
     reducedMotionRef.current = Boolean(motionQuery?.matches);
@@ -577,7 +604,7 @@ export default function RadarMap({
           "line-dasharray": [2, 2],
         },
       });
-      // Tiny mono labels at the top of each ring ("1nm" / "3nm" / "5nm")
+      // Tiny mono labels at the top of each configured Ride Mode ring.
       // sit on a separate symbol layer so we can keep the line layer pure.
       map.addLayer({
         id: "distance-rings-labels",
@@ -816,6 +843,7 @@ export default function RadarMap({
       if (animRef.current) cancelAnimationFrame(animRef.current);
       if (pulseRef.current) cancelAnimationFrame(pulseRef.current);
       map.off("load", onLoad);
+      map.off("styledata", collapseAttributionPreset);
       map.off("dragstart", onUserInteract);
       map.off("zoomstart", onUserInteract);
       map.off("mouseenter", "aircraft", onMouseEnter);
@@ -869,6 +897,12 @@ export default function RadarMap({
       /* layer not yet attached */
     }
   }, [showDistanceRings]);
+
+  // Rebuild ring geometry when the user changes Ride Mode distance bands.
+  useEffect(() => {
+    distanceRingThresholdsRef.current = distanceRingThresholds;
+    if (readyRef.current) applyDistanceRings(riderRef.current);
+  }, [distanceRingThresholds]);
 
   useEffect(() => {
     showFuelEstimateRef.current = showFuelEstimate;
@@ -1037,9 +1071,14 @@ export default function RadarMap({
       source.setData({ type: "FeatureCollection", features: [] });
       return;
     }
-    const RINGS_NM = [1, 3, 5] as const;
+    const thresholds = distanceRingThresholdsRef.current;
+    const ringsNm = [
+      thresholds.stopNm,
+      thresholds.warningNm,
+      thresholds.watchNm,
+    ];
     const features: GeoJSON.Feature[] = [];
-    for (const nm of RINGS_NM) {
+    for (const nm of ringsNm) {
       features.push({
         type: "Feature",
         geometry: {

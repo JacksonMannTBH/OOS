@@ -30,6 +30,7 @@ type SessionRow = {
   tracking_started_at: string;
   detected_takeoff_at: string | null;
   detected_landing_at: string | null;
+  closed_at: string | null;
   last_seen_at: string;
   aircraft: { tail: string; nickname: string | null } | null;
 };
@@ -42,7 +43,7 @@ export async function getRecentFlights(limit = 20): Promise<FlightSession[]> {
   const { data, error } = await getSupabaseAdmin()
     .from("flight_sessions")
     .select(
-      "id,status,tracking_started_at,detected_takeoff_at,detected_landing_at,last_seen_at,aircraft(tail,nickname)",
+      "id,status,tracking_started_at,detected_takeoff_at,detected_landing_at,closed_at,last_seen_at,aircraft(tail,nickname)",
     )
     .gte("last_seen_at", cutoff)
     .order("last_seen_at", { ascending: false })
@@ -75,7 +76,7 @@ export async function getMostRecentFlightForTail(
   const { data, error } = await db
     .from("flight_sessions")
     .select(
-      "id,status,tracking_started_at,detected_takeoff_at,detected_landing_at,last_seen_at",
+      "id,status,tracking_started_at,detected_takeoff_at,detected_landing_at,closed_at,last_seen_at",
     )
     .eq("aircraft_id", aircraft.id)
     .order("last_seen_at", { ascending: false })
@@ -99,7 +100,7 @@ export async function getMostRecentFlightForTail(
     session,
     points,
     inProgress:
-      !row.detected_landing_at &&
+      !row.closed_at &&
       Date.now() - Date.parse(row.last_seen_at) < ACTIVE_SESSION_WINDOW_MS,
   };
 }
@@ -124,7 +125,7 @@ export async function getFlightById(
   const { data, error } = await db
     .from("flight_sessions")
     .select(
-      "id,status,tracking_started_at,detected_takeoff_at,detected_landing_at,last_seen_at",
+      "id,status,tracking_started_at,detected_takeoff_at,detected_landing_at,closed_at,last_seen_at",
     )
     .eq("aircraft_id", aircraft.id)
     .gte("tracking_started_at", lower)
@@ -149,14 +150,14 @@ export async function getFlightById(
     session,
     points,
     inProgress:
-      !row.detected_landing_at &&
+      !row.closed_at &&
       Date.now() - Date.parse(row.last_seen_at) < ACTIVE_SESSION_WINDOW_MS,
   };
 }
 
 async function sessionFromDatabase(row: SessionRow): Promise<FlightSession> {
   const startAt = row.detected_takeoff_at ?? row.tracking_started_at;
-  const endAt = row.detected_landing_at ?? row.last_seen_at;
+  const endAt = row.detected_landing_at ?? row.closed_at ?? row.last_seen_at;
   const points = await pointsForFlightSession(row.id);
   const first = points[0];
   const last = points.at(-1);

@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import nextDynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Map as MaplibreMap } from "maplibre-gl";
 import { useAircraft } from "@/lib/hooks/useAircraft";
+import { useRideLaunchPreflight } from "@/lib/hooks/useRideLaunchPreflight";
+import { useRideStatusThresholds } from "@/lib/hooks/useRideStatusThresholds";
 import { SS_TOKENS } from "@/lib/tokens";
 import {
   THEME_CHANGE_EVENT,
@@ -59,7 +62,10 @@ export function RadarShell({
   mockOn = false,
   initialFocusTail,
 }: Props) {
+  const router = useRouter();
+  const runRideLaunchPreflight = useRideLaunchPreflight();
   const snap = useAircraft(initial, mockOn);
+  const rideThresholds = useRideStatusThresholds();
   const fleetMap = useMemo(
     () => new Map<string, FleetEntry>(snap.aircraft.map((a) => [a.tail, a])),
     [snap.aircraft],
@@ -75,6 +81,7 @@ export function RadarShell({
   const [map, setMap] = useState<MaplibreMap | null>(null);
   const [showRings, setShowRings] = useState(false);
   const [showFlightPaths, setShowFlightPaths] = useState(false);
+  const [rideLaunching, setRideLaunching] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [stateCode, setStateCode] = useState<StateCode>(
     () => getSelectedStateCode(),
@@ -89,6 +96,13 @@ export function RadarShell({
   );
   const [riderFocusRequest, setRiderFocusRequest] = useState(0);
   const focusSeqRef = useRef(initialFocusTail ? 1 : 0);
+  const startRide = async () => {
+    if (rideLaunching) return;
+    setRideLaunching(true);
+    await runRideLaunchPreflight();
+    const mock = new URLSearchParams(window.location.search).get("mock");
+    router.push(mock ? `/ride?mock=${encodeURIComponent(mock)}` : "/ride");
+  };
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.dataset.radarMode = "true";
@@ -168,6 +182,7 @@ export function RadarShell({
         aircraft={airborne}
         rider={rider}
         showDistanceRings={showRings}
+        distanceRingThresholds={rideThresholds}
         showFuelEstimate
         darkMode={darkMode}
         stateCode={stateCode}
@@ -196,9 +211,11 @@ export function RadarShell({
         onReturnToLocation={() => setRiderFocusRequest((seq) => seq + 1)}
         locationDisabled={!rider || !map}
       />
-      <Link
-        href="/ride"
-        aria-label="Start Ride"
+      <button
+        type="button"
+        onClick={startRide}
+        disabled={rideLaunching}
+        aria-label={rideLaunching ? "Starting Ride" : "Start Ride"}
         style={{
           position: "absolute",
           right: "max(14px, env(safe-area-inset-right, 0px))",
@@ -207,15 +224,18 @@ export function RadarShell({
           zIndex: 13,
           width: 72,
           height: 72,
+          padding: 0,
           borderRadius: "50%",
-          background: "#f4b41a",
-          border: "1px solid rgba(244, 180, 26, 0.9)",
-          color: "#090909",
-          boxShadow: "0 14px 34px rgba(0, 0, 0, 0.38)",
+          background: SS_TOKENS.alert,
+          border: 0,
+          color: "#050505",
+          boxShadow:
+            "0 9px 20px rgba(0, 0, 0, 0.78), 0 26px 50px rgba(0, 0, 0, 0.68)",
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          textDecoration: "none",
+          cursor: rideLaunching ? "wait" : "pointer",
+          opacity: rideLaunching ? 0.72 : 1,
           touchAction: "manipulation",
           WebkitTapHighlightColor: "transparent",
         }}
@@ -231,7 +251,7 @@ export function RadarShell({
         >
           <MapRideIcon />
         </span>
-      </Link>
+      </button>
       <AircraftTrailLayer
         map={map}
         airborne={airborne}
@@ -258,15 +278,19 @@ function MapRideIcon() {
       width="34"
       height="34"
       viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
       aria-hidden
-      style={{ display: "block" }}
+      style={{
+        display: "block",
+        overflow: "visible",
+        filter:
+          "drop-shadow(0 1px 1px rgba(0, 0, 0, 0.48)) drop-shadow(0 3px 2px rgba(0, 0, 0, 0.24))",
+      }}
     >
-      <path d="m21 3-7.1 18-3.5-7.4L3 10.1 21 3Z" />
+      <path
+        d="m21 3-7.1 18-3.5-7.4L3 10.1 21 3Z"
+        transform="translate(-1.25 1.25)"
+      />
     </svg>
   );
 }

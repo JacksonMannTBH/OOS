@@ -120,9 +120,15 @@ export function normalizeAdsbFiPayload(payload: unknown): NormalizedAc[] {
       value.alt_baro === "ground"
         ? "ground"
         : finiteNumber(value.alt_baro);
+    const groundState = altitude === "ground"
+      ? "grounded"
+      : typeof altitude === "number"
+        ? "airborne"
+        : "unknown";
 
     aircraft.push({
       hex: value.hex.toLowerCase(),
+      ground_state: groundState,
       r: typeof value.r === "string" ? value.r : undefined,
       lat: positionIsCurrent ? finiteNumber(value.lat) : undefined,
       lon: positionIsCurrent ? finiteNumber(value.lon) : undefined,
@@ -286,7 +292,12 @@ function joinFleetWithLiveData(
       return { ...entry, ...live };
     }
 
-    const grounded = ac.alt_baro === "ground";
+    const airborne = ac.ground_state === "airborne";
+    const observationStatus = ac.ground_state === "grounded"
+      ? "grounded"
+      : airborne
+        ? "airborne_candidate"
+        : "unknown";
     const live: AircraftLive = {
       tail: entry.tail,
       icao24: hex,
@@ -299,9 +310,9 @@ function joinFleetWithLiveData(
               fetchedAt,
             )
           : null,
-      airborne: !grounded,
+      airborne,
       home_state_code: homeStateCode,
-      observation_status: grounded ? "grounded" : "airborne_candidate",
+      observation_status: observationStatus,
       lat: ac.lat,
       lon: ac.lon,
       altitude_ft:

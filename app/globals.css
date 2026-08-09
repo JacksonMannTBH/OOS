@@ -236,13 +236,21 @@ body[data-ride-mode="true"] .maplibregl-ctrl-attrib {
   display: none !important;
 }
 
-body[data-radar-mode="true"] .maplibregl-ctrl-attrib {
-  height: 2px !important;
-  min-height: 2px !important;
-  max-height: 2px !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  line-height: 2px !important;
+body[data-radar-mode="true"] .maplibregl-ctrl-top-right {
+  top: calc(env(safe-area-inset-top, 0px) + clamp(78px, 20vw, 92px));
+}
+
+body[data-radar-mode="true"]
+  .maplibregl-ctrl-top-right
+  .maplibregl-ctrl-attrib.maplibregl-compact {
+  margin: 8px max(10px, env(safe-area-inset-right, 0px)) 0 0;
+  border: 1px solid var(--ss-hairline-2);
+  border-radius: 999px;
+  box-shadow: var(--ss-shadow-sm);
+}
+
+body[data-radar-mode="true"] .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
 }
 
 .ss-plane-popup .maplibregl-popup-content {

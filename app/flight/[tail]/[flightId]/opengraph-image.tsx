@@ -48,7 +48,7 @@ export default async function OGImage({ params }: Props) {
       : tail
     : tail;
   const subtitle = flight
-    ? `${formatTs(flight.session.start_ts, "date-short")} PT · ${fmtDurationHuman(flight.session.duration_s)}`
+    ? `${flight.inProgress ? "IN PROGRESS · " : ""}${formatTs(flight.session.start_ts, "date-short")} PT · ${fmtDurationHuman(flight.session.duration_s)}`
     : "Flight track";
 
   return new ImageResponse(
@@ -174,7 +174,7 @@ export default async function OGImage({ params }: Props) {
 
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ fontSize: 18, color: SS_FG2 }}>
-              LIVE AIRCRAFT
+              {flight?.inProgress ? "LIVE FLIGHT" : "FLIGHT TRACK"}
             </span>
             <span style={{ fontSize: 18, color: SS_FG2 }}>
               /flight/{tail}/{params.flightId}
@@ -186,8 +186,9 @@ export default async function OGImage({ params }: Props) {
     {
       ...size,
       headers: {
-        // 1-day CDN cache — completed flights don't change.
-        "Cache-Control": "public, max-age=0, s-maxage=86400, immutable",
+        "Cache-Control": flight?.inProgress
+          ? "public, max-age=0, s-maxage=60"
+          : "public, max-age=0, s-maxage=86400, immutable",
       },
     },
   );

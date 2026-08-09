@@ -12,7 +12,7 @@
 // can be 0–2 points old enough to render as a blank map for a tail
 // that just lifted off.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import maplibregl, {
   Map as MaplibreMap,
   GeoJSONSource,
@@ -84,6 +84,7 @@ export default function PlaneTrackMap({
   inProgress,
   height = 280,
 }: Props) {
+  const captionId = useId();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MaplibreMap | null>(null);
   const pulseRef = useRef<number | null>(null);
@@ -255,15 +256,56 @@ export default function PlaneTrackMap({
   }, [coords]);
 
   return (
-    <div
-      ref={containerRef}
+    <figure style={{ margin: 0 }}>
+      <div
+        ref={containerRef}
+        role="region"
+        aria-label={`${inProgress ? "Live" : "Recorded"} flight track map for ${tail}`}
+        aria-describedby={captionId}
+        style={{
+          position: "relative",
+          width: "100%",
+          height,
+          borderRadius: 16,
+          overflow: "hidden",
+          background: SS_TOKENS.bg0,
+          border: `1px solid ${SS_TOKENS.hairline}`,
+        }}
+      />
+      <figcaption
+        id={captionId}
+        style={{
+          marginTop: 9,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap",
+          color: SS_TOKENS.fg1,
+          fontSize: 12,
+          lineHeight: 1.45,
+        }}
+      >
+        <LegendDot color="#9ee8b5" />
+        <span>First observed position</span>
+        <span aria-hidden>·</span>
+        <LegendDot color="#ff6b6b" />
+        <span>{inProgress ? "Latest live position" : "Last observed position"}</span>
+      </figcaption>
+    </figure>
+  );
+}
+
+function LegendDot({ color }: { color: string }) {
+  return (
+    <span
+      aria-hidden
       style={{
-        position: "relative",
-        width: "100%",
-        height,
-        borderRadius: 12,
-        overflow: "hidden",
-        background: SS_TOKENS.bg0,
+        width: 7,
+        height: 7,
+        borderRadius: "50%",
+        background: color,
+        boxShadow: `0 0 0 2px color-mix(in srgb, ${color} 22%, transparent)`,
+        flexShrink: 0,
       }}
     />
   );

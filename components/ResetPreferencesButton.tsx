@@ -1,12 +1,12 @@
-﻿"use client";
-
-// Wipes rider-side display, state, and install-prompt preferences.
-// Server cookie clear runs through the imported server action; localStorage
-// is cleared inline so a server failure does not leave the rider half-reset.
+"use client";
 
 import { useState } from "react";
+import { resetPreferenceCookiesAction } from "@/app/(tabs)/settings/actions";
+import { SettingsCard } from "@/components/SettingsCard";
+import { disableAircraftAlerts } from "@/lib/aircraft-alerts/client";
 import { SS_TOKENS } from "@/lib/tokens";
-import { resetPreferenceCookiesAction } from "@/app/(tabs)/settings/alerts/actions";
+
+const ALERT_DEVICE_ID_KEY = "oos_aircraft_alert_device_id";
 
 const LOCAL_STORAGE_KEYS = [
   "ss_wake_lock",
@@ -18,7 +18,9 @@ const LOCAL_STORAGE_KEYS = [
   "ss_distance_rings_visible",
   "oos_state_code",
   "oos_distance_rings_visible",
-  "oos_aircraft_alert_device_id",
+  "oos_alerts_promo_dismissed_at",
+  "oos_arm_alerts_dismissed_at",
+  ALERT_DEVICE_ID_KEY,
 ] as const;
 
 function clearLocalStorage(): void {
@@ -27,96 +29,116 @@ function clearLocalStorage(): void {
     try {
       window.localStorage.removeItem(key);
     } catch {
-      // best-effort
+      // Best effort after the server-readable preferences are reset.
     }
+  }
+}
+
+async function hasBrowserPushSubscription(): Promise<boolean> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+    return false;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration();
+    const subscription = await registration?.pushManager.getSubscription();
+    return Boolean(subscription);
+  } catch {
+    return false;
   }
 }
 
 export function ResetPreferencesButton() {
   const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const onReset = async () => {
+    if (typeof window === "undefined") return;
+    if (
+      !window.confirm(
+        "Turn off notifications and reset all preferences on this device?",
+      )
+    ) {
+      return;
+    }
+
+    setBusy(true);
+    setMessage(null);
+    let notificationsWereDisabled = false;
+
+    try {
+      const hasAlertIdentity = Boolean(
+        window.localStorage.getItem(ALERT_DEVICE_ID_KEY),
+      );
+      const hasPushSubscription = await hasBrowserPushSubscription();
+      if (hasAlertIdentity || hasPushSubscription) {
+        await disableAircraftAlerts();
+        notificationsWereDisabled = true;
+      }
+
+      await resetPreferenceCookiesAction();
+      clearLocalStorage();
+      window.location.assign("/settings");
+    } catch {
+      setMessage(
+        notificationsWereDisabled
+          ? "Notifications were turned off, but the remaining preferences could not be reset. Try again."
+          : "Preferences were not reset because notifications could not be turned off. Try again.",
+      );
+      setBusy(false);
+    }
+  };
 
   return (
-    <section
-      style={{
-        background: SS_TOKENS.bg1,
-        border: `.5px solid ${SS_TOKENS.hairline}`,
-        borderRadius: 14,
-        padding: "16px 18px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-      }}
-    >
-      <div>
-        <div
-          className="ss-mono"
-          style={{
-            fontSize: 9.5,
-            color: SS_TOKENS.fg2,
-            letterSpacing: ".12em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-          }}
-        >
-          Reset
-        </div>
-        <h2
-          style={{
-            fontSize: 18,
-            fontWeight: 700,
-            color: SS_TOKENS.fg0,
-            margin: 0,
-            letterSpacing: "-.01em",
-          }}
-        >
-          Restore defaults
-        </h2>
+    <SettingsCard title="Restore defaults" eyebrow="Reset">
+      <p
+        style={{
+          margin: 0,
+          color: SS_TOKENS.fg1,
+          fontSize: 13,
+          lineHeight: 1.5,
+        }}
+      >
+        Turn off takeoff notifications and clear display, Ride mode, state, and
+        dismissed-prompt preferences on this device.
+      </p>
+
+      {message && (
         <p
+          role="alert"
           style={{
-            fontSize: 13,
-            color: SS_TOKENS.fg1,
-            lineHeight: 1.5,
-            marginTop: 6,
-            marginBottom: 0,
+            margin: 0,
+            color: SS_TOKENS.warn,
+            fontSize: 12,
+            lineHeight: 1.45,
           }}
         >
-          Clears every preference on this device — display, alert UI, and state.
+          {message}
         </p>
-      </div>
+      )}
 
       <button
         type="button"
         disabled={busy}
-        onClick={async () => {
-          if (typeof window === "undefined") return;
-          if (!window.confirm("Reset all preferences. Continue?")) return;
-          setBusy(true);
-          clearLocalStorage();
-          try {
-            await resetPreferenceCookiesAction();
-          } catch {
-            // server action failed â€” localStorage is already cleared, the
-            // cookie clear can be retried on next page load
-          }
-          window.location.reload();
-        }}
+        onClick={() => void onReset()}
         style={{
-          padding: "12px 16px",
-          minHeight: 44,
+          padding: "0 16px",
+          minHeight: 46,
           borderRadius: 12,
-          border: `.5px solid ${SS_TOKENS.hairline2}`,
+          border: `1px solid ${SS_TOKENS.hairline2}`,
           background: SS_TOKENS.bg2,
           color: SS_TOKENS.fg0,
+          fontFamily: "inherit",
           fontSize: 13,
-          fontWeight: 600,
+          fontWeight: 800,
           cursor: busy ? "default" : "pointer",
           opacity: busy ? 0.6 : 1,
           touchAction: "manipulation",
           WebkitTapHighlightColor: "transparent",
         }}
       >
-        {busy ? "Resettingâ€¦" : "Reset preferences"}
+        {busy ? "Resetting…" : "Reset preferences"}
       </button>
-    </section>
+    </SettingsCard>
   );
 }

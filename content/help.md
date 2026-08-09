@@ -17,9 +17,10 @@ coordinates are cleared from the active view.
 
 ## Aircraft catalog
 
-The [Aircraft](/aircraft) page lists every tracked aircraft, including its tail,
-operator, model, role, base, home state, current state, status, and last
-observation. Catalog records and changes are stored in Supabase.
+The [Aircraft](/aircraft) page lists every tracked aircraft by home state,
+including its tail, operator, model, and estimated endurance. Open an aircraft
+profile for its role, base, current status, latest track, and retained flight
+details. Catalog records and changes are stored in Supabase.
 
 ## Notifications
 
@@ -32,12 +33,16 @@ from there before granting permission.
 
 ## Flight time and fuel
 
-Out Of Sight creates an active flight session when an aircraft transitions from
-grounded to airborne. The session powers the flight clock, live position,
-speed, direction, and estimated fuel remaining. After landing is confirmed, the
-active-flight track is cleared and the session is finalized so the next flight
-starts fresh. Fuel remaining is an estimate based on elapsed flight time and
-the aircraft performance profile; it is not telemetry from the aircraft.
+Out Of Sight creates an active flight session after two consistent airborne
+observations. A precise takeoff time and endurance countdown are shown only
+when a recent grounded observation provides a reliable transition boundary.
+If tracking begins while the aircraft is already airborne, the takeoff time and
+countdown remain unavailable. After two grounded observations confirm landing,
+the active-flight track is cleared and the session is finalized.
+
+The displayed endurance is a catalog upper bound minus exact elapsed flight
+time. It assumes the published maximum-duration profile; it is not remaining
+fuel, fuel quantity, reserve planning, or telemetry from the aircraft.
 
 ## Privacy and limitations
 

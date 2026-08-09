@@ -8,30 +8,44 @@ export const metadata = {
 
 export const dynamic = "force-static";
 
-const HUB_LINKS = [
+const PRIMARY_LINKS = [
   {
     href: "/settings/alerts",
-    eyebrow: "Alerts",
-    title: "Alerts, state, wake",
-    body: "Arm notifications, choose a state, tune ride ranges, and control device wake behavior.",
+    title: "Notifications & State",
+    body: "Choose the state you track and arm takeoff notifications.",
+  },
+  {
+    href: "/settings/ride",
+    title: "RIDE MODE SETTINGS",
+    body: "Set wake mode and Watch, Warning, and Stop distances.",
+  },
+  {
+    href: "/settings/display",
+    title: "Display & Time",
+    body: "Choose contrast and 12- or 24-hour time.",
+  },
+] as const;
+
+const MORE_LINKS = [
+  {
+    href: "/aircraft",
+    title: "Aircraft",
+    body: "Tracked fleet and operators",
   },
   {
     href: "/about",
-    eyebrow: "Reference",
-    title: "About and aircraft",
-    body: "Review aircraft, operators, roles, and project notes.",
+    title: "About",
+    body: "Project background and mission",
   },
   {
     href: "/legal",
-    eyebrow: "Reference",
     title: "Legal",
-    body: "Read the safety, privacy, and data-source notes.",
+    body: "Terms, privacy, safety, and data use",
   },
   {
     href: "/store",
-    eyebrow: "Store",
-    title: "Out Of Sight store",
-    body: "Gear and updates live here as they become available.",
+    title: "Store",
+    body: "Gear and project updates",
   },
 ] as const;
 
@@ -40,116 +54,176 @@ export default function SettingsHub() {
     <main
       style={{
         minHeight: "100dvh",
+        boxSizing: "border-box",
         padding: "22px 20px 170px",
         maxWidth: 430,
         margin: "0 auto",
         display: "flex",
         flexDirection: "column",
-        gap: 18,
+        gap: 22,
       }}
     >
       <header
         style={{
           display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          marginBottom: 6,
+          justifyContent: "center",
+          textAlign: "center",
+          marginBottom: 2,
         }}
       >
-        <Link
-          href="/home"
-          style={{
-            width: "fit-content",
-            minHeight: 40,
-            padding: "0 14px",
-            display: "inline-flex",
-            alignItems: "center",
-            borderRadius: 14,
-            border: `1px solid ${SS_TOKENS.hairline}`,
-            background: "rgba(255, 255, 255, 0.04)",
-            color: SS_TOKENS.fg1,
-            textDecoration: "none",
-            fontSize: 13,
-            fontWeight: 800,
-          }}
-        >
-          Home
-        </Link>
-        <span className="ss-eyebrow">Settings</span>
         <h1
           style={{
             fontSize: 32,
             fontWeight: 850,
+            lineHeight: 1.08,
             letterSpacing: 0,
             margin: 0,
             color: SS_TOKENS.fg0,
           }}
         >
-          Tune into Out Of Sight
+          OOS Settings
         </h1>
-        <p
-          style={{
-            fontSize: 15,
-            color: SS_TOKENS.fg1,
-            margin: 0,
-            lineHeight: 1.55,
-          }}
-        >
-          Display preferences stay on this device. Your selected alert state
-          syncs to this device&rsquo;s notification subscription.
-        </p>
       </header>
 
-      <nav
-        aria-label="Settings sections"
-        style={{ display: "flex", flexDirection: "column", gap: 12 }}
-      >
-        {HUB_LINKS.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            prefetch={false}
-            style={{
-              display: "block",
-              padding: "18px 20px",
-              borderRadius: 16,
-              border: `1px solid ${SS_TOKENS.hairline}`,
-              background: SS_TOKENS.surface,
-              boxShadow: "none",
-              backdropFilter: "blur(18px)",
-              WebkitBackdropFilter: "blur(18px)",
-              textDecoration: "none",
-              minHeight: 44,
-            }}
-          >
-            <div
-              className="ss-eyebrow"
-              style={{ marginBottom: 7, color: SS_TOKENS.alert }}
-            >
-              {link.eyebrow}
-            </div>
-            <div
+      <section aria-labelledby="preferences-heading">
+        <h2
+          id="preferences-heading"
+          className="ss-eyebrow"
+          style={{ margin: "0 0 10px", color: SS_TOKENS.fg2 }}
+        >
+          Preferences
+        </h2>
+        <nav
+          aria-label="Settings pages"
+          style={{ display: "flex", flexDirection: "column", gap: 12 }}
+        >
+          {PRIMARY_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              prefetch={false}
               style={{
-                fontSize: 17,
-                fontWeight: 800,
-                color: SS_TOKENS.fg0,
-                marginBottom: 5,
+                minHeight: 96,
+                boxSizing: "border-box",
+                padding: "17px 18px",
+                borderRadius: 16,
+                border: `1px solid ${SS_TOKENS.hairline}`,
+                background: SS_TOKENS.surface,
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                textDecoration: "none",
+                backdropFilter: "blur(18px)",
+                WebkitBackdropFilter: "blur(18px)",
+              }}
+              >
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <strong
+                  style={{
+                    display: "block",
+                    marginBottom: 5,
+                    color: SS_TOKENS.alert,
+                    fontSize: 18,
+                    fontWeight: 800,
+                    lineHeight: 1.2,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {link.title}
+                </strong>
+                <span
+                  style={{
+                    display: "block",
+                    color: SS_TOKENS.fg0,
+                    fontSize: 13,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {link.body}
+                </span>
+              </span>
+              <span
+                aria-hidden
+                style={{ color: SS_TOKENS.fg2, fontSize: 28, lineHeight: 1 }}
+              >
+                ›
+              </span>
+            </Link>
+          ))}
+        </nav>
+      </section>
+
+      <section aria-labelledby="more-heading">
+        <h2
+          id="more-heading"
+          className="ss-eyebrow"
+          style={{ margin: "0 0 10px", color: SS_TOKENS.fg2 }}
+        >
+          More
+        </h2>
+        <nav
+          aria-label="More pages"
+          style={{
+            overflow: "hidden",
+            borderRadius: 16,
+            border: `1px solid ${SS_TOKENS.hairline}`,
+            background: SS_TOKENS.surface,
+          }}
+        >
+          {MORE_LINKS.map((link, index) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              prefetch={false}
+              style={{
+                minHeight: 64,
+                boxSizing: "border-box",
+                padding: "10px 18px",
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                borderBottom:
+                  index === MORE_LINKS.length - 1
+                    ? 0
+                    : `1px solid ${SS_TOKENS.hairline}`,
+                color: "inherit",
+                textDecoration: "none",
               }}
             >
-              {link.title}
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: SS_TOKENS.fg1,
-                lineHeight: 1.5,
-              }}
-            >
-              {link.body}
-            </div>
-          </Link>
-        ))}
-      </nav>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <strong
+                  style={{
+                    display: "block",
+                    color: SS_TOKENS.fg0,
+                    fontSize: 15,
+                    fontWeight: 800,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {link.title}
+                </strong>
+                <span
+                  style={{
+                    display: "block",
+                    marginTop: 3,
+                    color: SS_TOKENS.fg2,
+                    fontSize: 12,
+                    lineHeight: 1.35,
+                  }}
+                >
+                  {link.body}
+                </span>
+              </span>
+              <span
+                aria-hidden
+                style={{ color: SS_TOKENS.fg2, fontSize: 24, lineHeight: 1 }}
+              >
+                ›
+              </span>
+            </Link>
+          ))}
+        </nav>
+      </section>
     </main>
   );
 }

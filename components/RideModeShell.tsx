@@ -5,21 +5,16 @@ import { useRouter } from "next/navigation";
 import { useAircraft } from "@/lib/hooks/useAircraft";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
 import { useDeviceHeading } from "@/lib/hooks/useDeviceHeading";
+import { useRideStatusThresholds } from "@/lib/hooks/useRideStatusThresholds";
 import {
   classifyRideStatus,
   cardinalWordFromDeg,
-  DEFAULT_RIDE_STATUS_THRESHOLDS,
   getRideContacts,
   isSameCardinalTrack,
   rideStatusLabel,
   type RideContact,
   type RideStatus,
-  type RideStatusThresholds,
 } from "@/lib/ride-mode";
-import {
-  getRideStatusThresholds,
-  RIDE_STATUS_THRESHOLDS_KEY,
-} from "@/lib/ride-settings";
 import {
   estimateFuelRemaining,
 } from "@/lib/fuel-estimate";
@@ -57,24 +52,10 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
   const { pos, unavailable } = useRiderPos();
   const heading = useDeviceHeading(pos?.heading);
   const [now, setNow] = useState(initial.fetched_at);
-  const [rideThresholds, setRideThresholds] = useState<RideStatusThresholds>(
-    DEFAULT_RIDE_STATUS_THRESHOLDS,
-  );
+  const rideThresholds = useRideStatusThresholds();
 
   useRideChrome();
   useRideWakeLock();
-
-  useEffect(() => {
-    setRideThresholds(getRideStatusThresholds());
-
-    const onStorage = (event: StorageEvent) => {
-      if (!event.key || event.key === RIDE_STATUS_THRESHOLDS_KEY) {
-        setRideThresholds(getRideStatusThresholds());
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);

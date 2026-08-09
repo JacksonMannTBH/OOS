@@ -1,58 +1,15 @@
+import { setContrastAction } from "@/app/(tabs)/settings/actions";
+import { SettingsCard } from "@/components/SettingsCard";
 import { SS_TOKENS } from "@/lib/tokens";
 import { type ContrastMode } from "@/lib/user-prefs";
-import { setContrastAction } from "@/app/(tabs)/settings/alerts/actions";
 
 export function ContrastSetting({ current }: { current: ContrastMode }) {
   return (
-    <section
-      style={{
-        background: SS_TOKENS.bg1,
-        border: `.5px solid ${SS_TOKENS.hairline}`,
-        borderRadius: 14,
-        padding: "16px 18px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-      }}
-    >
-      <div>
-        <div
-          className="ss-mono"
-          style={{
-            fontSize: 9.5,
-            color: SS_TOKENS.fg2,
-            letterSpacing: ".12em",
-            textTransform: "uppercase",
-            marginBottom: 6,
-          }}
-        >
-          Display
-        </div>
-        <h2
-          style={{
-            fontSize: 18,
-            fontWeight: 700,
-            color: SS_TOKENS.fg0,
-            margin: 0,
-            letterSpacing: "-.01em",
-          }}
-        >
-          Contrast
-        </h2>
-        <p
-          style={{
-            fontSize: 13,
-            color: SS_TOKENS.fg1,
-            lineHeight: 1.5,
-            marginTop: 6,
-            marginBottom: 0,
-          }}
-        >
-          Stays dark either way. High lifts secondary text and dividers for
-          glare or low-vision conditions.
-        </p>
-      </div>
-
+    <SettingsCard title="Contrast" eyebrow="Visibility">
+      <p style={copyStyle}>
+        Out Of Sight stays dark. High contrast lifts secondary text and
+        dividers for glare or low-vision conditions.
+      </p>
       <form
         action={setContrastAction}
         style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
@@ -60,7 +17,7 @@ export function ContrastSetting({ current }: { current: ContrastMode }) {
         <Choice value="normal" current={current} label="Normal" />
         <Choice value="high" current={current} label="High" />
       </form>
-    </section>
+    </SettingsCard>
   );
 }
 
@@ -83,26 +40,30 @@ function Choice({
       style={{
         flex: 1,
         minWidth: 140,
-        padding: "12px 14px",
+        minHeight: 50,
+        padding: "10px 14px",
         borderRadius: 12,
-        border: `.5px solid ${active ? SS_TOKENS.alert : SS_TOKENS.hairline2}`,
+        border: `1px solid ${active ? SS_TOKENS.alert : SS_TOKENS.hairline2}`,
         background: active ? SS_TOKENS.alertDim : SS_TOKENS.bg2,
-        color: SS_TOKENS.fg0,
+        color: active ? SS_TOKENS.alert : SS_TOKENS.fg1,
         cursor: "pointer",
         textAlign: "left",
+        fontFamily: "var(--font-mono)",
+        fontSize: 12,
+        fontWeight: 800,
+        letterSpacing: ".04em",
+        touchAction: "manipulation",
+        WebkitTapHighlightColor: "transparent",
       }}
     >
-      <span
-        className="ss-mono"
-        style={{
-          fontSize: 12,
-          letterSpacing: ".06em",
-          color: active ? SS_TOKENS.alert : SS_TOKENS.fg1,
-          fontWeight: 700,
-        }}
-      >
-        {label}
-      </span>
+      {label}
     </button>
   );
 }
+
+const copyStyle = {
+  margin: 0,
+  color: SS_TOKENS.fg1,
+  fontSize: 13,
+  lineHeight: 1.5,
+} as const;

@@ -1,13 +1,72 @@
 import assert from "node:assert";
 import { test } from "node:test";
 import {
+  aircraftObservationGroundState,
+  estimateLandingTransitionAt,
+  interpolateFlightTransition,
   isStaleAirborneCandidate,
+  isStaleLandingCandidate,
   isStaleOpenFlightSession,
   isUnseenFlightSessionExpired,
   isNewerAircraftObservation,
   shouldSuppressTakeoffNotificationForTimes,
   shouldClearUnobservedState,
 } from "./aircraft-data";
+
+test("takeoff interpolation requires contiguous ground and airborne samples", () => {
+  assert.equal(
+    interpolateFlightTransition(
+      "2026-08-08T12:00:00.000Z",
+      "2026-08-08T12:00:10.000Z",
+    ),
+    "2026-08-08T12:00:05.000Z",
+  );
+  assert.equal(
+    interpolateFlightTransition(
+      "2026-08-07T20:00:00.000Z",
+      "2026-08-08T08:00:00.000Z",
+    ),
+    null,
+  );
+  assert.equal(
+    interpolateFlightTransition(null, "2026-08-08T12:00:10.000Z"),
+    null,
+  );
+});
+
+test("landing uses the transition midpoint or first grounded boundary, never confirmation time", () => {
+  assert.equal(
+    estimateLandingTransitionAt(
+      "2026-08-08T12:00:00.000Z",
+      "2026-08-08T12:00:10.000Z",
+    ),
+    "2026-08-08T12:00:05.000Z",
+  );
+  assert.equal(
+    estimateLandingTransitionAt(
+      "2026-08-08T11:00:00.000Z",
+      "2026-08-08T12:00:10.000Z",
+    ),
+    "2026-08-08T12:00:10.000Z",
+  );
+});
+
+test("ambiguous provider ground state does not become airborne", () => {
+  assert.equal(
+    aircraftObservationGroundState({
+      airborne: false,
+      observation_status: "unknown",
+    }),
+    "unknown",
+  );
+  assert.equal(
+    aircraftObservationGroundState({
+      airborne: true,
+      observation_status: "airborne_candidate",
+    }),
+    "airborne",
+  );
+});
 
 test("an already-unknown aircraft does not need another clearing write", () => {
   assert.equal(shouldClearUnobservedState(undefined), true);
@@ -63,6 +122,17 @@ test("implausibly old open flight sessions are treated as stale", () => {
       {
         detected_takeoff_at: "2026-08-02T12:00:00.000Z",
         tracking_started_at: "2026-08-02T11:59:00.000Z",
+        closed_at: "2026-08-02T12:30:00.000Z",
+      },
+      "2026-08-02T12:31:00.000Z",
+    ),
+    true,
+  );
+  assert.equal(
+    isStaleOpenFlightSession(
+      {
+        detected_takeoff_at: "2026-08-02T12:00:00.000Z",
+        tracking_started_at: "2026-08-02T11:59:00.000Z",
       },
       "2026-08-03T05:59:00.000Z",
     ),
@@ -80,18 +150,25 @@ test("implausibly old open flight sessions are treated as stale", () => {
   );
 });
 
-test("implausibly old airborne candidates are treated as stale", () => {
+test("takeoff and landing confirmation candidates require contiguous samples", () => {
   assert.equal(
     isStaleAirborneCandidate(
       { airborne_candidate_started_at: "2026-08-02T12:00:00.000Z" },
-      "2026-08-03T05:59:00.000Z",
+      "2026-08-02T12:02:00.000Z",
     ),
     false,
   );
   assert.equal(
     isStaleAirborneCandidate(
       { airborne_candidate_started_at: "2026-08-02T12:00:00.000Z" },
-      "2026-08-03T06:01:00.000Z",
+      "2026-08-02T12:02:00.001Z",
+    ),
+    true,
+  );
+  assert.equal(
+    isStaleLandingCandidate(
+      { landing_candidate_started_at: "2026-08-02T12:00:00.000Z" },
+      "2026-08-02T12:02:00.001Z",
     ),
     true,
   );

@@ -111,9 +111,15 @@ export function normalizeOpenSkyStates(
     const observedAtMs = lastContactSeconds != null
       ? lastContactSeconds * 1_000
       : responseTimeMs;
+    const groundState = state[8] === true
+      ? "grounded"
+      : state[8] === false
+        ? "airborne"
+        : "unknown";
 
     normalized.push({
       hex: String(state[0] ?? "").toLowerCase(),
+      ground_state: groundState,
       lon: positionIsCurrent ? finiteNumber(state[5]) : undefined,
       lat: positionIsCurrent ? finiteNumber(state[6]) : undefined,
       alt_baro:

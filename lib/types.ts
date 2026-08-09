@@ -57,6 +57,8 @@ export type AircraftLive = {
   flight_session_id?: string | null;
   detected_takeoff_at?: string | null;
   takeoff_confidence?: "low" | "medium" | "high" | null;
+  /** Server snapshot instant used for exact endurance calculations. */
+  as_of?: string | number | null;
   starting_fuel_estimate_gal?: number;
   usable_fuel_gallons?: number;
   nominal_endurance_min?: number;
@@ -78,12 +80,20 @@ export type Aircraft = FleetEntry & AircraftLive;
 
 export type SnapshotSource = "adsbfi" | "opensky" | "mock";
 
+/** Explicit provider-backed ground classification for a single observation. */
+export type AircraftGroundState = "grounded" | "airborne" | "unknown";
+
 /**
  * Internal feed-agnostic aircraft shape produced by both adsb.fi and OpenSky
  * adapters. Field names match adsb.fi's v2 API since that's the primary source.
  */
 export type NormalizedAc = {
   hex: string;
+  /**
+   * Tri-state ground classification. Missing provider fields stay unknown so
+   * they cannot be mistaken for evidence of flight.
+   */
+  ground_state: AircraftGroundState;
   /** Registration / tail number, when the upstream feed provides it. */
   r?: string;
   lat?: number;

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { SS_TOKENS } from "@/lib/tokens";
 import {
@@ -62,28 +61,11 @@ export function AlertsOptInCard({ frameless = false }: { frameless?: boolean }) 
           fontWeight: 700,
           color: SS_TOKENS.fg0,
           margin: 0,
+          lineHeight: 1.2,
         }}
       >
         Want a ping when tracked aircraft launch?
       </h3>
-      <p
-        style={{
-          fontSize: 13,
-          color: SS_TOKENS.fg1,
-          margin: "8px 0 0",
-          lineHeight: 1.45,
-        }}
-      >
-        Receive one takeoff notification for tracked aircraft assigned to your
-        selected state. Settings are available at{" "}
-        <Link
-          href="/settings/alerts"
-          style={{ color: SS_TOKENS.alert, textDecoration: "underline" }}
-        >
-          /settings/alerts
-        </Link>
-        .
-      </p>
       {message && (
         <p
           role="status"
@@ -97,17 +79,28 @@ export function AlertsOptInCard({ frameless = false }: { frameless?: boolean }) 
           {message}
         </p>
       )}
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginTop: frameless ? 6 : 12,
+        }}
+      >
         <button
           type="button"
           onClick={onArm}
           disabled={busy}
           style={{
-            padding: "8px 14px",
-            borderRadius: frameless ? 0 : 999,
-            border: 0,
-            background: frameless ? "transparent" : SS_TOKENS.alert,
-            color: frameless ? SS_TOKENS.alert : "#fffdf8",
+            minHeight: frameless ? 40 : undefined,
+            padding: frameless ? "0 18px" : "8px 14px",
+            borderRadius: 999,
+            border: frameless ? `2.6px solid ${SS_TOKENS.alert}` : 0,
+            background: frameless ? "#fffdf8" : SS_TOKENS.alert,
+            color: frameless ? "#000000" : "#fffdf8",
+            boxShadow: frameless
+              ? "0 8px 22px rgba(0, 0, 0, 0.24)"
+              : "none",
             fontFamily: "var(--font-brand)",
             fontSize: 12.5,
             fontWeight: 700,
@@ -124,7 +117,8 @@ export function AlertsOptInCard({ frameless = false }: { frameless?: boolean }) 
           type="button"
           onClick={onDismiss}
           style={{
-            padding: "8px 14px",
+            minHeight: frameless ? 40 : undefined,
+            padding: frameless ? "0 14px" : "8px 14px",
             borderRadius: frameless ? 0 : 999,
             border: frameless ? 0 : `.5px solid ${SS_TOKENS.hairline2}`,
             background: "transparent",
@@ -167,7 +161,8 @@ function Wrapper({
         border: frameless ? 0 : `.5px solid ${SS_TOKENS.hairline}`,
         borderRadius: frameless ? 0 : 22,
         boxShadow: frameless ? "none" : SS_TOKENS.shadowSm,
-        padding: frameless ? "4px" : "14px 16px",
+        padding: frameless ? "0 4px" : "14px 16px",
+        marginBottom: frameless ? -5 : 0,
       }}
     >
       {children}

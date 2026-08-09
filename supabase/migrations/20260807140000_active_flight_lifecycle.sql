@@ -1,9 +1,5 @@
--- Flight data is operational state, not a historical archive. Completed flight
--- sessions and their cascaded position/notification rows are removed by the
--- ingestion flow at confirmed landing.
-
-delete from public.flight_sessions
-where detected_landing_at is not null;
+-- Positions remain operational state, while minimal completed-session metadata
+-- is retained long enough to support recent-flight and activity surfaces.
 
 drop policy if exists "Recent positions are readable"
   on public.aircraft_positions;
@@ -57,7 +53,8 @@ begin
   get diagnostics notification_worker_runs_deleted = row_count;
 
   delete from public.flight_sessions as sessions
-  where sessions.detected_landing_at is not null
+  where sessions.status in ('landed', 'unknown')
+    and sessions.last_seen_at < now() - interval '7 days'
     and not exists (
       select 1
       from public.notification_events as events

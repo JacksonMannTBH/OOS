@@ -1,7 +1,7 @@
 "use client";
 
-// Ambient amber flash overlay rendered on /home when a fixed_wing or patrol
-// aircraft is within PROXIMITY_NM nautical miles of the rider. Pulses
+// Ambient proximity flash overlay rendered on /home when a fixed_wing or patrol
+// aircraft is within the rider's configured Watch distance. Pulses
 // gently via CSS keyframes so it's noticeable in peripheral vision
 // without strobing — sits as a fixed-position overlay above the page
 // content but below the tab bar (z-index: 49 vs TabBar's 50).
