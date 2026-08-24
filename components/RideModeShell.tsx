@@ -194,7 +194,6 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
         <RideMap
           status={status}
           rider={riderPos}
-          headingDeg={heading.headingDeg}
           contacts={contacts}
           distanceBands={rideThresholds}
         />

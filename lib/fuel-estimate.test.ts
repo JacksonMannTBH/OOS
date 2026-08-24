@@ -10,22 +10,10 @@ import {
 } from "./fuel-estimate";
 
 test("formatFuelRemaining labels the value as an endurance estimate", () => {
-  assert.equal(
-    formatFuelRemaining(125),
-    "Est. Endurance Upper Bound - 2 Hours 5 Minutes",
-  );
-  assert.equal(
-    formatFuelRemaining(60),
-    "Est. Endurance Upper Bound - 1 Hour 0 Minutes",
-  );
-  assert.equal(
-    formatFuelRemaining(1),
-    "Est. Endurance Upper Bound - 0 Hours 1 Minute",
-  );
-  assert.equal(
-    formatFuelRemaining(0),
-    "Est. Endurance Upper Bound - 0 Hours 0 Minutes",
-  );
+  assert.equal(formatFuelRemaining(125), "Est. 2h 5min");
+  assert.equal(formatFuelRemaining(60), "Est. 1h 0min");
+  assert.equal(formatFuelRemaining(1), "Est. 0h 1min");
+  assert.equal(formatFuelRemaining(0), "Est. 0h 0min");
 });
 
 test("normalizeTailNumber accepts small tail-number formatting differences", () => {
@@ -79,7 +67,7 @@ test("estimateFuelRemaining clamps exhausted duration at zero", () => {
   });
   assert.equal(
     estimate?.label,
-    "Est. Endurance Upper Bound - 0 Hours 0 Minutes",
+    "Est. 0h 0min",
   );
   assert.equal(estimate?.minutesRemaining, 0);
   assert.equal(estimate?.remainingSeconds, 0);
@@ -103,7 +91,7 @@ test("estimateFuelRemaining subtracts exact elapsed time from the catalog upper 
   assert.equal(estimate?.minutesRemaining, 235);
   assert.equal(
     estimate?.label,
-    "Est. Endurance Upper Bound - 3 Hours 55 Minutes",
+    "Est. 3h 55min",
   );
 });
 
@@ -120,7 +108,7 @@ test("estimateFuelRemaining uses mean duration for aircraft with duration ranges
   assert.equal(estimate?.minutesRemaining, 240);
   assert.equal(
     estimate?.label,
-    "Est. Endurance Upper Bound - 4 Hours 0 Minutes",
+    "Est. 4h 0min",
   );
 });
 
@@ -140,7 +128,7 @@ test("estimateFuelRemaining floors only the final display after 5m59s", () => {
   assert.equal(estimate?.minutesRemaining, 14_041 / 60);
   assert.equal(
     estimate?.label,
-    "Est. Endurance Upper Bound - 3 Hours 54 Minutes",
+    "Est. 3h 54min",
   );
 });
 

@@ -19,7 +19,6 @@ type RiderPoint = { lat: number; lon: number };
 type Props = {
   status: RideStatus;
   rider: RiderPoint | null;
-  headingDeg: number | null;
   contacts: RideContact[];
   distanceBands: RideStatusThresholds;
 };
@@ -63,7 +62,7 @@ export default function RideMap(props: Props) {
       ? closestContact
       : null;
   const offMapBearingDeg = nearestOffMap
-    ? normalizeDegrees(nearestOffMap.bearingDeg - (props.headingDeg ?? 0))
+    ? normalizeDegrees(nearestOffMap.bearingDeg)
     : null;
   const watchText = formatNm(props.distanceBands.watchNm);
   const ariaLabel = props.rider
@@ -73,7 +72,7 @@ export default function RideMap(props: Props) {
           : nearestOffMap
             ? ` The nearest tracked aircraft is ${nearestOffMap.distanceNm.toFixed(1)} nautical miles away, outside the map; an arrow points toward it.`
           : ""
-      } ${props.headingDeg == null ? "North is up." : "Your direction of travel is up."}`
+      } North is up.`
     : "Ride map waiting for your location.";
 
   return (
@@ -161,12 +160,12 @@ function OffMapAircraftArrow({ bearingDeg }: { bearingDeg: number }) {
 }
 
 function RideMapCanvas(props: RideMapState) {
-  const { contacts, distanceBands, headingDeg, rider, status } = props;
+  const { contacts, distanceBands, rider, status } = props;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MaplibreMap | null>(null);
   const readyRef = useRef(false);
   const latestRef = useRef<RideMapState>(props);
-  latestRef.current = { contacts, distanceBands, headingDeg, rider, status };
+  latestRef.current = { contacts, distanceBands, rider, status };
 
   useEffect(() => {
     const container = containerRef.current;
@@ -178,7 +177,7 @@ function RideMapCanvas(props: RideMapState) {
       style: MAP_STYLE_URL,
       center: [initial.rider.lon, initial.rider.lat],
       zoom: 10,
-      bearing: initial.headingDeg ?? 0,
+      bearing: 0,
       pitch: 0,
       interactive: false,
       attributionControl: false,
@@ -224,13 +223,12 @@ function RideMapCanvas(props: RideMapState) {
     if (!map || !readyRef.current) return;
     updateRideMap(
       map,
-      { contacts, distanceBands, headingDeg, rider, status },
+      { contacts, distanceBands, rider, status },
       true,
     );
   }, [
     contacts,
     distanceBands,
-    headingDeg,
     rider,
     status,
   ]);
@@ -450,7 +448,7 @@ function setCamera(map: MaplibreMap, state: RideMapState, animate: boolean) {
   );
   if (!camera) return;
 
-  const bearing = state.headingDeg ?? 0;
+  const bearing = 0;
   const currentCenter = map.getCenter();
   const bearingDelta = Math.abs(shortestHeadingDelta(map.getBearing(), bearing));
   const centerDelta = Math.hypot(

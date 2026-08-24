@@ -99,9 +99,7 @@ function formatFuelRemainingSeconds(totalSeconds: number): string {
   const safeMinutes = Math.floor(safeSeconds / 60);
   const hours = Math.floor(safeMinutes / 60);
   const minutes = safeMinutes % 60;
-  const hourLabel = hours === 1 ? "Hour" : "Hours";
-  const minuteLabel = minutes === 1 ? "Minute" : "Minutes";
-  return `Est. Endurance Upper Bound - ${hours} ${hourLabel} ${minutes} ${minuteLabel}`;
+  return `Est. ${hours}h ${minutes}min`;
 }
 
 export function estimateFuelRemaining(

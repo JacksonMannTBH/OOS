@@ -123,6 +123,11 @@ export function applyMockState(snap: Snapshot, state: MockState | null): Snapsho
               ground_speed_kt: 118,
               heading: 184,
               time_aloft_min: 47,
+              detected_takeoff_at: new Date(
+                snap.fetched_at - 47 * 60 * 1000,
+              ).toISOString(),
+              takeoff_confidence: "high" as const,
+              as_of: snap.fetched_at,
               last_seen_min: 0,
             };
           }

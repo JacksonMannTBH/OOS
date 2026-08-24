@@ -699,13 +699,7 @@ export default function RadarMap({
           "icon-anchor": "center",
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
-          "text-field": [
-            "step",
-            ["zoom"],
-            ["get", "tail"],
-            11.5,
-            ["get", "label"],
-          ],
+          "text-field": ["get", "tail"],
           "text-font": MAP_LABEL_FONT,
           "text-size": [
             "interpolate",
@@ -1217,7 +1211,7 @@ export default function RadarMap({
         observedAtMs,
         nickname: a.nickname,
         color,
-        label: (a.nickname ? `${a.tail}\n${a.nickname}` : a.tail).toUpperCase(),
+        label: a.tail.toUpperCase(),
       });
       if (!newFrom.has(a.tail)) {
         // First time we see this plane — render it at its current position
