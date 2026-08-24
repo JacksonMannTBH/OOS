@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import nextDynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAircraft } from "@/lib/hooks/useAircraft";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
@@ -10,7 +11,6 @@ import {
   classifyRideStatus,
   cardinalWordFromDeg,
   getRideContacts,
-  isSameCardinalTrack,
   rideStatusLabel,
   type RideContact,
   type RideStatus,
@@ -19,7 +19,8 @@ import {
   estimateFuelRemaining,
 } from "@/lib/fuel-estimate";
 import type { Snapshot } from "@/lib/types";
-import { RideCompass } from "./RideCompass";
+
+const RideMap = nextDynamic(() => import("./RideMap"), { ssr: false });
 
 type Props = {
   initial: Snapshot;
@@ -45,12 +46,19 @@ const STATUS_COLORS: Record<RideStatus, string> = {
 
 const STALE_WARN_MS = 45_000;
 const STALE_DANGER_MS = 90_000;
+const MOCK_RIDER_POS = {
+  lat: 47.5,
+  lon: -122.2612,
+  speedMps: 10,
+  heading: 0,
+} as const;
 
 export function RideModeShell({ initial, mockOn = false }: Props) {
   const router = useRouter();
   const snap = useAircraft(initial, mockOn);
   const { pos, unavailable } = useRiderPos();
-  const heading = useDeviceHeading(pos?.heading);
+  const riderPos = pos ?? (mockOn ? MOCK_RIDER_POS : null);
+  const heading = useDeviceHeading(riderPos?.heading);
   const [now, setNow] = useState(initial.fetched_at);
   const rideThresholds = useRideStatusThresholds();
 
@@ -63,23 +71,14 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
   }, []);
 
   const contacts = useMemo<RideContact[]>(() => {
-    if (!pos) return [];
-    return getRideContacts(snap.aircraft, pos, heading.headingDeg, true);
-  }, [snap.aircraft, pos, heading.headingDeg]);
+    if (!riderPos) return [];
+    return getRideContacts(snap.aircraft, riderPos, heading.headingDeg, true);
+  }, [snap.aircraft, riderPos, heading.headingDeg]);
 
   const nearest = contacts[0] ?? null;
   const status = classifyRideStatus(nearest?.distanceNm ?? null, rideThresholds);
   const statusLabel = rideStatusLabel(status);
   const statusColor = STATUS_COLORS[status];
-  const shouldHighlightTrackingArrow =
-    status === "danger" &&
-    isSameCardinalTrack(nearest?.plane.heading, heading.headingDeg);
-  const displayBearing =
-    nearest == null
-      ? null
-      : nearest.relativeBearingDeg == null
-        ? nearest.bearingDeg
-        : nearest.relativeBearingDeg;
   const lastUpdateAgeMs = Math.max(0, now - snap.fetched_at);
   const staleLevel =
     lastUpdateAgeMs >= STALE_DANGER_MS
@@ -88,7 +87,6 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
         ? "lagging"
         : "fresh";
 
-  const aircraftLabel = nearest ? formatAircraftLabel(nearest.plane) : null;
   const nearestSpeedText = nearest
     ? formatGroundSpeed(nearest.plane.ground_speed_kt)
     : null;
@@ -96,12 +94,12 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
   const withinRideRange =
     nearest != null && nearest.distanceNm <= rideThresholds.watchNm;
   const watchRangeText = formatNm(rideThresholds.watchNm);
-  const primaryCopy = !pos
+  const primaryCopy = !riderPos
     ? unavailable
       ? "Location unavailable"
       : "Waiting for rider location"
     : withinRideRange && nearest
-      ? `${aircraftLabel}: ${nearest.distanceNm.toFixed(1)} nm ${cardinalWordFromDeg(nearest.bearingDeg)}${nearestSpeedText ? ` - GS ${nearestSpeedText}` : ""}`
+      ? `${aircraftTypeLabel(nearest.plane.model)}: ${nearest.distanceNm.toFixed(1)} nm ${cardinalWordFromDeg(nearest.bearingDeg)}${nearestSpeedText ? ` - GS ${nearestSpeedText}` : ""}`
       : `No tracked aircraft within ${watchRangeText} nm`;
   const nearestFuelText = useMemo(() => {
     if (!nearest) return null;
@@ -193,13 +191,12 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
           minHeight: 0,
         }}
       >
-        <RideCompass
+        <RideMap
           status={status}
-          contact={nearest}
-          displayBearingDeg={displayBearing}
-          clearDistanceNm={rideThresholds.watchNm}
+          rider={riderPos}
+          headingDeg={heading.headingDeg}
+          contacts={contacts}
           distanceBands={rideThresholds}
-          highlightTrackingArrow={shouldHighlightTrackingArrow}
         />
         {nearestFuelText && (
           <div
@@ -349,10 +346,6 @@ function useRideWakeLock() {
 
 function formatNm(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
-function formatAircraftLabel(plane: { tail: string; nickname?: string | null }): string {
-  return plane.nickname ? `${plane.tail} - ${plane.nickname}` : plane.tail;
 }
 
 type RideSummary = {

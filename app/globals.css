@@ -236,6 +236,23 @@ body[data-ride-mode="true"] .maplibregl-ctrl-attrib {
   display: none !important;
 }
 
+body[data-ride-mode="true"]
+  .ss-ride-map
+  .maplibregl-ctrl-attrib.maplibregl-compact {
+  display: block !important;
+  margin: 0 4px 4px 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(2, 2, 2, 0.68) !important;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.32);
+  transform: scale(0.76);
+  transform-origin: bottom right;
+}
+
+body[data-ride-mode="true"] .ss-ride-map .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
+
 body[data-radar-mode="true"] .maplibregl-ctrl-top-right {
   top: calc(env(safe-area-inset-top, 0px) + clamp(78px, 20vw, 92px));
 }
@@ -320,8 +337,30 @@ body[data-theme="dark"] textarea {
   }
 }
 
+.ss-helicopter-icon {
+  background-image: var(--ss-heli-animated-image);
+}
+
+.ss-cessna-icon {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  transform-origin: center;
+  line-height: 0;
+}
+
+.ss-cessna-icon__body {
+  position: absolute;
+  inset: 0;
+  background: url("/icons/plane/cessna-body.png?v=cessna-v1") center / contain no-repeat;
+}
+
 /* Respect prefers-reduced-motion: kill the pulsers + transitions. */
 @media (prefers-reduced-motion: reduce) {
+  .ss-helicopter-icon {
+    background-image: var(--ss-heli-static-image);
+  }
+
   *,
   *::before,
   *::after {

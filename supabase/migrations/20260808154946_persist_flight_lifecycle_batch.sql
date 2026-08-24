@@ -11,6 +11,12 @@ alter table public.aircraft_current_state
   add column last_airborne_at timestamptz,
   add column landing_candidate_started_at timestamptz;
 
+-- The legacy partial index classified unknown sessions with a null landing
+-- timestamp as open. The normalization below intentionally clears that
+-- timestamp, so remove the obsolete index before rewriting historical rows.
+-- A closed_at-based replacement is created after the rows are reconciled.
+drop index if exists public.flight_sessions_one_open_per_aircraft;
+
 -- Remove precise-looking takeoff timestamps when the source did not observe a
 -- trustworthy transition. An interpolated timestamp more than one minute
 -- before tracking began implies a provider observation gap over two minutes.

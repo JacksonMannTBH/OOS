@@ -11,6 +11,7 @@ import {
   isNewerAircraftObservation,
   shouldSuppressTakeoffNotificationForTimes,
   shouldClearUnobservedState,
+  takeoffNotificationOccurredAt,
 } from "./aircraft-data";
 
 test("takeoff interpolation requires contiguous ground and airborne samples", () => {
@@ -223,5 +224,22 @@ test("recent same-tail notification or landing suppresses duplicate takeoff aler
       null,
     ),
     false,
+  );
+});
+
+test("first-seen-airborne flights notify from the tracking boundary", () => {
+  assert.equal(
+    takeoffNotificationOccurredAt(
+      null,
+      "2026-08-23T06:15:08.001Z",
+    ),
+    "2026-08-23T06:15:08.001Z",
+  );
+  assert.equal(
+    takeoffNotificationOccurredAt(
+      "2026-08-23T06:14:59.000Z",
+      "2026-08-23T06:15:08.001Z",
+    ),
+    "2026-08-23T06:14:59.000Z",
   );
 });

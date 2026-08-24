@@ -2,7 +2,7 @@
 // routes. Deterministic — same query param yields the same response
 // shape, no randomness, no time-of-day drift.
 //
-// Snapshot-level states: up, down, eyes-up, mixed, multiple, stale.
+// Snapshot-level states: up, down, warning, eyes-up, mixed, multiple, stale.
 // Data-layer states: learning (forecast empty + Day 0 of 30),
 // full-data (predictor confident + learning panel hidden).
 
@@ -13,6 +13,7 @@ import type { ForecastGrid, ForecastCell } from "./predictor";
 export const MOCK_STATES = [
   "up",
   "down",
+  "warning",
   "eyes-up",
   "mixed",
   "multiple",
@@ -102,6 +103,33 @@ export function applyMockState(snap: Snapshot, state: MockState | null): Snapsho
     case "up":
       // At least one fixed-wing aircraft up. The original mock=up behavior.
       return liftAirborne(snap, (r) => r === "fixed_wing");
+    case "warning": {
+      // One fixed-wing aircraft 1.8 NM north of Ride Mode's deterministic
+      // mock rider: inside the 3 NM Warning ring and outside the 1.5 NM Stop ring.
+      let lifted = false;
+      return {
+        ...snap,
+        source: "mock",
+        aircraft: snap.aircraft.map((aircraft) => {
+          if (!lifted && aircraft.role === "fixed_wing") {
+            lifted = true;
+            return {
+              ...aircraft,
+              airborne: true,
+              observed: true,
+              lat: 47.5301,
+              lon: -122.2612,
+              altitude_ft: 2800,
+              ground_speed_kt: 118,
+              heading: 184,
+              time_aloft_min: 47,
+              last_seen_min: 0,
+            };
+          }
+          return { ...aircraft, airborne: false };
+        }),
+      };
+    }
     case "eyes-up": {
       // Patrol or unknown airborne, no fixed_wing. State name kept for
       // back-compat with existing QA flows.

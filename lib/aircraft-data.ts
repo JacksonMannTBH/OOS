@@ -434,7 +434,8 @@ export async function ingestSnapshot(
   const takeoffEventCandidates: Array<{
     flightSessionId: string;
     aircraftId: string;
-    detectedTakeoffAt: string;
+    eventOccurredAt: string;
+    takeoffTimeSource: "interpolated" | "tracking_started_airborne";
     catalogRow: CatalogRow;
   }> = [];
   const flightSessionsToFinalize = new Map<
@@ -644,14 +645,18 @@ export async function ingestSnapshot(
         confidence: detectedTakeoffAt ? "high" : "low",
         starting_fuel_estimate_gal: null,
       });
-      if (detectedTakeoffAt) {
-        takeoffEventCandidates.push({
-          flightSessionId,
-          aircraftId: catalogRow.id,
+      takeoffEventCandidates.push({
+        flightSessionId,
+        aircraftId: catalogRow.id,
+        eventOccurredAt: takeoffNotificationOccurredAt(
           detectedTakeoffAt,
-          catalogRow,
-        });
-      }
+          trackingStartedAt,
+        ),
+        takeoffTimeSource: detectedTakeoffAt
+          ? "interpolated"
+          : "tracking_started_airborne",
+        catalogRow,
+      });
     }
 
     if (isAirborne && flightSessionId) {
@@ -769,14 +774,16 @@ export async function ingestSnapshot(
     }
   }
 
-  // Only a bounded, ground-to-air transition is eligible for a takeoff alert.
-  // First-seen-airborne sessions intentionally have no detected takeoff event.
+  // Alert after a confirmed airborne session begins. When the provider saw the
+  // aircraft on the ground first, occurred_at is the interpolated transition.
+  // Aircraft such as N2446X often first appear after takeoff; those use the
+  // first confirmed tracking boundary and retain their low-confidence source.
   for (const candidate of takeoffEventCandidates) {
     const suppressNotification = await shouldSuppressTakeoffNotification(
       db,
       candidate.aircraftId,
       candidate.flightSessionId,
-      candidate.detectedTakeoffAt,
+      candidate.eventOccurredAt,
     );
     if (suppressNotification) continue;
     const { error: eventError } = await db.from("notification_events").upsert(
@@ -785,12 +792,13 @@ export async function ingestSnapshot(
         aircraft_id: candidate.aircraftId,
         state_code: candidate.catalogRow.home_state_code,
         event_type: "takeoff",
-        occurred_at: candidate.detectedTakeoffAt,
+        occurred_at: candidate.eventOccurredAt,
         payload: {
           tail: candidate.catalogRow.tail,
           nickname: candidate.catalogRow.nickname,
           model: candidate.catalogRow.model,
           state_code: candidate.catalogRow.home_state_code,
+          takeoff_time_source: candidate.takeoffTimeSource,
         },
       },
       { onConflict: "flight_session_id,event_type", ignoreDuplicates: true },
@@ -1051,6 +1059,13 @@ export function shouldSuppressTakeoffNotificationForTimes(
       previousMs <= takeoffMs &&
       takeoffMs - previousMs < TAKEOFF_NOTIFICATION_COOLDOWN_MS;
   });
+}
+
+export function takeoffNotificationOccurredAt(
+  detectedTakeoffAt: string | null,
+  trackingStartedAt: string,
+): string {
+  return detectedTakeoffAt ?? trackingStartedAt;
 }
 
 function normalizedAircraftTimestamp(

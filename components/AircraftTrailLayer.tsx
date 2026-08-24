@@ -33,7 +33,6 @@ const HALO_LAYER_ID = "aircraft-trail-halo";
 const LAYER_ID = "aircraft-trail";
 const START_DOT_LAYER_ID = "aircraft-trail-start-dot";
 const END_DOT_LAYER_ID = "aircraft-trail-end-dot";
-const AIRCRAFT_WAKE_LAYER_ID = "aircraft-wake-0";
 const AIRCRAFT_LAYER_ID = "aircraft";
 const AIRCRAFT_ROTOR_LAYER_ID = "aircraft-heli-rotor";
 const POLL_MS = 10_000;
@@ -139,17 +138,15 @@ function buildEndpointCollection(
  * sibling layer mounting late can never bury the trail.
  */
 function reorderTrailLayers(map: MaplibreMap): void {
-  const markerBaseLayerId = map.getLayer(AIRCRAFT_WAKE_LAYER_ID)
-    ? AIRCRAFT_WAKE_LAYER_ID
-    : map.getLayer(AIRCRAFT_LAYER_ID)
-      ? AIRCRAFT_LAYER_ID
-      : map.getLayer(AIRCRAFT_ROTOR_LAYER_ID)
-        ? AIRCRAFT_ROTOR_LAYER_ID
-        : null;
+  const markerBaseLayerId = map.getLayer(AIRCRAFT_LAYER_ID)
+    ? AIRCRAFT_LAYER_ID
+    : map.getLayer(AIRCRAFT_ROTOR_LAYER_ID)
+      ? AIRCRAFT_ROTOR_LAYER_ID
+      : null;
   if (!markerBaseLayerId) {
-    // Aircraft chevron not attached yet — leave the trail at the top
+    // Aircraft marker not attached yet — leave the trail at the top
     // of the stack for now. Next poll will move it down once the
-    // chevron exists.
+    // marker exists.
     return;
   }
   for (const id of TRAIL_LAYER_IDS) {

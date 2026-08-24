@@ -31,6 +31,25 @@ export function PlaneIcon({
   tone = "default",
   color,
 }: Props) {
+  const useCessnaArtwork = role !== "patrol" && role !== "sar";
+
+  if (useCessnaArtwork) {
+    return (
+      <span
+        role="img"
+        aria-label="aircraft"
+        className="ss-cessna-icon"
+        style={{
+          width: size,
+          height: size,
+          transform: `rotate(${heading}deg)`,
+        }}
+      >
+        <span className="ss-cessna-icon__body" />
+      </span>
+    );
+  }
+
   return (
     <span
       role="img"

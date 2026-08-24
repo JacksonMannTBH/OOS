@@ -17,7 +17,9 @@ import {
 import { computeStatus } from "@/lib/status";
 import { RadarLayerControls } from "./RadarLayerControls";
 import { AircraftTrailLayer } from "./AircraftTrailLayer";
-import { aircraftColorForTail } from "@/lib/aircraft-colors";
+import {
+  aircraftColorForRole,
+} from "@/lib/aircraft-colors";
 import { LogoMark } from "./brand/Logo";
 import {
   FLIGHT_PATHS_VISIBLE_KEY,
@@ -31,6 +33,7 @@ import {
   type StateCode,
 } from "@/lib/app-states";
 import { PlaneIcon } from "./PlaneIcon";
+import { HelicopterIcon } from "./HelicopterIcon";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
 export type RiderPos = { lat: number; lon: number };
@@ -399,7 +402,8 @@ function MapHeaderAircraftButton({
   aircraft: Aircraft;
   onSelect: (tail: string) => void;
 }) {
-  const color = aircraftColorForTail(aircraft.tail);
+  const color = aircraftColorForRole(aircraft.role);
+  const isHelicopter = aircraft.role === "patrol" || aircraft.role === "sar";
   const displayName = aircraft.nickname ?? aircraft.tail;
   const ariaLabel = `Center ${displayName} on the map`;
 
@@ -427,13 +431,20 @@ function MapHeaderAircraftButton({
           WebkitTapHighlightColor: "transparent",
         }}
       >
-        <PlaneIcon
-          size={23}
-          role={aircraft.role}
-          heading={aircraft.heading ?? 0}
-          tone="radar"
-          color={color}
-        />
+        {isHelicopter ? (
+          <HelicopterIcon
+            size={29}
+            heading={aircraft.heading ?? 0}
+          />
+        ) : (
+          <PlaneIcon
+            size={23}
+            role={aircraft.role}
+            heading={aircraft.heading ?? 0}
+            tone="radar"
+            color={color}
+          />
+        )}
       </button>
     </Tooltip>
   );
@@ -511,7 +522,7 @@ function AirborneBubbles({
       }}
     >
       {airborne.map((p) => {
-        const color = aircraftColorForTail(p.tail);
+        const color = aircraftColorForRole(p.role);
         return (
           <Tooltip
             key={p.tail}
