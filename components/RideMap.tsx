@@ -96,10 +96,7 @@ export default function RideMap(props: Props) {
           border: `3px solid color-mix(in srgb, ${STATUS_COLORS[props.status]} 78%, #f5f2e8)`,
           background:
             "radial-gradient(circle at 50% 50%, #222820 0%, #0a0b0a 68%, #020202 100%)",
-          boxShadow:
-            props.status === "danger"
-              ? "0 0 0 6px rgba(255,77,79,0.18), 0 0 44px rgba(255,77,79,0.42)"
-              : `0 0 0 1px rgba(255,255,255,0.08), 0 24px 70px rgba(0,0,0,0.64), 0 0 28px color-mix(in srgb, ${STATUS_COLORS[props.status]} 20%, transparent)`,
+          boxShadow: "0 18px 48px rgba(0,0,0,0.48)",
         }}
       >
         {props.rider ? (

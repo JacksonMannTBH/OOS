@@ -337,8 +337,7 @@ function applyCustomRadarLayerTheme(map: MaplibreMap, darkMode: boolean) {
       map.setPaintProperty("aircraft-labels", "text-color", "#f5f2e8");
     }
     if (map.getLayer("aircraft-fuel")) {
-      map.setPaintProperty("aircraft-fuel", "text-color", darkMode ? "#f5f2e8" : "#2f2a18");
-      map.setPaintProperty("aircraft-fuel", "text-halo-color", darkMode ? "#020202" : "#fff7f2");
+      map.setPaintProperty("aircraft-fuel", "text-color", "#f5f2e8");
     }
   } catch {
     /* layer may be mid-style reload */
@@ -740,6 +739,12 @@ export default function RadarMap({
         source: "aircraft",
         layout: {
           visibility: showFuelEstimateRef.current ? "visible" : "none",
+          "icon-image": AIRCRAFT_LABEL_BG_KEY,
+          "icon-text-fit": "both",
+          "icon-text-fit-padding": [3, 6, 3, 6],
+          "icon-anchor": "center",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
           "text-field": ["get", "fuelLabel"],
           "text-font": MAP_LABEL_FONT,
           "text-size": [
@@ -755,17 +760,21 @@ export default function RadarMap({
             18,
             11.5,
           ],
-          "text-offset": [0, -5.2],
-          "text-anchor": "bottom",
+          "text-offset": [0, -4.7],
+          "text-anchor": "center",
           "text-allow-overlap": true,
           "text-ignore-placement": true,
           "text-line-height": 1.05,
           "text-letter-spacing": 0,
         },
         paint: {
-          "text-color": darkModeRef.current ? "#f5f2e8" : "#2f2a18",
-          "text-halo-color": darkModeRef.current ? "#020202" : "#fff7f2",
-          "text-halo-width": 2.2,
+          "icon-opacity": ["coalesce", ["get", "opacity"], 1],
+          "text-color": "#f5f2e8",
+          "text-opacity": [
+            "*",
+            ["coalesce", ["get", "opacity"], 1],
+            0.78,
+          ],
         },
         filter: ["has", "fuelLabel"],
       });

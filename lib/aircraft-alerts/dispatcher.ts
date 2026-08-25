@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { aircraftVehicleType } from "@/lib/aircraft-type";
 import { sendAircraftAlertPush } from "./web-push";
 
 const MAX_DELIVERIES_PER_RUN = 100;
@@ -62,7 +63,7 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
     }
     const payload = (event.payload ?? {}) as Record<string, unknown>;
     const tail = String(payload.tail ?? "Aircraft");
-    const label = String(payload.nickname ?? tail);
+    const notificationCopy = takeoffNotificationCopy(tail, payload.model);
     const detailUrl = `/map?tail=${encodeURIComponent(tail)}`;
     const result = await sendAircraftAlertPush(
       {
@@ -73,8 +74,8 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
         },
       },
       {
-        title: `${label} took off`,
-        body: `${tail} began a tracked flight.`,
+        title: notificationCopy.title,
+        body: notificationCopy.body,
         url: detailUrl,
         tag: takeoffNotificationTag(tail, event.occurred_at),
         aircraftTail: tail,
@@ -149,6 +150,17 @@ export function takeoffNotificationTag(
       NOTIFICATION_TAG_WINDOW_MS
     : 0;
   return `takeoff-${normalizedTail || "AIRCRAFT"}-${windowMs}`;
+}
+
+export function takeoffNotificationCopy(tail: string, model: unknown) {
+  const vehicleType = aircraftVehicleType(
+    typeof model === "string" ? model : null,
+  );
+
+  return {
+    title: vehicleType === "Helicopter" ? "Heli Above" : "Plane Above",
+    body: `${tail} took flight`,
+  };
 }
 
 async function markFailed(

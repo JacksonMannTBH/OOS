@@ -18,9 +18,9 @@ export type RideContact = {
 };
 
 export const DEFAULT_RIDE_STATUS_THRESHOLDS: RideStatusThresholds = {
-  watchNm: 5,
-  warningNm: 3,
-  stopNm: 1,
+  watchNm: 10,
+  warningNm: 5,
+  stopNm: 2,
 };
 
 export const RIDE_STATUS_LABELS: Record<RideStatus, string> = {

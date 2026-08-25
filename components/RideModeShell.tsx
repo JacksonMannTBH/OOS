@@ -203,6 +203,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
             style={{
               width: "min(100%, 420px)",
               minHeight: 34,
+              transform: "translateY(20px)",
               padding: "8px 12px",
               borderRadius: 999,
               border: "1px solid rgba(255,255,255,0.16)",
@@ -226,6 +227,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
           flexDirection: "column",
           alignItems: "center",
           gap: 10,
+          transform: "translateY(20px)",
           paddingBottom: 0,
         }}
       >
@@ -243,7 +245,8 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1.1fr 1.5fr 0.9fr 1fr",
+              gridTemplateColumns: "repeat(4, max-content)",
+              justifyContent: "space-between",
               alignItems: "end",
               gap: 8,
             }}
@@ -397,7 +400,7 @@ function RideSummaryMetric({
       <div
         style={{
           color: accent ? "#f6c431" : "#f5f2e8",
-          fontSize: accent ? "clamp(24px, 7vw, 34px)" : "clamp(14px, 3.8vw, 18px)",
+          fontSize: accent ? "clamp(21px, 6vw, 32px)" : "clamp(13px, 3.5vw, 18px)",
           fontWeight: 950,
           letterSpacing: accent ? "-0.03em" : 0,
           lineHeight: 1,

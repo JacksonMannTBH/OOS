@@ -8,6 +8,7 @@ import {
   cardinalWordFromDeg,
   cardinalTrackFromDeg,
   classifyRideStatus,
+  DEFAULT_RIDE_STATUS_THRESHOLDS,
   getRideContacts,
   isSameCardinalTrack,
   normalizeRideStatusThresholds,
@@ -84,13 +85,21 @@ test("isSameCardinalTrack matches aircraft movement with rider direction", () =>
 
 test("classifyRideStatus follows ride-mode distance thresholds", () => {
   assert.equal(classifyRideStatus(null), "clear");
-  assert.equal(classifyRideStatus(5.1), "clear");
-  assert.equal(classifyRideStatus(5), "watch");
-  assert.equal(classifyRideStatus(3.1), "watch");
-  assert.equal(classifyRideStatus(3), "warning");
-  assert.equal(classifyRideStatus(1.1), "warning");
-  assert.equal(classifyRideStatus(1), "danger");
+  assert.equal(classifyRideStatus(10.1), "clear");
+  assert.equal(classifyRideStatus(10), "watch");
+  assert.equal(classifyRideStatus(5.1), "watch");
+  assert.equal(classifyRideStatus(5), "warning");
+  assert.equal(classifyRideStatus(2.1), "warning");
+  assert.equal(classifyRideStatus(2), "danger");
   assert.equal(classifyRideStatus(0.5), "danger");
+});
+
+test("default Ride Mode preset uses the recommended distance bands", () => {
+  assert.deepEqual(DEFAULT_RIDE_STATUS_THRESHOLDS, {
+    watchNm: 10,
+    warningNm: 5,
+    stopNm: 2,
+  });
 });
 
 test("classifyRideStatus accepts custom ride-mode thresholds", () => {
