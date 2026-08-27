@@ -10,6 +10,7 @@ import { isTrackedTail, TRACKED_TAILS } from "./tracked-tails";
 
 test("operational aircraft are tracked and available to flight paths", () => {
   const fleetTails = new Set(FLEET.map((entry) => entry.tail));
+  const trackedTails = new Set(TRACKED_TAILS);
 
   for (const tail of TRACKED_TAILS) {
     assert.equal(
@@ -30,6 +31,12 @@ test("operational aircraft are tracked and available to flight paths", () => {
       `${aircraft.tail} should have source duration data`,
     );
   }
+
+  assert.deepEqual(
+    trackedTails,
+    fleetTails,
+    "the tracked list and published fleet must contain the same aircraft",
+  );
 });
 
 test("customs-specific aircraft are not in active source catalogs", () => {

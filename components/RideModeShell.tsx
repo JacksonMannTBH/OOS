@@ -44,6 +44,7 @@ const STATUS_COLORS: Record<RideStatus, string> = {
   danger: "#ff4d4f",
 };
 
+const MPS_TO_MPH = 2.236936;
 const STALE_WARN_MS = 45_000;
 const STALE_DANGER_MS = 90_000;
 const MOCK_RIDER_POS = {
@@ -191,12 +192,22 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
           minHeight: 0,
         }}
       >
-        <RideMap
-          status={status}
-          rider={riderPos}
-          contacts={contacts}
-          distanceBands={rideThresholds}
-        />
+        <div
+          style={{
+            position: "relative",
+            width: "min(70vw, 320px, 42dvh)",
+            aspectRatio: "1",
+            flex: "0 0 auto",
+          }}
+        >
+          <RideMap
+            status={status}
+            rider={riderPos}
+            contacts={contacts}
+            distanceBands={rideThresholds}
+          />
+          <RiderSpeedBadge speedMps={riderPos?.speedMps ?? null} />
+        </div>
         {nearestFuelText && (
           <div
             aria-live="polite"
@@ -435,4 +446,61 @@ function formatGroundSpeed(value: number | null | undefined): string | null {
     return null;
   }
   return `${Math.round(value)} kt`;
+}
+
+function RiderSpeedBadge({ speedMps }: { speedMps: number | null }) {
+  const mph =
+    speedMps != null && Number.isFinite(speedMps) && speedMps >= 0
+      ? Math.round(speedMps * MPS_TO_MPH)
+      : null;
+
+  return (
+    <div
+      aria-live="polite"
+      aria-label={`Your speed: ${mph == null ? "unavailable" : `${mph} miles per hour`}`}
+      style={{
+        position: "absolute",
+        zIndex: 2,
+        top: -60,
+        left: "clamp(-50px, -12vw, -28px)",
+        width: 104,
+        minHeight: 76,
+        boxSizing: "border-box",
+        padding: "4px 8px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 0,
+        border: "1px solid rgba(255,255,255,0.2)",
+        borderRadius: 14,
+        background: "rgba(0,0,0,0.72)",
+        color: "#fff",
+        boxShadow: "0 12px 30px rgba(0,0,0,0.32)",
+        textAlign: "center",
+      }}
+    >
+      <span
+        style={{
+          color: "#a9a28a",
+          fontSize: 11,
+          fontWeight: 900,
+          lineHeight: 1,
+        }}
+      >
+        Mph
+      </span>
+      <span
+        className="ss-mono"
+        style={{
+          color: "#f6c431",
+          fontSize: 54,
+          fontWeight: 950,
+          lineHeight: 1,
+        }}
+      >
+        {mph == null ? "—" : mph}
+      </span>
+    </div>
+  );
 }

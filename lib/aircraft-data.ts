@@ -95,12 +95,40 @@ const MAX_OPEN_FLIGHT_SESSION_MS = 18 * 60 * 60 * 1_000;
 export async function ensureCatalogSeeded(): Promise<void> {
   if (!isSupabaseConfigured()) return;
   const db = getSupabaseAdmin();
-  const { count, error } = await db
+  const { data: existingRows, error } = await db
     .from("aircraft")
-    .select("id", { count: "exact", head: true });
+    .select("tail")
+    .eq("active", true);
   if (error) throw new Error(`Catalog count failed: ${error.message}`);
-  if ((count ?? 0) > 0) return;
-  await saveCatalog(FLEET, "seed");
+
+  const existingTails = new Set(
+    (existingRows ?? []).map((row) => String(row.tail).trim().toUpperCase()),
+  );
+  const missing = FLEET.filter(
+    (entry) => !existingTails.has(entry.tail.trim().toUpperCase()),
+  );
+  if (missing.length === 0) return;
+
+  const updatedAt = new Date().toISOString();
+  const { data: aircraftRows, error: upsertError } = await db
+    .from("aircraft")
+    .upsert(
+      missing.map((entry) => fleetEntryToCatalogRow(entry, updatedAt)),
+      { onConflict: "tail" },
+    )
+    .select("id,tail");
+  if (upsertError) {
+    throw new Error(`Catalog seed sync failed: ${upsertError.message}`);
+  }
+
+  const performanceRows = buildPerformanceRows(aircraftRows ?? [], updatedAt);
+  if (performanceRows.length === 0) return;
+  const { error: performanceError } = await db
+    .from("aircraft_performance_profiles")
+    .upsert(performanceRows, { onConflict: "aircraft_id" });
+  if (performanceError) {
+    throw new Error(`Catalog performance sync failed: ${performanceError.message}`);
+  }
 }
 
 export async function getCatalog(
@@ -120,8 +148,10 @@ export async function getCatalog(
   if (stateCode) query = query.eq("home_state_code", stateCode);
   const { data, error } = await query;
   if (error) throw new Error(`Catalog read failed: ${error.message}`);
-  if (!data?.length) return filterSeedByState(FLEET, stateCode);
-  return data.map(catalogRowToFleetEntry);
+  return filterSeedByState(
+    mergeSeedFleetEntries((data ?? []).map(catalogRowToFleetEntry)),
+    stateCode,
+  );
 }
 
 export async function getAircraftCatalogEntries(): Promise<
@@ -134,17 +164,17 @@ export async function getAircraftCatalogEntries(): Promise<
     .select("*")
     .order("tail");
   if (error) throw new Error(`Public catalog read failed: ${error.message}`);
-  if (!data?.length) return seedCatalogEntries();
-
-  return data.map((row) => ({
-    aircraft: catalogRowToFleetEntry(row),
-    homeStateCode: String(row.home_state_code) as StateCode,
-    nominalEnduranceMin: finiteNumber(row.nominal_endurance_min) ?? null,
-    usableFuelGallons: finiteNumber(row.usable_fuel_gallons) ?? null,
-    lowBurnGph: finiteNumber(row.low_burn_gph) ?? null,
-    highBurnGph: finiteNumber(row.high_burn_gph) ?? null,
-    reserveMin: finiteNumber(row.reserve_min) ?? null,
-  }));
+  return mergeSeedCatalogEntries(
+    (data ?? []).map((row) => ({
+      aircraft: catalogRowToFleetEntry(row),
+      homeStateCode: String(row.home_state_code) as StateCode,
+      nominalEnduranceMin: finiteNumber(row.nominal_endurance_min) ?? null,
+      usableFuelGallons: finiteNumber(row.usable_fuel_gallons) ?? null,
+      lowBurnGph: finiteNumber(row.low_burn_gph) ?? null,
+      highBurnGph: finiteNumber(row.high_burn_gph) ?? null,
+      reserveMin: finiteNumber(row.reserve_min) ?? null,
+    })),
+  );
 }
 
 export async function saveCatalog(
@@ -153,24 +183,8 @@ export async function saveCatalog(
 ): Promise<void> {
   const db = getSupabaseAdmin();
   const current = await getCatalog();
-  const rows = entries.map((entry) => {
-    const stateId = stateIdForOpsAircraftTail(entry.tail) ?? "washington";
-    return {
-      tail: entry.tail.trim().toUpperCase(),
-      icao24: fleetHex(entry).toUpperCase(),
-      home_state_code: stateCodeForId(stateId),
-      operator: entry.operator,
-      model: entry.model,
-      nickname: entry.nickname,
-      base: entry.base,
-      role: entry.role,
-      role_confidence: entry.roleConfidence,
-      role_description: entry.roleDescription,
-      role_note: entry.roleNote ?? null,
-      active: true,
-      updated_at: new Date().toISOString(),
-    };
-  });
+  const updatedAt = new Date().toISOString();
+  const rows = entries.map((entry) => fleetEntryToCatalogRow(entry, updatedAt));
 
   if (rows.length > 0) {
     const { error } = await db
@@ -196,16 +210,7 @@ export async function saveCatalog(
   if (aircraftError) {
     throw new Error(`Catalog performance lookup failed: ${aircraftError.message}`);
   }
-  const durations = (aircraftRows ?? [])
-    .map((row) => ({
-      aircraft_id: String(row.id),
-      nominal_endurance_min:
-        AIRCRAFT_DURATION_MINUTES[String(row.tail).toUpperCase()] ?? null,
-      reserve_min: 30,
-      source_note: "Catalog endurance estimate; verify against an authoritative aircraft source.",
-      updated_at: new Date().toISOString(),
-    }))
-    .filter((row) => row.nominal_endurance_min != null);
+  const durations = buildPerformanceRows(aircraftRows ?? [], updatedAt);
   if (durations.length > 0) {
     const { error } = await db
       .from("aircraft_performance_profiles")
@@ -859,6 +864,73 @@ function seedCatalogEntries(): AircraftCatalogEntry[] {
     highBurnGph: null,
     reserveMin: 30,
   }));
+}
+
+/**
+ * Keep the public catalog complete while a deployed database catches up with
+ * the source fleet. Database rows win, so admin-edited metadata remains
+ * authoritative for entries that already exist there.
+ */
+export function mergeSeedCatalogEntries(
+  entries: AircraftCatalogEntry[],
+): AircraftCatalogEntry[] {
+  const byTail = new Map(
+    entries.map((entry) => [entry.aircraft.tail.trim().toUpperCase(), entry]),
+  );
+  for (const seedEntry of seedCatalogEntries()) {
+    const key = seedEntry.aircraft.tail.trim().toUpperCase();
+    if (!byTail.has(key)) byTail.set(key, seedEntry);
+  }
+  return [...byTail.values()].sort((a, b) =>
+    a.aircraft.tail.localeCompare(b.aircraft.tail),
+  );
+}
+
+function mergeSeedFleetEntries(entries: FleetEntry[]): FleetEntry[] {
+  const byTail = new Map(
+    entries.map((entry) => [entry.tail.trim().toUpperCase(), entry]),
+  );
+  for (const seedEntry of FLEET) {
+    const key = seedEntry.tail.trim().toUpperCase();
+    if (!byTail.has(key)) byTail.set(key, seedEntry);
+  }
+  return [...byTail.values()].sort((a, b) => a.tail.localeCompare(b.tail));
+}
+
+function fleetEntryToCatalogRow(entry: FleetEntry, updatedAt: string) {
+  const stateId = stateIdForOpsAircraftTail(entry.tail) ?? "washington";
+  return {
+    tail: entry.tail.trim().toUpperCase(),
+    icao24: fleetHex(entry).toUpperCase(),
+    home_state_code: stateCodeForId(stateId),
+    operator: entry.operator,
+    model: entry.model,
+    nickname: entry.nickname,
+    base: entry.base,
+    role: entry.role,
+    role_confidence: entry.roleConfidence,
+    role_description: entry.roleDescription,
+    role_note: entry.roleNote ?? null,
+    active: true,
+    updated_at: updatedAt,
+  };
+}
+
+function buildPerformanceRows(
+  aircraftRows: Array<{ id: unknown; tail: unknown }>,
+  updatedAt: string,
+) {
+  return aircraftRows
+    .map((row) => ({
+      aircraft_id: String(row.id),
+      nominal_endurance_min:
+        AIRCRAFT_DURATION_MINUTES[String(row.tail).toUpperCase()] ?? null,
+      reserve_min: 30,
+      source_note:
+        "Catalog endurance estimate; verify against an authoritative aircraft source.",
+      updated_at: updatedAt,
+    }))
+    .filter((row) => row.nominal_endurance_min != null);
 }
 
 function catalogRowToFleetEntry(row: Record<string, unknown>): FleetEntry {

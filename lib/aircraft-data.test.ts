@@ -9,10 +9,13 @@ import {
   isStaleOpenFlightSession,
   isUnseenFlightSessionExpired,
   isNewerAircraftObservation,
+  mergeSeedCatalogEntries,
   shouldSuppressTakeoffNotificationForTimes,
   shouldClearUnobservedState,
   takeoffNotificationOccurredAt,
+  type AircraftCatalogEntry,
 } from "./aircraft-data";
+import { FLEET } from "./seed";
 
 test("takeoff interpolation requires contiguous ground and airborne samples", () => {
   assert.equal(
@@ -241,5 +244,29 @@ test("first-seen-airborne flights notify from the tracking boundary", () => {
       "2026-08-23T06:15:08.001Z",
     ),
     "2026-08-23T06:14:59.000Z",
+  );
+});
+
+test("public catalog fills in tracked seed aircraft missing from the database", () => {
+  const databaseEntry: AircraftCatalogEntry = {
+    aircraft: FLEET[0]!,
+    homeStateCode: "WA",
+    nominalEnduranceMin: 999,
+    usableFuelGallons: null,
+    lowBurnGph: null,
+    highBurnGph: null,
+    reserveMin: 30,
+  };
+
+  const merged = mergeSeedCatalogEntries([databaseEntry]);
+  const tails = new Set(merged.map((entry) => entry.aircraft.tail));
+
+  assert.equal(merged.length, FLEET.length);
+  assert.equal(tails.size, FLEET.length);
+  for (const entry of FLEET) assert.equal(tails.has(entry.tail), true);
+  assert.equal(
+    merged.find((entry) => entry.aircraft.tail === FLEET[0]!.tail)
+      ?.nominalEnduranceMin,
+    999,
   );
 });
