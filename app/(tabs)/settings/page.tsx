@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { SS_TOKENS } from "@/lib/tokens";
+import type { ReactNode } from "react";
 
 export const metadata = {
   title: "Settings",
@@ -8,222 +8,74 @@ export const metadata = {
 
 export const dynamic = "force-static";
 
-const PRIMARY_LINKS = [
-  {
-    href: "/settings/alerts",
-    title: "Notifications & State",
-    body: "Choose the state you track and arm takeoff notifications.",
-  },
-  {
-    href: "/settings/ride",
-    title: "RIDE MODE SETTINGS",
-    body: "Set wake mode and Watch, Warning, and Stop distances.",
-  },
-  {
-    href: "/settings/display",
-    title: "Display & Time",
-    body: "Choose contrast and 12- or 24-hour time.",
-  },
-] as const;
+type SettingsLink = {
+  href: string;
+  title: string;
+  body: string;
+  icon: "bell" | "ride" | "display" | "aircraft" | "about" | "legal" | "store";
+  accent: string;
+};
 
-const MORE_LINKS = [
-  {
-    href: "/aircraft",
-    title: "Aircraft",
-    body: "Tracked fleet and operators",
-  },
-  {
-    href: "/about",
-    title: "About",
-    body: "Project background and mission",
-  },
-  {
-    href: "/legal",
-    title: "Legal",
-    body: "Terms, privacy, safety, and data use",
-  },
-  {
-    href: "/store",
-    title: "Store",
-    body: "Gear and project updates",
-  },
-] as const;
+const PRIMARY_LINKS: SettingsLink[] = [
+  { href: "/settings/alerts", title: "Notifications & state", body: "Tracking area and takeoff alerts", icon: "bell", accent: "#f6c431" },
+  { href: "/settings/ride", title: "Ride mode", body: "Wake behavior and distance bands", icon: "ride", accent: "#5ade87" },
+  { href: "/settings/display", title: "Display & time", body: "Contrast and clock preferences", icon: "display", accent: "#8bd2ff" },
+];
+
+const MORE_LINKS: SettingsLink[] = [
+  { href: "/aircraft", title: "Tracked Aircrafts", body: "Tracked fleet and operators", icon: "aircraft", accent: "#f6c431" },
+  { href: "/about", title: "About", body: "Project background and mission", icon: "about", accent: "#8bd2ff" },
+  { href: "/legal", title: "Legal & privacy", body: "Safety, privacy, and data use", icon: "legal", accent: "#b7b2a7" },
+  { href: "/store", title: "Store", body: "Gear and project updates", icon: "store", accent: "#ff7a1a" },
+];
 
 export default function SettingsHub() {
   return (
-    <main
-      style={{
-        minHeight: "100dvh",
-        boxSizing: "border-box",
-        padding: "22px 20px 170px",
-        maxWidth: 430,
-        margin: "0 auto",
-        display: "flex",
-        flexDirection: "column",
-        gap: 22,
-      }}
-    >
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          textAlign: "center",
-          marginBottom: 2,
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 32,
-            fontWeight: 850,
-            lineHeight: 1.08,
-            letterSpacing: 0,
-            margin: 0,
-            color: SS_TOKENS.fg0,
-          }}
-        >
-          OOS Settings
-        </h1>
+    <main className="ss-settings-hub">
+      <header className="ss-settings-hub__header">
+        <h1>Settings</h1>
+        <p>Make Out Of Sight work the way you ride.</p>
       </header>
 
-      <section aria-labelledby="preferences-heading">
-        <h2
-          id="preferences-heading"
-          className="ss-eyebrow"
-          style={{ margin: "0 0 10px", color: SS_TOKENS.fg2 }}
-        >
-          Preferences
-        </h2>
-        <nav
-          aria-label="Settings pages"
-          style={{ display: "flex", flexDirection: "column", gap: 12 }}
-        >
-          {PRIMARY_LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              prefetch={false}
-              style={{
-                minHeight: 96,
-                boxSizing: "border-box",
-                padding: "17px 18px",
-                borderRadius: 16,
-                border: `1px solid ${SS_TOKENS.hairline}`,
-                background: SS_TOKENS.surface,
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                textDecoration: "none",
-                backdropFilter: "blur(18px)",
-                WebkitBackdropFilter: "blur(18px)",
-              }}
-              >
-              <span style={{ minWidth: 0, flex: 1 }}>
-                <strong
-                  style={{
-                    display: "block",
-                    marginBottom: 5,
-                    color: SS_TOKENS.alert,
-                    fontSize: 18,
-                    fontWeight: 800,
-                    lineHeight: 1.2,
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {link.title}
-                </strong>
-                <span
-                  style={{
-                    display: "block",
-                    color: SS_TOKENS.fg0,
-                    fontSize: 13,
-                    lineHeight: 1.45,
-                  }}
-                >
-                  {link.body}
-                </span>
-              </span>
-              <span
-                aria-hidden
-                style={{ color: SS_TOKENS.fg2, fontSize: 28, lineHeight: 1 }}
-              >
-                ›
-              </span>
-            </Link>
-          ))}
-        </nav>
-      </section>
-
-      <section aria-labelledby="more-heading">
-        <h2
-          id="more-heading"
-          className="ss-eyebrow"
-          style={{ margin: "0 0 10px", color: SS_TOKENS.fg2 }}
-        >
-          More
-        </h2>
-        <nav
-          aria-label="More pages"
-          style={{
-            overflow: "hidden",
-            borderRadius: 16,
-            border: `1px solid ${SS_TOKENS.hairline}`,
-            background: SS_TOKENS.surface,
-          }}
-        >
-          {MORE_LINKS.map((link, index) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              prefetch={false}
-              style={{
-                minHeight: 64,
-                boxSizing: "border-box",
-                padding: "10px 18px",
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                borderBottom:
-                  index === MORE_LINKS.length - 1
-                    ? 0
-                    : `1px solid ${SS_TOKENS.hairline}`,
-                color: "inherit",
-                textDecoration: "none",
-              }}
-            >
-              <span style={{ minWidth: 0, flex: 1 }}>
-                <strong
-                  style={{
-                    display: "block",
-                    color: SS_TOKENS.fg0,
-                    fontSize: 15,
-                    fontWeight: 800,
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {link.title}
-                </strong>
-                <span
-                  style={{
-                    display: "block",
-                    marginTop: 3,
-                    color: SS_TOKENS.fg2,
-                    fontSize: 12,
-                    lineHeight: 1.35,
-                  }}
-                >
-                  {link.body}
-                </span>
-              </span>
-              <span
-                aria-hidden
-                style={{ color: SS_TOKENS.fg2, fontSize: 24, lineHeight: 1 }}
-              >
-                ›
-              </span>
-            </Link>
-          ))}
-        </nav>
-      </section>
+      <SettingsGroup label="Preferences" links={PRIMARY_LINKS} featured />
+      <SettingsGroup label="Out Of Sight" links={MORE_LINKS} />
     </main>
   );
+}
+
+function SettingsGroup({ label, links, featured = false }: { label: string; links: SettingsLink[]; featured?: boolean }) {
+  const headingId = `settings-${label.toLowerCase().replaceAll(" ", "-")}`;
+  return (
+    <section className="ss-settings-group" aria-labelledby={headingId}>
+      <h2 id={headingId} className="ss-settings-group__label">{label}</h2>
+      <nav aria-label={label} className="ss-settings-list">
+        {links.map((link) => (
+          <Link key={link.href} href={link.href} prefetch={false} className={`ss-settings-row${featured ? " ss-settings-row--featured" : ""}`}>
+            <span className="ss-settings-row__icon" style={{ color: link.accent, background: `${link.accent}17` }}>
+              <SettingsIcon name={link.icon} />
+            </span>
+            <span className="ss-settings-row__copy">
+              <strong>{link.title}</strong>
+              <span>{link.body}</span>
+            </span>
+            <span className="ss-settings-row__chevron" aria-hidden>›</span>
+          </Link>
+        ))}
+      </nav>
+    </section>
+  );
+}
+
+function SettingsIcon({ name }: { name: SettingsLink["icon"] }) {
+  const paths: Record<SettingsLink["icon"], ReactNode> = {
+    bell: <path d="M7 17h10M9 17v-5a3 3 0 0 1 6 0v5M11 20h2" />,
+    ride: <path d="m19 5-6.2 14-2.3-5.5L5 11.2 19 5Z" />,
+    display: <path d="M5 6h14v10H5zM9 20h6M12 16v4" />,
+    aircraft: <path d="m3 13 8-2V5l2-2 1 7 6-1 1 2-7 3-1 6-2 1v-6l-6 1Z" />,
+    about: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
+    legal: <path d="M12 3 5 6v5c0 4.5 2.7 8 7 10 4.3-2 7-5.5 7-10V6l-7-3Zm-3 9 2 2 4-4" />,
+    store: <path d="M5 8h14l-1 12H6L5 8Zm3 0a4 4 0 0 1 8 0" />,
+  };
+
+  return <svg viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }

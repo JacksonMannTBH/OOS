@@ -121,6 +121,8 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
         background:
           status === "danger"
             ? "radial-gradient(circle at 50% 20%, rgba(255,77,79,.24), transparent 32%), #020202"
+            : status === "clear"
+              ? "#020202"
             : "radial-gradient(circle at 50% 18%, rgba(244,196,48,.10), transparent 34%), #020202",
         color: "#f5f2e8",
         display: "grid",
@@ -150,6 +152,8 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
             textShadow:
               status === "danger"
                 ? "0 0 26px rgba(255,77,79,.48)"
+                : status === "clear"
+                  ? "none"
                 : `0 0 18px color-mix(in srgb, ${statusColor} 24%, transparent)`,
           }}
         >

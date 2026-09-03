@@ -1,3 +1,4 @@
+import { SettingsBackLink } from "@/components/SettingsBackLink";
 import { SS_TOKENS } from "@/lib/tokens";
 
 export const metadata = {
@@ -13,12 +14,14 @@ export default function StorePage() {
         margin: "0 auto",
         padding: "34px 18px 132px",
         display: "grid",
-        placeItems: "center",
+        gridTemplateRows: "auto minmax(0, 1fr)",
       }}
     >
+      <SettingsBackLink />
       <section
         style={{
           width: "100%",
+          alignSelf: "center",
           textAlign: "center",
           border: `.5px solid ${SS_TOKENS.hairline2}`,
           borderRadius: 8,

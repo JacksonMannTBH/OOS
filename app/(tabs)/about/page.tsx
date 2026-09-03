@@ -1,4 +1,4 @@
-import { AboutOpsByState } from "@/components/AboutOpsByState";
+import { SettingsBackLink } from "@/components/SettingsBackLink";
 import { SS_TOKENS } from "@/lib/tokens";
 
 export const metadata = {
@@ -17,7 +17,7 @@ const ABOUT_INTRO_HTML = `
 `;
 
 const ABOUT_CLOSING_HTML = `
-<p>I'm not looking to create more criminals. This a fuck you to the policy makers that killed my best friend by implementing a panopticon around our hobby. Stay out of sight and stay safe.</p>
+<p>I'm not looking to create more criminals. This a fuck you to the policy makers that killed my friend by implementing a panopticon around our hobby. Stay out of sight and stay safe.</p>
 
 <p>LLC</p>
 `;
@@ -35,6 +35,7 @@ export default function AboutPage() {
         gap: 28,
       }}
     >
+      <SettingsBackLink />
       <h1
         style={{
           margin: 0,
@@ -64,68 +65,14 @@ export default function AboutPage() {
           margin: 0 0 18px;
         }
 
-        .ss-about-patrol h2 {
-          color: var(--ss-fg0);
-          font-size: 24px;
-          line-height: 1.15;
-          letter-spacing: 0;
-        }
-
         .ss-about-patrol a {
           color: var(--ss-alert);
           font-weight: 700;
-        }
-
-        .ss-about-patrol table {
-          width: 100%;
-          border-collapse: collapse;
-          margin: 12px 0 20px;
-          background: var(--ss-bg1);
-          border: .5px solid var(--ss-hairline);
-          border-radius: 8px;
-          overflow: hidden;
-          font-size: 12px;
-          line-height: 1.4;
-        }
-
-        .ss-about-patrol th,
-        .ss-about-patrol td {
-          padding: 9px 10px;
-          border-bottom: .5px solid var(--ss-hairline);
-          vertical-align: top;
-        }
-
-        .ss-about-patrol th {
-          color: var(--ss-fg0);
-          background: var(--ss-bg2);
-          font-size: 10px;
-          text-transform: uppercase;
-          letter-spacing: 0;
-        }
-
-        .ss-about-patrol tr:last-child td {
-          border-bottom: 0;
-        }
-
-        .ss-about-patrol small {
-          color: var(--ss-fg2);
-        }
-
-        @media (max-width: 680px) {
-          .ss-about-patrol {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-          }
-
-          .ss-about-patrol table {
-            min-width: 680px;
-          }
         }
       `}</style>
 
       <section className="ss-about-patrol">
         <div dangerouslySetInnerHTML={{ __html: ABOUT_INTRO_HTML }} />
-        <AboutOpsByState />
         <div dangerouslySetInnerHTML={{ __html: ABOUT_CLOSING_HTML }} />
       </section>
     </main>

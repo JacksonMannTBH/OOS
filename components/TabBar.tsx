@@ -58,7 +58,9 @@ export function TabBar() {
     pathname === "/" ||
     pathname === "/home" ||
     pathname === "/map" ||
-    pathname.startsWith("/map/")
+    pathname.startsWith("/map/") ||
+    pathname === "/settings" ||
+    pathname.startsWith("/settings/")
   ) {
     return null;
   }

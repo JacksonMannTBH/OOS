@@ -5,6 +5,7 @@ import { APP_STATES } from "@/lib/app-states";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import type { AircraftCatalogEntry } from "@/lib/aircraft-data";
 import { StateSelector } from "./StateSelector";
+import { SettingsBackLink } from "./SettingsBackLink";
 
 export function AircraftCatalogView({
   catalog,
@@ -62,16 +63,6 @@ export function AircraftCatalogView({
         .ss-catalog-state-picker select {
           min-height: 40px;
           min-width: 150px;
-        }
-
-        .ss-catalog-back {
-          min-height: 44px;
-          padding: 0 8px;
-          display: inline-flex;
-          align-items: center;
-          color: var(--ss-fg1);
-          font-size: 13px;
-          text-decoration: none;
         }
 
         .ss-catalog-header {
@@ -289,9 +280,7 @@ export function AircraftCatalogView({
             State
             <StateSelector />
           </label>
-          <Link href="/settings" className="ss-catalog-back">
-            &larr; Settings
-          </Link>
+          <SettingsBackLink />
         </div>
       </div>
 
