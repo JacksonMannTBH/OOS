@@ -1,5 +1,6 @@
 import { AIRCRAFT_DURATION_MINUTES, stateIdForOpsAircraftTail } from "./aircraft-directory";
 import {
+  APP_STATES,
   DEFAULT_STATE_CODE,
   getAppState,
   stateCodeForId,
@@ -7,6 +8,7 @@ import {
 } from "./app-states";
 import { fleetHex, FLEET } from "./seed";
 import { getSupabaseAdmin, isSupabaseConfigured } from "./supabase/server";
+import { catalogBatches, readAllCatalogPages, readCatalogKeyBatches } from "./catalog-pagination";
 import type {
   Aircraft,
   AircraftGroundState,
@@ -95,11 +97,24 @@ const MAX_OPEN_FLIGHT_SESSION_MS = 18 * 60 * 60 * 1_000;
 export async function ensureCatalogSeeded(): Promise<void> {
   if (!isSupabaseConfigured()) return;
   const db = getSupabaseAdmin();
-  const { data: existingRows, error } = await db
-    .from("aircraft")
-    .select("tail")
-    .eq("active", true);
-  if (error) throw new Error(`Catalog count failed: ${error.message}`);
+  const { data: stateRows, error: stateError } = await db.from("states").select("code");
+  if (stateError) throw new Error(`State catalog read failed: ${stateError.message}`);
+  const existingStates = new Set((stateRows ?? []).map((row) => String(row.code)));
+  const missingStates = APP_STATES.filter((state) => !existingStates.has(state.code));
+  if (missingStates.length) {
+    const { error } = await db.from("states").upsert(
+      missingStates.map((state) => ({
+        code: state.code, slug: state.id, name: state.label,
+        center_lat: state.centerLat, center_lon: state.centerLon,
+      })),
+      { onConflict: "code", ignoreDuplicates: true },
+    );
+    if (error) throw new Error(`State catalog seed failed: ${error.message}`);
+  }
+  const existingRows = await readAllCatalogPages(
+    (from, to) => db.from("aircraft").select("tail").order("tail").range(from, to),
+    "Catalog read failed",
+  );
 
   const existingTails = new Set(
     (existingRows ?? []).map((row) => String(row.tail).trim().toUpperCase()),
@@ -110,24 +125,26 @@ export async function ensureCatalogSeeded(): Promise<void> {
   if (missing.length === 0) return;
 
   const updatedAt = new Date().toISOString();
-  const { data: aircraftRows, error: upsertError } = await db
-    .from("aircraft")
-    .upsert(
-      missing.map((entry) => fleetEntryToCatalogRow(entry, updatedAt)),
-      { onConflict: "tail" },
-    )
-    .select("id,tail");
-  if (upsertError) {
-    throw new Error(`Catalog seed sync failed: ${upsertError.message}`);
-  }
+  for (const batch of catalogBatches(missing)) {
+    const { data: aircraftRows, error: upsertError } = await db
+      .from("aircraft")
+      .upsert(
+        batch.map((entry) => fleetEntryToCatalogRow(entry, updatedAt)),
+        { onConflict: "tail", ignoreDuplicates: true },
+      )
+      .select("id,tail");
+    if (upsertError) {
+      throw new Error(`Catalog seed sync failed: ${upsertError.message}`);
+    }
 
-  const performanceRows = buildPerformanceRows(aircraftRows ?? [], updatedAt);
-  if (performanceRows.length === 0) return;
-  const { error: performanceError } = await db
-    .from("aircraft_performance_profiles")
-    .upsert(performanceRows, { onConflict: "aircraft_id" });
-  if (performanceError) {
-    throw new Error(`Catalog performance sync failed: ${performanceError.message}`);
+    const performanceRows = buildPerformanceRows(aircraftRows ?? [], updatedAt);
+    if (performanceRows.length === 0) continue;
+    const { error: performanceError } = await db
+      .from("aircraft_performance_profiles")
+      .upsert(performanceRows, { onConflict: "aircraft_id" });
+    if (performanceError) {
+      throw new Error(`Catalog performance sync failed: ${performanceError.message}`);
+    }
   }
 }
 
@@ -138,16 +155,17 @@ export async function getCatalog(
     return filterSeedByState(FLEET, stateCode);
   }
 
-  let query = getSupabaseAdmin()
-    .from("aircraft")
-    .select(
-      "tail,icao24,home_state_code,operator,model,nickname,base,role,role_confidence,role_description,role_note",
-    )
-    .eq("active", true)
-    .order("tail");
-  if (stateCode) query = query.eq("home_state_code", stateCode);
-  const { data, error } = await query;
-  if (error) throw new Error(`Catalog read failed: ${error.message}`);
+  const data = await readAllCatalogPages((from, to) => {
+    let query = getSupabaseAdmin()
+      .from("aircraft")
+      .select(
+        "tail,icao24,home_state_code,operator,model,nickname,base,role,role_confidence,role_description,role_note",
+      )
+      .eq("active", true)
+      .order("tail");
+    if (stateCode) query = query.eq("home_state_code", stateCode);
+    return query.range(from, to);
+  }, "Catalog read failed");
   return filterSeedByState(
     mergeSeedFleetEntries((data ?? []).map(catalogRowToFleetEntry)),
     stateCode,
@@ -159,11 +177,14 @@ export async function getAircraftCatalogEntries(): Promise<
 > {
   if (!isSupabaseConfigured()) return seedCatalogEntries();
 
-  const { data, error } = await getSupabaseAdmin()
-    .from("aircraft_catalog_public")
-    .select("*")
-    .order("tail");
-  if (error) throw new Error(`Public catalog read failed: ${error.message}`);
+  const data = await readAllCatalogPages(
+    (from, to) => getSupabaseAdmin()
+      .from("aircraft_catalog_public")
+      .select("*")
+      .order("tail")
+      .range(from, to),
+    "Public catalog read failed",
+  );
   return mergeSeedCatalogEntries(
     (data ?? []).map((row) => ({
       aircraft: catalogRowToFleetEntry(row),
@@ -186,35 +207,33 @@ export async function saveCatalog(
   const updatedAt = new Date().toISOString();
   const rows = entries.map((entry) => fleetEntryToCatalogRow(entry, updatedAt));
 
-  if (rows.length > 0) {
+  for (const batch of catalogBatches(rows)) {
     const { error } = await db
       .from("aircraft")
-      .upsert(rows, { onConflict: "tail" });
+      .upsert(batch, { onConflict: "tail" });
     if (error) throw new Error(`Catalog write failed: ${error.message}`);
   }
 
   const keep = new Set(rows.map((row) => row.tail));
   const removed = current.filter((entry) => !keep.has(entry.tail));
-  if (removed.length > 0) {
+  for (const batch of catalogBatches(removed)) {
     const { error } = await db
       .from("aircraft")
       .update({ active: false, updated_at: new Date().toISOString() })
-      .in("tail", removed.map((entry) => entry.tail));
+      .in("tail", batch.map((entry) => entry.tail));
     if (error) throw new Error(`Catalog retire failed: ${error.message}`);
   }
 
-  const { data: aircraftRows, error: aircraftError } = await db
-    .from("aircraft")
-    .select("id,tail")
-    .in("tail", rows.map((row) => row.tail));
-  if (aircraftError) {
-    throw new Error(`Catalog performance lookup failed: ${aircraftError.message}`);
-  }
+  const aircraftRows = await readCatalogKeyBatches(
+    rows.map((row) => row.tail),
+    (batch) => db.from("aircraft").select("id,tail").in("tail", batch),
+    "Catalog performance lookup failed",
+  );
   const durations = buildPerformanceRows(aircraftRows ?? [], updatedAt);
-  if (durations.length > 0) {
+  for (const batch of catalogBatches(durations)) {
     const { error } = await db
       .from("aircraft_performance_profiles")
-      .upsert(durations, { onConflict: "aircraft_id" });
+      .upsert(batch, { onConflict: "aircraft_id" });
     if (error) throw new Error(`Performance profile write failed: ${error.message}`);
   }
 
@@ -396,22 +415,27 @@ export async function ingestSnapshot(
     };
   }
 
-  const { data: catalogData, error: catalogError } = await db
-    .from("aircraft")
-    .select(
-      "id,tail,icao24,home_state_code,operator,model,nickname,base,role,role_confidence,role_description,role_note",
-    )
-    .eq("active", true);
-  if (catalogError) throw new Error(`Ingestion catalog read failed: ${catalogError.message}`);
+  const catalogData = await readAllCatalogPages(
+    (from, to) => db
+      .from("aircraft")
+      .select(
+        "id,tail,icao24,home_state_code,operator,model,nickname,base,role,role_confidence,role_description,role_note",
+      )
+      .eq("active", true)
+      .order("id")
+      .range(from, to),
+    "Ingestion catalog read failed",
+  );
 
   const catalog = (catalogData ?? []) as CatalogRow[];
   const catalogByTail = new Map(catalog.map((row) => [row.tail, row]));
   const catalogById = new Map(catalog.map((row) => [row.id, row]));
   const ids = catalog.map((row) => row.id);
-  const { data: currentData, error: currentError } = ids.length
-    ? await db.from("aircraft_current_state").select("*").in("aircraft_id", ids)
-    : { data: [], error: null };
-  if (currentError) throw new Error(`Current-state read failed: ${currentError.message}`);
+  const currentData = await readCatalogKeyBatches(
+    ids,
+    (batch) => db.from("aircraft_current_state").select("*").in("aircraft_id", batch),
+    "Current-state read failed",
+  );
   const currentByAircraft = new Map(
     ((currentData ?? []) as CurrentStateRow[]).map((row) => [row.aircraft_id, row]),
   );
@@ -422,13 +446,14 @@ export async function ingestSnapshot(
         .filter((id): id is string => typeof id === "string" && id.length > 0),
     ),
   ];
-  const { data: sessionData, error: sessionError } = openFlightSessionIds.length
-    ? await db
-        .from("flight_sessions")
-        .select("id,detected_takeoff_at,tracking_started_at,last_seen_at,closed_at")
-        .in("id", openFlightSessionIds)
-    : { data: [], error: null };
-  if (sessionError) throw new Error(`Open-session read failed: ${sessionError.message}`);
+  const sessionData = await readCatalogKeyBatches(
+    openFlightSessionIds,
+    (batch) => db
+      .from("flight_sessions")
+      .select("id,detected_takeoff_at,tracking_started_at,last_seen_at,closed_at")
+      .in("id", batch),
+    "Open-session read failed",
+  );
   const openSessionById = new Map(
     ((sessionData ?? []) as FlightSessionRow[]).map((row) => [row.id, row]),
   );

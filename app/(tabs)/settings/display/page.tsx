@@ -1,28 +1,28 @@
-import { ContrastSetting } from "@/components/ContrastSetting";
 import { ResetPreferencesButton } from "@/components/ResetPreferencesButton";
+import { RideSettings } from "@/components/RideSettings";
 import { SettingsPageShell } from "@/components/SettingsPageShell";
 import { TimeFormatSetting } from "@/components/TimeFormatSetting";
-import { getContrastPref, getTimeFormatPref } from "@/lib/user-prefs";
+import { getTimeFormatPref } from "@/lib/user-prefs";
 
 export const metadata = {
-  title: "Display Settings",
-  description: "Choose time and contrast preferences for Out Of Sight.",
+  title: "Ride Mode & Display Settings",
+  description:
+    "Tune Ride mode behavior, distance bands, and time preferences.",
 };
 
 export const dynamic = "force-dynamic";
 
 export default function DisplaySettingsPage() {
   const timeFormat = getTimeFormatPref();
-  const contrast = getContrastPref();
 
   return (
     <SettingsPageShell
-      eyebrow="Settings · Display"
-      title="Display & time"
-      description="Choose how timestamps and secondary information appear across Out Of Sight."
+      eyebrow="Settings · Ride mode & display"
+      title="Ride mode & display"
+      description="Control Ride mode behavior, distance bands, and time preferences."
     >
+      <RideSettings />
       <TimeFormatSetting current={timeFormat} />
-      <ContrastSetting current={contrast} />
       <ResetPreferencesButton />
     </SettingsPageShell>
   );

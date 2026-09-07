@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { APP_STATES } from "@/lib/app-states";
+import { getAppState } from "@/lib/app-states";
+import { STATE_AIRCRAFT_COVERAGE_NOTES } from "@/lib/state-aircraft-coverage";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import type { AircraftCatalogEntry } from "@/lib/aircraft-data";
 import { StateSelector } from "./StateSelector";
@@ -13,8 +14,7 @@ export function AircraftCatalogView({
   catalog: AircraftCatalogEntry[];
 }) {
   const stateId = useSelectedStateId();
-  const selectedState =
-    APP_STATES.find((state) => state.id === stateId) ?? APP_STATES[0];
+  const selectedState = getAppState(stateId);
   const rows = catalog.filter(
     (entry) => entry.homeStateCode === selectedState.code,
   );
@@ -358,7 +358,7 @@ export function AircraftCatalogView({
             {rows.length === 0 && (
               <li className="ss-catalog-item">
                 <div className="ss-catalog-row">
-                  No aircraft listed for {selectedState.label}.
+                  {STATE_AIRCRAFT_COVERAGE_NOTES[selectedState.code] ?? `No aircraft listed for ${selectedState.label}.`}
                 </div>
               </li>
             )}

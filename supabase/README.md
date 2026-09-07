@@ -37,7 +37,9 @@ The service-role key is server-only. Never expose it through a
 `NEXT_PUBLIC_` variable.
 
 `AIRCRAFT_SAMPLE_INTERVAL_MS` is optional and accepts values from 5000 through
-60000 milliseconds. Production defaults to a 10-second ingestion interval.
+60000 milliseconds. It defaults to a 10-second minimum; the worker increases
+the interval as needed for rate-limited fleet requests (currently 30 seconds
+for the national catalog).
 Upstream observation timestamps are stored with positions so an unchanged
 provider sample does not create another coordinate row. Operational ingestion
 and notification-worker runs are retained for seven days.

@@ -18,8 +18,8 @@ takeoff notifications.
 ## Local setup
 
 1. Copy `.env.example` to `.env.local`.
-2. Create a Supabase project and apply
-   `supabase/migrations/20260727225731_out_of_sight_core.sql`.
+2. Create a Supabase project and apply the files in `supabase/migrations/`
+   in filename order.
 3. Add the Supabase URL and service-role key to `.env.local`.
 4. Run `npm install` and `npm run dev`.
 
@@ -41,7 +41,9 @@ Set these encrypted environment variables in Netlify:
 - Optional: `OPENSKY_CLIENT_ID` and `OPENSKY_CLIENT_SECRET`
 
 The scheduled `aircraft-ingest` function runs once per minute and starts a
-background function that samples at six deadline-based 10-second offsets. Each
+background function that samples at deadline-based offsets. The configured
+interval is a minimum; the national fleet currently requires 30-second offsets
+to allow time for rate-limited requests and persistence. Each
 sample fetches the complete tracked fleet in rate-limited ICAO batches and
 writes it to Supabase in one combined ingestion pass. Source observation times
 deduplicate unchanged positions, and already-unknown aircraft are not rewritten
@@ -53,3 +55,12 @@ Worker-run logs remain available for seven days.
 
 See [supabase/README.md](supabase/README.md) for database details and state
 boundary import guidance.
+
+## Aircraft coverage
+
+All 50 states are selectable. The catalog contains 1,090 aircraft, including
+565 added from the September 4, 2026 FAA registry snapshot and supplemental
+agency sources. Rhode Island and Vermont show coverage gaps because no crewed
+law enforcement aircraft assignment was verified. Registration does not establish
+current operational status. See [national coverage](docs/national-aircraft-coverage.md)
+for the state inventory, sources, limitations, and import workflow.

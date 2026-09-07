@@ -1,7 +1,22 @@
 import assert from "node:assert";
 import { test } from "node:test";
-import { chunkIcaoHexes, normalizeAdsbFiPayload } from "./adsb";
+import { chunkIcaoHexes, fetchAircraftBatches, normalizeAdsbFiPayload } from "./adsb";
 import { buildOpenSkyStatesUrl, normalizeOpenSkyStates } from "./opensky";
+
+test("both providers can fetch a national fleet with bounded requests and fail rather than return partial coverage", async () => {
+  const hexes = Array.from({ length: 1120 }, (_, index) => (0xa00001 + index).toString(16));
+  const rows = await fetchAircraftBatches(hexes, async (batch) => {
+    assert.ok(batch.length <= 75);
+    assert.ok(buildOpenSkyStatesUrl(batch).length < 2000);
+    return batch.map((hex) => ({ hex, ground_state: "grounded" as const }));
+  }, 0);
+  assert.deepEqual(rows.map((row) => row.hex), hexes);
+  let batchCount = 0;
+  await assert.rejects(fetchAircraftBatches(hexes, async () => {
+    if (++batchCount === 2) throw new Error("provider unavailable");
+    return [];
+  }, 0), /provider unavailable/);
+});
 
 test("adsb.fi parser reads current v2 ICAO responses", () => {
   const aircraft = normalizeAdsbFiPayload({

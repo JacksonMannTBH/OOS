@@ -11,7 +11,13 @@ import {
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const settingsFamilyRoutes = ["/aircraft", "/about", "/legal", "/store"];
+  const settingsFamilyRoutes = [
+    "/aircraft",
+    "/plane",
+    "/about",
+    "/legal",
+    "/store",
+  ];
   const fadesIntoContent =
     pathname === "/settings" ||
     pathname.startsWith("/settings/") ||

@@ -18,8 +18,7 @@ type SettingsLink = {
 
 const PRIMARY_LINKS: SettingsLink[] = [
   { href: "/settings/alerts", title: "Notifications & state", body: "Tracking area and takeoff alerts", icon: "bell", accent: "#f6c431" },
-  { href: "/settings/ride", title: "Ride mode", body: "Wake behavior and distance bands", icon: "ride", accent: "#5ade87" },
-  { href: "/settings/display", title: "Display & time", body: "Contrast and clock preferences", icon: "display", accent: "#8bd2ff" },
+  { href: "/settings/display", title: "Ride mode & display", body: "Wake behavior, distance bands, and time", icon: "ride", accent: "#5ade87" },
 ];
 
 const MORE_LINKS: SettingsLink[] = [

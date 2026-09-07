@@ -1,33 +1,27 @@
 import { setTimeFormatAction } from "@/app/(tabs)/settings/actions";
-import { SettingsCard } from "@/components/SettingsCard";
 import { SS_TOKENS } from "@/lib/tokens";
 import { type TimeFormat } from "@/lib/user-prefs";
 
 export function TimeFormatSetting({ current }: { current: TimeFormat }) {
   return (
-    <SettingsCard title="Time format" eyebrow="Time">
-      <p style={copyStyle}>
-        Choose the clock used wherever Out Of Sight shows a timestamp. Times
-        remain in Pacific Time.
-      </p>
-      <form
-        action={setTimeFormatAction}
-        style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
-      >
-        <FormatChoice
-          value="24"
-          current={current}
-          label="24-hour"
-          sample="15:42 PT"
-        />
-        <FormatChoice
-          value="12"
-          current={current}
-          label="12-hour"
-          sample="3:42 PM PT"
-        />
-      </form>
-    </SettingsCard>
+    <form
+      action={setTimeFormatAction}
+      aria-label="Time format"
+      style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
+    >
+      <FormatChoice
+        value="24"
+        current={current}
+        label="24-hour"
+        sample="15:42 PT"
+      />
+      <FormatChoice
+        value="12"
+        current={current}
+        label="12-hour"
+        sample="3:42 PM PT"
+      />
+    </form>
   );
 }
 
@@ -88,10 +82,3 @@ function FormatChoice({
     </button>
   );
 }
-
-const copyStyle = {
-  margin: 0,
-  color: SS_TOKENS.fg1,
-  fontSize: 13,
-  lineHeight: 1.5,
-} as const;

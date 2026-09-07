@@ -90,11 +90,14 @@ export const FLEET: FleetEntry[] = [
  * v10 (2026-08-06): Removes Customs/CBP-specific aircraft from active
  * tracking scope.
  *
+ * v11 (2026-09-07): Adds nationwide state/local law enforcement coverage
+ * from the September 4 FAA registry and documented agency assignments.
+ *
  * Round-2 research (2026-05-07, no version bump): see the notes block
  * below documenting which agencies were investigated and why they
  * couldn't be added in this pass. The FLEET array did not change.
  */
-export const SEED_VERSION = 10;
+export const SEED_VERSION = 11;
 
 // Round-2 registry research notes (2026-05-07).
 //

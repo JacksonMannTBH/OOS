@@ -1,8 +1,19 @@
 import { LogoMark } from "./brand/Logo";
 
-export function DataLoadingScreen() {
+export function DataLoadingScreen({
+  asOverlay = false,
+}: {
+  asOverlay?: boolean;
+}) {
+  const RootElement = asOverlay ? "div" : "main";
+
   return (
-    <main className="ss-data-loading" aria-busy="true" aria-live="polite">
+    <RootElement
+      className="ss-data-loading"
+      aria-busy="true"
+      aria-live="polite"
+      role={asOverlay ? "status" : undefined}
+    >
       <div className="ss-data-loading__visual" aria-hidden="true">
         <span className="ss-data-loading__orbit ss-data-loading__orbit--outer" />
         <span className="ss-data-loading__orbit ss-data-loading__orbit--inner" />
@@ -24,6 +35,6 @@ export function DataLoadingScreen() {
       <div className="ss-data-loading__progress" aria-hidden="true">
         <span />
       </div>
-    </main>
+    </RootElement>
   );
 }

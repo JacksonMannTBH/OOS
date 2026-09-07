@@ -18,7 +18,7 @@ import { computeStatus } from "@/lib/status";
 import { RadarLayerControls } from "./RadarLayerControls";
 import { AircraftTrailLayer } from "./AircraftTrailLayer";
 import {
-  aircraftColorForRole,
+  aircraftColorForTail,
 } from "@/lib/aircraft-colors";
 import { LogoMark } from "./brand/Logo";
 import {
@@ -30,10 +30,13 @@ import {
   STATE_CHANGE_EVENT,
   getAppState,
   getSelectedStateCode,
+  setAutomaticallyDetectedStateCode,
+  shouldAutomaticallyDetectState,
   type StateCode,
 } from "@/lib/app-states";
 import { PlaneIcon } from "./PlaneIcon";
 import { HelicopterIcon } from "./HelicopterIcon";
+import { DataLoadingScreen } from "./DataLoadingScreen";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
 export type RiderPos = { lat: number; lon: number };
@@ -99,6 +102,7 @@ export function RadarShell({
   );
   const [riderFocusRequest, setRiderFocusRequest] = useState(0);
   const focusSeqRef = useRef(initialFocusTail ? 1 : 0);
+  const automaticStateLookupAttemptedRef = useRef(false);
   const startRide = async () => {
     if (rideLaunching) return;
     setRideLaunching(true);
@@ -162,7 +166,32 @@ export function RadarShell({
     }
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setRider({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        setRider({ lat, lon });
+        if (
+          !automaticStateLookupAttemptedRef.current &&
+          shouldAutomaticallyDetectState()
+        ) {
+          automaticStateLookupAttemptedRef.current = true;
+          void fetch("/api/location-state", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat, lon }),
+          })
+            .then(async (response) => {
+              if (!response.ok) return null;
+              return response.json() as Promise<{ stateCode?: StateCode }>;
+            })
+            .then((result) => {
+              if (result?.stateCode) {
+                setAutomaticallyDetectedStateCode(result.stateCode);
+              }
+            })
+            .catch(() => {
+              // The default state remains available when lookup is offline.
+            });
+        }
       },
       () => {
         flashToast(setToast, "Location off · map still works");
@@ -193,6 +222,7 @@ export function RadarShell({
         riderFocusRequest={riderFocusRequest}
         onMapReady={setMap}
       />
+      {!map && <DataLoadingScreen asOverlay />}
       <RadarLayerControls
         ringsActive={showRings}
         onToggleRings={() => setShowRings((v) => !v)}
@@ -402,7 +432,7 @@ function MapHeaderAircraftButton({
   aircraft: Aircraft;
   onSelect: (tail: string) => void;
 }) {
-  const color = aircraftColorForRole(aircraft.role);
+  const color = aircraftColorForTail(aircraft.tail);
   const isHelicopter = aircraft.role === "patrol" || aircraft.role === "sar";
   const displayName = aircraft.nickname ?? aircraft.tail;
   const ariaLabel = `Center ${displayName} on the map`;
@@ -522,7 +552,7 @@ function AirborneBubbles({
       }}
     >
       {airborne.map((p) => {
-        const color = aircraftColorForRole(p.role);
+        const color = aircraftColorForTail(p.tail);
         return (
           <Tooltip
             key={p.tail}

@@ -1,14 +1,22 @@
 import type { FleetRole } from "@/lib/types";
 
 export const AIRCRAFT_PATH_COLORS = [
-  "#d55e00",
-  "#0072b2",
-  "#009e73",
-  "#cc79a7",
-  "#e69f00",
-  "#56b4e9",
-  "#7f3c8d",
-  "#c1121f",
+  "#ff8a3d",
+  "#4da3ff",
+  "#2dd4a3",
+  "#e879f9",
+  "#fbbf24",
+  "#22d3ee",
+  "#fb7185",
+  "#a78bfa",
+  "#a3e635",
+  "#f87171",
+  "#2dd4bf",
+  "#818cf8",
+  "#f472b6",
+  "#f59e0b",
+  "#38bdf8",
+  "#34d399",
 ] as const;
 
 export const PLANE_COLOR_INDEX = 1;

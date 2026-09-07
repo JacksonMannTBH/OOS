@@ -7,5 +7,6 @@ export function aircraftVehicleType(
   model: string | null | undefined,
 ): AircraftVehicleType {
   if (!model) return "Plane";
+  if (/\benstrom\b/i.test(model)) return "Helicopter";
   return HELICOPTER_MODEL_PATTERN.test(model) ? "Helicopter" : "Plane";
 }

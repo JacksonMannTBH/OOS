@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import nextDynamic from "next/dynamic";
 import { fleetHex } from "@/lib/seed";
 import { getAircraftCatalogEntries } from "@/lib/aircraft-data";
 import { isStateCode, type StateCode } from "@/lib/app-states";
@@ -18,13 +17,11 @@ import { fmtAgo, fmtAgoTs, fmtAloft, formatTs } from "@/lib/time";
 import { getTimeFormatPref, isHour12 } from "@/lib/user-prefs";
 import type { Aircraft } from "@/lib/types";
 import type { RecentFlightForTail } from "@/lib/flights";
-import type { TrackPoint } from "@/lib/tracks";
 import { roleBadgeText } from "@/lib/role-display";
 import {
   DetailActionLink,
   DetailBreadcrumbs,
   DetailContextNav,
-  DetailMapLoading,
   DetailMetricList,
   DetailSectionHeading,
   DetailTechnicalDetails,
@@ -33,11 +30,6 @@ import {
 import { DetailShareButton } from "@/components/DetailShareButton";
 
 export const dynamic = "force-dynamic";
-
-const PlaneTrackMap = nextDynamic(() => import("@/components/PlaneTrackMap"), {
-  ssr: false,
-  loading: () => <DetailMapLoading />,
-});
 
 type Props = {
   params: { tail: string };
@@ -161,24 +153,29 @@ export default async function PlanePage({ params, searchParams }: Props) {
                     : "No recent contact"
             }
             big
+            style={{ borderRadius: 7, boxShadow: "none" }}
           />
           <span
             className="ss-mono"
             style={{
               display: "inline-flex",
               alignItems: "center",
-              minHeight: 30,
+              justifyContent: "center",
+              width: entry.role === "patrol" ? 76 : "auto",
+              minWidth: 76,
+              height: 36,
+              boxSizing: "border-box",
               padding: "0 10px",
-              borderRadius: 999,
+              borderRadius: 7,
               background: SS_TOKENS.alertDim,
               border: `1px solid ${SS_TOKENS.hairline2}`,
               color: SS_TOKENS.alert,
               fontSize: 10,
               fontWeight: 800,
+              whiteSpace: "nowrap",
             }}
           >
             {roleBadgeText(entry.role)}
-            {entry.roleConfidence === "tentative" ? " · TENTATIVE" : ""}
           </span>
         </div>
       </header>
@@ -203,28 +200,6 @@ export default async function PlanePage({ params, searchParams }: Props) {
         {flightHref && <DetailShareButton path={flightHref} />}
       </div>
 
-      <section
-        aria-labelledby="aircraft-track-heading"
-        style={{ display: "grid", gap: 12 }}
-      >
-        <DetailSectionHeading
-          id="aircraft-track-heading"
-          eyebrow="Flight track"
-          title={isAirborne ? "Live track" : "Latest flight"}
-          description={
-            isAirborne
-              ? "The track refreshes while this aircraft remains airborne."
-              : "The most recently retained flight for this aircraft."
-          }
-        />
-        <RecentTrackMap
-          tail={entry.tail}
-          flight={recentFlight}
-          live={live ?? null}
-          isAirborne={isAirborne}
-        />
-      </section>
-
       {isAirborne && live && (
         <section
           aria-labelledby="position-snapshot-heading"
@@ -232,7 +207,6 @@ export default async function PlanePage({ params, searchParams }: Props) {
         >
           <DetailSectionHeading
             id="position-snapshot-heading"
-            eyebrow="Latest observation"
             title="Position snapshot"
             description={`Captured ${snapshotAgeSec}s before this page loaded. Open Map for the continuously refreshing view.`}
           />
@@ -347,68 +321,6 @@ export default async function PlanePage({ params, searchParams }: Props) {
         ]}
       />
     </main>
-  );
-}
-
-function RecentTrackMap({
-  tail,
-  flight,
-  live,
-  isAirborne,
-}: {
-  tail: string;
-  flight: RecentFlightForTail | null;
-  live: Aircraft | null;
-  isAirborne: boolean;
-}) {
-  const hasCurrentFlightHistory = Boolean(
-    flight && flight.inProgress && flight.points.length >= 2,
-  );
-  const hasLatestCompletedHistory = Boolean(
-    !isAirborne && flight && flight.points.length >= 2,
-  );
-  const hasHistory = hasCurrentFlightHistory || hasLatestCompletedHistory;
-  const hasLivePosition =
-    isAirborne && typeof live?.lat === "number" && typeof live?.lon === "number";
-  if (!hasHistory && !hasLivePosition) {
-    return (
-      <Card>
-        <p
-          style={{
-            margin: 0,
-            padding: "18px 8px",
-            color: SS_TOKENS.fg1,
-            fontSize: 14,
-            lineHeight: 1.5,
-            textAlign: "center",
-          }}
-        >
-          No track coordinates are available yet.
-        </p>
-      </Card>
-    );
-  }
-
-  const points: TrackPoint[] = hasHistory
-    ? flight!.points
-    : [
-        {
-          lat: live!.lat as number,
-          lon: live!.lon as number,
-          alt: live!.altitude_ft ?? null,
-          spd: live!.ground_speed_kt ?? null,
-          trk: live!.heading ?? null,
-          ts: Math.floor(Date.now() / 1_000),
-        },
-      ];
-
-  return (
-    <PlaneTrackMap
-      tail={tail}
-      points={points}
-      inProgress={isAirborne || Boolean(flight?.inProgress)}
-      height={340}
-    />
   );
 }
 

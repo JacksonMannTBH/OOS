@@ -1,12 +1,13 @@
 import type { Config } from "@netlify/functions";
 import { APP_STATES } from "../../lib/app-states";
 import { buildFleetSnapshot } from "../../lib/adsb";
-import { ingestSnapshot } from "../../lib/aircraft-data";
+import { getAircraftCatalogEntries, ingestSnapshot } from "../../lib/aircraft-data";
 import { dispatchPendingTakeoffNotifications } from "../../lib/aircraft-alerts/dispatcher";
 import { getSupabaseAdmin } from "../../lib/supabase/server";
 import {
   buildSampleOffsets,
   normalizeAircraftSampleInterval,
+  fleetSampleInterval,
 } from "../../lib/ingestion-schedule";
 
 const LEASE_SECONDS = 150;
@@ -44,7 +45,8 @@ export default async function aircraftIngestBackground(
   if (!claimed) return;
 
   try {
-    const sampleIntervalMs = configuredSampleIntervalMs();
+    const catalog = await getAircraftCatalogEntries();
+    const sampleIntervalMs = fleetSampleInterval(configuredSampleIntervalMs(), catalog.length);
     const workerStartedAt = Date.now();
     const sampleOffsets = buildSampleOffsets(sampleIntervalMs);
     let notificationWorkerRuns = 0;

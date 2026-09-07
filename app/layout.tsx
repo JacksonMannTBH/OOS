@@ -10,9 +10,9 @@ import "./globals.css";
 
 const TITLE = "Out Of Sight";
 const DESCRIPTION =
-  "Live WSP and sheriff aircraft tracker for Washington state riders.";
+  "Live law enforcement and public-safety aircraft tracker for riders across the United States.";
 const SOCIAL_DESCRIPTION =
-  "Live aircraft tracker for Washington state riders.";
+  "Explore law enforcement aircraft and live tracking across all 50 states.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),

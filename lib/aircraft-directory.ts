@@ -1,5 +1,6 @@
 import type { AppStateId } from "./app-states";
 import { FAA_PUBLIC_SAFETY_AIRCRAFT_ROWS } from "./faa-public-safety-aircraft";
+import { NATIONAL_AIRCRAFT_ROWS, NATIONAL_AIRCRAFT_REGISTRY_DATE } from "./national-aircraft-data";
 import type { FleetEntry, FleetRole } from "./types";
 
 export type OpsAircraft = {
@@ -10,7 +11,7 @@ export type OpsAircraft = {
   fuelText?: string;
   speedText: string;
   enduranceText: string;
-  durationMin: number;
+  durationMin: number | null;
 };
 
 type WaAircraftTuple = [
@@ -407,11 +408,29 @@ const FAA_PUBLIC_SAFETY_ROWS: OpsAircraft[] = FAA_PUBLIC_SAFETY_AIRCRAFT_ROWS.ma
   }),
 );
 
+const PERFORMANCE_BY_MODEL = new Map(
+  FAA_PUBLIC_SAFETY_AIRCRAFT_ROWS.map((row) => [row[3], row]),
+);
+
+const NATIONAL_OPS_AIRCRAFT: OpsAircraft[] = NATIONAL_AIRCRAFT_ROWS.map(
+  ([stateId, tail, , model, unit, , , performanceModel]) => {
+    const profile = performanceModel ? PERFORMANCE_BY_MODEL.get(performanceModel) : undefined;
+    return {
+      stateId, tail, model, unit,
+      fuelText: profile ? `Type estimate: ${profile[5]}` : "Not verified",
+      speedText: profile ? `Type estimate: ${profile[6]}` : "Not verified",
+      enduranceText: profile ? `Type estimate: ${profile[7]}` : "Not verified",
+      durationMin: profile?.[8] ?? null,
+    };
+  },
+);
+
 export const OPS_AIRCRAFT: OpsAircraft[] = [
   ...WA,
   ...NEW_ROWS,
   ...LOCAL_ROWS,
   ...FAA_PUBLIC_SAFETY_ROWS,
+  ...NATIONAL_OPS_AIRCRAFT,
 ];
 
 const OPS_AIRCRAFT_STATE_BY_TAIL = new Map(
@@ -439,16 +458,17 @@ export const ADDITIONAL_TRACKED_TAILS = [
   ...NEW_ROWS,
   ...LOCAL_ROWS,
   ...FAA_PUBLIC_SAFETY_ROWS,
+  ...NATIONAL_OPS_AIRCRAFT,
 ].map((row) => row.tail);
 
 export const AIRCRAFT_DURATION_MINUTES = Object.fromEntries(
-  OPS_AIRCRAFT.map((row) => [row.tail, row.durationMin]),
+  OPS_AIRCRAFT.flatMap((row) => row.durationMin == null ? [] : [[row.tail, row.durationMin]]),
 ) as Record<string, number>;
 
 export const ADDITIONAL_FLEET: FleetEntry[] = [
   ...NEW_ROWS.map((row) => {
     const role = roleForModel(row.model);
-    const operator = operatorForState(row.stateId);
+    const operator = operatorForState(row.stateId) ?? row.unit;
     return {
       tail: row.tail,
       hex: null,
@@ -484,7 +504,7 @@ export const ADDITIONAL_FLEET: FleetEntry[] = [
     const [stateId, tail, hex, model, unit] = row;
     const role = roleForModel(model);
     const statewideOperator = operatorForState(stateId);
-    const operator = unit.includes(statewideOperator) ? statewideOperator : unit;
+    const operator = statewideOperator && unit.includes(statewideOperator) ? statewideOperator : unit;
     return {
       tail,
       hex,
@@ -501,9 +521,21 @@ export const ADDITIONAL_FLEET: FleetEntry[] = [
       roleNote: `${unit} FAA public-safety registry aircraft`,
     } satisfies FleetEntry;
   }),
+  ...NATIONAL_AIRCRAFT_ROWS.map((row) => {
+    const [, tail, hex, model, operator, city, aircraftType] = row;
+    return {
+      tail, hex, model, operator,
+      nickname: null,
+      base: `${city} (registration city; operating base unverified)`,
+      role: aircraftType === "Helicopter" ? "patrol" : "fixed_wing",
+      roleDescription: "Law enforcement / air support (registry attribution)",
+      roleConfidence: "tentative",
+      roleNote: `FAA registration ${NATIONAL_AIRCRAFT_REGISTRY_DATE}; mission and operational status unverified.`,
+    } satisfies FleetEntry;
+  }),
 ];
 
-function operatorForState(stateId: OpsAircraft["stateId"]): string {
+function operatorForState(stateId: OpsAircraft["stateId"]): string | null {
   switch (stateId) {
     case "california":
       return "CHP";
@@ -515,8 +547,10 @@ function operatorForState(stateId: OpsAircraft["stateId"]): string {
       return "Ohio State Highway Patrol";
     case "colorado":
       return "Colorado State Patrol";
-    default:
+    case "washington":
       return "WSP";
+    default:
+      return null;
   }
 }
 

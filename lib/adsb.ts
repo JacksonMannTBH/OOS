@@ -5,6 +5,7 @@
 import { fleetHex } from "./seed";
 import { getAircraftCatalogEntries, getCatalog } from "./aircraft-data";
 import { fetchOpenSky } from "./opensky";
+import { ADSB_FI_BATCH_SIZE, ADSB_FI_REQUEST_SPACING_MS } from "./adsb-limits";
 import {
   APP_STATES,
   DEFAULT_STATE_CODE,
@@ -36,8 +37,6 @@ type AdsbFiResp = {
 
 const SNAPSHOT_TTL_MS = 15_000;
 const MAX_ADSB_OBSERVATION_AGE_SECONDS = 60;
-const ADSB_FI_BATCH_SIZE = 75;
-const ADSB_FI_REQUEST_SPACING_MS = 1_100;
 const snapshotCache = new Map<
   StateCode,
   { snapshot: Snapshot; expiresAt: number }
@@ -73,7 +72,11 @@ export function chunkIcaoHexes(
   return batches;
 }
 
-async function fetchAdsbFiBatches(hexes: string[]): Promise<NormalizedAc[]> {
+export async function fetchAircraftBatches(
+  hexes: string[],
+  fetchBatch: (hexes: string[]) => Promise<NormalizedAc[]>,
+  spacingMs = ADSB_FI_REQUEST_SPACING_MS,
+): Promise<NormalizedAc[]> {
   const batches = chunkIcaoHexes(hexes);
   const aircraft: NormalizedAc[] = [];
   let previousRequestStartedAt = 0;
@@ -81,12 +84,12 @@ async function fetchAdsbFiBatches(hexes: string[]): Promise<NormalizedAc[]> {
   for (const batch of batches) {
     if (previousRequestStartedAt > 0) {
       const elapsed = Date.now() - previousRequestStartedAt;
-      if (elapsed < ADSB_FI_REQUEST_SPACING_MS) {
-        await wait(ADSB_FI_REQUEST_SPACING_MS - elapsed);
+      if (elapsed < spacingMs) {
+        await wait(spacingMs - elapsed);
       }
     }
     previousRequestStartedAt = Date.now();
-    aircraft.push(...await fetchAdsbFi(batch));
+    aircraft.push(...await fetchBatch(batch));
   }
 
   return aircraft;
@@ -234,13 +237,15 @@ async function fetchLiveAircraft(
   let sourceError: string | undefined;
   try {
     raw = batched
-      ? await fetchAdsbFiBatches(fleetHexes)
+      ? await fetchAircraftBatches(fleetHexes, fetchAdsbFi)
       : await fetchAdsbFi(fleetHexes);
   } catch (e) {
     console.warn("[adsb] primary failed, falling back to OpenSky:", e);
     const primaryError = errorMessage(e);
     try {
-      raw = await fetchOpenSky(fleetHexes);
+      raw = batched
+        ? await fetchAircraftBatches(fleetHexes, fetchOpenSky)
+        : await fetchOpenSky(fleetHexes);
       source = "opensky";
       sourceError = `adsb.fi: ${primaryError}`;
     } catch (e2) {

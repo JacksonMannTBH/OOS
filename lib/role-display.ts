@@ -1,9 +1,8 @@
 // Shared role-badge display helpers. Used by /about and /plane/[tail] so the
 // role taxonomy reads consistently across the app.
 //
-// Rider mental model: any tracked aircraft airborne is "Bird up." The role
-// taxonomy stays granular for plane-detail accuracy, but roles do not suppress
-// alerts.
+// Keep the public labels aligned with the underlying role taxonomy so aircraft
+// detail pages do not require riders to interpret internal shorthand.
 
 import type { FleetRole } from "./types";
 import { SS_TOKENS } from "./tokens";
@@ -11,9 +10,11 @@ import { SS_TOKENS } from "./tokens";
 export function roleBadgeText(role: FleetRole): string {
   switch (role) {
     case "fixed_wing":
+      return "FIXED WING";
     case "patrol":
+      return "PATROL";
     case "unknown":
-      return "BIRD";
+      return "ROLE UNKNOWN";
     case "sar":
       return "SEARCH & RESCUE";
     case "transport":
@@ -24,15 +25,15 @@ export function roleBadgeText(role: FleetRole): string {
 export function roleTooltip(role: FleetRole): string {
   switch (role) {
     case "fixed_wing":
-      return "Bird. Fixed-wing speed enforcement plane. Up = ease off.";
+      return "Fixed-wing speed enforcement aircraft.";
     case "patrol":
-      return "Bird. Multi-role helicopter. Up = ease off.";
+      return "Multi-role patrol helicopter.";
     case "sar":
-      return "Search and rescue helicopter. Airborne tracked aircraft still count as Bird up.";
+      return "Search and rescue helicopter.";
     case "transport":
-      return "State transport or photography aircraft. Airborne tracked aircraft still count as Bird up.";
+      return "State transport or photography aircraft.";
     case "unknown":
-      return "Bird. Role not yet confirmed.";
+      return "Aircraft role has not been confirmed.";
   }
 }
 

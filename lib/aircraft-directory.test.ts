@@ -26,10 +26,15 @@ test("operational aircraft are tracked and available to flight paths", () => {
       true,
       `${aircraft.tail} should be in TRACKED_TAILS for ADS-B polling`,
     );
-    assert.ok(
-      (AIRCRAFT_DURATION_MINUTES[aircraft.tail] ?? 0) > 0,
-      `${aircraft.tail} should have source duration data`,
-    );
+    if (aircraft.durationMin == null) {
+      assert.equal(AIRCRAFT_DURATION_MINUTES[aircraft.tail], undefined);
+      assert.equal(aircraft.enduranceText, "Not verified");
+    } else {
+      assert.ok(
+        (AIRCRAFT_DURATION_MINUTES[aircraft.tail] ?? 0) > 0,
+        `${aircraft.tail} should have source duration data`,
+      );
+    }
   }
 
   assert.deepEqual(

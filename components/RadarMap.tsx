@@ -20,7 +20,9 @@ import {
   type GlyphRole,
 } from "@/lib/brand/aircraft-glyphs";
 import {
-  aircraftColorForRole,
+  AIRCRAFT_PATH_COLORS,
+  aircraftColorIndex,
+  aircraftColorForTail,
 } from "@/lib/aircraft-colors";
 import { getAppState, type StateCode } from "@/lib/app-states";
 import {
@@ -66,6 +68,7 @@ const AIRCRAFT_ICON_SIZE = 52; // bitmap raster size; layer `icon-size` scales i
 const PLANE_ASSET_VERSION = "cessna-v1";
 const PLANE_ICON_KEY = "aircraft-plane-cessna";
 const AIRCRAFT_LABEL_BG_KEY = "aircraft-label-pill";
+const AIRCRAFT_LABEL_COLOR_KEY_PREFIX = "aircraft-label-pill-color";
 const HELICOPTER_ICON_SIZE = 56;
 const HELICOPTER_ASSET_VERSION = "no-tail-rotor-v1";
 const HELICOPTER_ICON_FRAMES = 12;
@@ -74,6 +77,10 @@ const HELICOPTER_ROLES = new Set<GlyphRole>(["patrol", "sar"]);
 
 function helicopterIconKeyFor(frame: number): string {
   return `aircraft-helicopter-${frame}`;
+}
+
+function aircraftLabelColorKey(index: number): string {
+  return `${AIRCRAFT_LABEL_COLOR_KEY_PREFIX}-${index}`;
 }
 
 function isHelicopterRole(role: GlyphRole): boolean {
@@ -263,14 +270,14 @@ function applyRadarMapTheme(
   }
 }
 
-function createAircraftLabelPill(): ImageData {
+function createAircraftLabelPill(color = "rgba(2, 2, 2, 0.72)"): ImageData {
   const canvas = document.createElement("canvas");
   canvas.width = 32;
   canvas.height = 18;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Unable to create aircraft label background");
 
-  context.fillStyle = "rgba(2, 2, 2, 0.72)";
+  context.fillStyle = color;
   context.beginPath();
   context.roundRect(0, 0, canvas.width, canvas.height, 9);
   context.fill();
@@ -334,7 +341,7 @@ function applyCustomRadarLayerTheme(map: MaplibreMap, darkMode: boolean) {
       map.setPaintProperty("distance-rings-labels", "text-opacity", 1);
     }
     if (map.getLayer("aircraft-labels")) {
-      map.setPaintProperty("aircraft-labels", "text-color", "#f5f2e8");
+      map.setPaintProperty("aircraft-labels", "text-color", "#071012");
     }
     if (map.getLayer("aircraft-fuel")) {
       map.setPaintProperty("aircraft-fuel", "text-color", "#f5f2e8");
@@ -357,6 +364,7 @@ type Snapshot = {
       observedAtMs: number;
       nickname: string | null;
       color: string;
+      labelIcon: string;
       label: string;
     }
   >;
@@ -377,6 +385,15 @@ const ANIM_MS = 10_500;
 const STALE_FADE_START_MS = 30_000;
 const STALE_FADE_END_MS = 120_000;
 const MAX_TURN_BANK_DEG = 6;
+
+function setFuelCardTail(map: MaplibreMap, tail: string | null): void {
+  if (!map.getLayer("aircraft-fuel")) return;
+  map.setFilter("aircraft-fuel", [
+    "all",
+    ["has", "fuelLabel"],
+    ["==", ["get", "tail"], tail ?? ""],
+  ]);
+}
 
 function normalizeHeading(degrees: number): number {
   return ((degrees % 360) + 360) % 360;
@@ -581,6 +598,17 @@ export default function RadarMap({
         stretchY: [[7, 11]],
         content: [3, 1, 29, 17],
       });
+      AIRCRAFT_PATH_COLORS.forEach((color, index) => {
+        map.addImage(
+          aircraftLabelColorKey(index),
+          createAircraftLabelPill(color),
+          {
+            stretchX: [[9, 23]],
+            stretchY: [[7, 11]],
+            content: [3, 1, 29, 17],
+          },
+        );
+      });
       helicopterEntries.forEach(({ key }, i) => {
         map.addImage(key, helicopterImgs[i]!);
       });
@@ -692,7 +720,7 @@ export default function RadarMap({
         type: "symbol",
         source: "aircraft",
         layout: {
-          "icon-image": AIRCRAFT_LABEL_BG_KEY,
+          "icon-image": ["get", "labelIcon"],
           "icon-text-fit": "both",
           "icon-text-fit-padding": [2, 4, 2, 4],
           "icon-anchor": "center",
@@ -724,12 +752,24 @@ export default function RadarMap({
           "text-letter-spacing": 0.07,
         },
         paint: {
-          "icon-opacity": ["coalesce", ["get", "opacity"], 1],
-          "text-color": "#f5f2e8",
-          "text-opacity": [
-            "*",
+          "icon-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            7,
+            0,
+            8.5,
             ["coalesce", ["get", "opacity"], 1],
-            0.78,
+          ],
+          "text-color": "#071012",
+          "text-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            7,
+            0,
+            8.5,
+            ["coalesce", ["get", "opacity"], 1],
           ],
         },
       });
@@ -776,7 +816,12 @@ export default function RadarMap({
             0.78,
           ],
         },
-        filter: ["has", "fuelLabel"],
+        // Fuel estimates stay hidden until a rider selects an aircraft.
+        filter: [
+          "all",
+          ["has", "fuelLabel"],
+          ["==", ["get", "tail"], ""],
+        ],
       });
       applyCustomRadarLayerTheme(map, darkModeRef.current);
 
@@ -821,6 +866,7 @@ export default function RadarMap({
       userInteractedAtRef.current = Date.now();
       if (e?.originalEvent && followedTailRef.current) {
         followedTailRef.current = null;
+        setFuelCardTail(map, null);
         popupRef.current?.remove();
         popupRef.current = null;
       }
@@ -849,6 +895,7 @@ export default function RadarMap({
       });
       if (features.length > 0) return;
       followedTailRef.current = null;
+      setFuelCardTail(map, null);
       popupRef.current?.remove();
       popupRef.current = null;
     };
@@ -999,6 +1046,7 @@ export default function RadarMap({
     if (!pos) return false;
 
     followedTailRef.current = tail;
+    setFuelCardTail(map, tail);
     popupRef.current?.remove();
     const meta = stateRef.current.metaByTail.get(tail);
     const label = meta?.nickname ?? tail;
@@ -1021,6 +1069,7 @@ export default function RadarMap({
     popup.on("close", () => {
       if (followedTailRef.current === tail) {
         followedTailRef.current = null;
+        setFuelCardTail(map, null);
       }
       if (popupRef.current === popup) popupRef.current = null;
     });
@@ -1039,6 +1088,7 @@ export default function RadarMap({
     if (!map || !readyRef.current || !rider) return false;
 
     followedTailRef.current = null;
+    setFuelCardTail(map, null);
     popupRef.current?.remove();
     popupRef.current = null;
     map.flyTo({
@@ -1185,12 +1235,14 @@ export default function RadarMap({
         observedAtMs: number;
         nickname: string | null;
         color: string;
+        labelIcon: string;
         label: string;
       }
     >();
     for (const a of list) {
       if (a.lat == null || a.lon == null) continue;
-      const color = aircraftColorForRole(a.role);
+      const color = aircraftColorForTail(a.tail);
+      const labelIcon = aircraftLabelColorKey(aircraftColorIndex(a.tail));
       const glyphRole = glyphRoleFor(a.role);
       const iconFamily = isHelicopterRole(glyphRole) ? "helicopter" : "plane";
       const observedAtMs = observationTimeMs(a, now);
@@ -1220,6 +1272,7 @@ export default function RadarMap({
         observedAtMs,
         nickname: a.nickname,
         color,
+        labelIcon,
         label: a.tail.toUpperCase(),
       });
       if (!newFrom.has(a.tail)) {
@@ -1266,6 +1319,7 @@ export default function RadarMap({
         }
       } else {
         followedTailRef.current = null;
+        setFuelCardTail(map, null);
         popupRef.current?.remove();
         popupRef.current = null;
       }
@@ -1299,6 +1353,7 @@ export default function RadarMap({
           displayTrack: normalizeHeading(track + bank),
           opacity: staleOpacity(meta.observedAtMs, Date.now()),
           color: meta.color,
+          labelIcon: meta.labelIcon,
           label: meta.label,
         };
         if (meta.nickname) props.nickname = meta.nickname;

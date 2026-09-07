@@ -1,3 +1,5 @@
+import { ADSB_FI_BATCH_SIZE, ADSB_FI_REQUEST_SPACING_MS } from "./adsb-limits";
+
 export const DEFAULT_AIRCRAFT_SAMPLE_INTERVAL_MS = 10_000;
 export const MIN_AIRCRAFT_SAMPLE_INTERVAL_MS = 5_000;
 export const MAX_AIRCRAFT_SAMPLE_INTERVAL_MS = 60_000;
@@ -25,8 +27,17 @@ export function buildSampleOffsets(
     throw new Error("Sample interval must be a positive integer");
   }
   const offsets: number[] = [];
-  for (let offset = 0; offset < windowMs; offset += intervalMs) {
+  for (let offset = 0; offset + intervalMs <= windowMs; offset += intervalMs) {
     offsets.push(offset);
   }
   return offsets;
+}
+
+/** Reserve time for rate-limited fleet requests plus parsing and persistence. */
+export function fleetSampleInterval(configuredIntervalMs: number, aircraftCount: number): number {
+  const batches = Math.ceil(Math.max(0, aircraftCount) / ADSB_FI_BATCH_SIZE);
+  const requestBudgetMs = Math.max(0, batches - 1) * ADSB_FI_REQUEST_SPACING_MS + 8_000;
+  const minimum = [10_000, 15_000, 20_000, 30_000, 60_000]
+    .find((interval) => interval >= requestBudgetMs) ?? 60_000;
+  return Math.max(configuredIntervalMs, minimum);
 }

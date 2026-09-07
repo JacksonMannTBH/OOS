@@ -18,6 +18,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 const iconsDir = join(root, "public", "icons");
 const logoImage = join(iconsDir, "out-of-sight-logo.jpg");
+const homeBackgroundImage = join(
+  root,
+  "public",
+  "images",
+  "home-map-background.png",
+);
 
 const outputs = [
   { file: "out-of-sight-favicon-16.png", size: 16 },
@@ -98,7 +104,7 @@ function renderIconHtml({ size }) {
 }
 
 function renderOgHtml() {
-  const logoUrl = pathToFileURL(logoImage).href;
+  const homeBackgroundUrl = pathToFileURL(homeBackgroundImage).href;
   return `<!doctype html>
 <html>
   <head>
@@ -123,13 +129,16 @@ function renderOgHtml() {
         gap: 56px;
         box-sizing: border-box;
         padding: 72px 82px;
+        background:
+          linear-gradient(rgba(0, 0, 0, .20), rgba(0, 0, 0, .45)),
+          url("${homeBackgroundUrl}") center top / cover no-repeat;
       }
 
-      img {
+      .mark {
         display: block;
-        width: 470px;
-        height: 470px;
-        object-fit: cover;
+        width: 390px;
+        height: 230px;
+        justify-self: center;
       }
 
       h1 {
@@ -141,7 +150,7 @@ function renderOgHtml() {
       }
 
       p {
-        margin: 32px 0 0;
+        margin: 28px 0 0;
         max-width: 500px;
         color: #f6c431;
         font-size: 34px;
@@ -152,10 +161,14 @@ function renderOgHtml() {
     </style>
   </head>
   <body>
-    <img src="${logoUrl}" alt="">
+    <svg class="mark" viewBox="0 0 290 170" aria-hidden="true">
+      <path fill="#fff" d="M0 85C48 5 88 0 145 0s97 5 145 85c-48 80-88 85-145 85S48 165 0 85Z"/>
+      <circle cx="145" cy="85" r="55" fill="#f6c431"/>
+      <circle cx="145" cy="85" r="23" fill="#000"/>
+    </svg>
     <main>
       <h1>Out Of Sight</h1>
-      <p>Live aircraft tracker for Washington state riders.</p>
+      <p>Track law enforcement aircrafts across all 50 states.</p>
     </main>
   </body>
 </html>`;
@@ -189,6 +202,12 @@ Add-Type -AssemblyName System.Drawing
 
 $iconsDir = Join-Path $Root 'public\\icons'
 $logoPath = Join-Path $iconsDir 'out-of-sight-logo.jpg'
+$homeBackgroundPath = [System.IO.Path]::Combine(
+  $Root,
+  'public',
+  'images',
+  'home-map-background.png'
+)
 $outputs = @(
 ${psOutputs}
 )
@@ -240,44 +259,62 @@ function New-Icon([System.Drawing.Image]$Source, [string]$File, [int]$Size) {
   }
 }
 
-function New-OgImage([System.Drawing.Image]$Source) {
+function New-OgImage() {
+  $background = [System.Drawing.Image]::FromFile($homeBackgroundPath)
   $bitmap = New-Object System.Drawing.Bitmap 1200, 630
   try {
     $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
     $white = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::White)
     $gold = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(246, 196, 49))
+    $black = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::Black)
     $titleFont = New-Object System.Drawing.Font 'Arial', 74, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
-    $bodyFont = New-Object System.Drawing.Font 'Arial', 34, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
+    $bodyFont = New-Object System.Drawing.Font 'Arial', 31, ([System.Drawing.FontStyle]::Bold), ([System.Drawing.GraphicsUnit]::Pixel)
     try {
       Set-Quality $graphics
       $graphics.Clear([System.Drawing.Color]::Black)
-      $random = New-Object System.Random 42
-      for ($i = 0; $i -lt 45000; $i++) {
-        $gray = $random.Next(0, 12)
-        $bitmap.SetPixel(
-          $random.Next(0, 1200),
-          $random.Next(0, 630),
-          [System.Drawing.Color]::FromArgb($gray, $gray, $gray)
-        )
-      }
-      $gridPen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(13, 13, 13)), 1
+      $sourceHeight = [Math]::Min(
+        $background.Height,
+        [int][Math]::Round($background.Width * 630 / 1200)
+      )
+      $destinationRect = New-Object System.Drawing.Rectangle 0, 0, 1200, 630
+      $sourceRect = New-Object System.Drawing.Rectangle 0, 0, $background.Width, $sourceHeight
+      $graphics.DrawImage(
+        $background,
+        $destinationRect,
+        $sourceRect,
+        [System.Drawing.GraphicsUnit]::Pixel
+      )
+      $overlayBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush (
+        (New-Object System.Drawing.Point 0, 0),
+        (New-Object System.Drawing.Point 0, 630),
+        [System.Drawing.Color]::FromArgb(51, 0, 0, 0),
+        [System.Drawing.Color]::FromArgb(115, 0, 0, 0)
+      )
       try {
-        for ($x = 0; $x -le 1200; $x += 60) {
-          $graphics.DrawLine($gridPen, $x, 0, $x, 630)
-        }
-        for ($y = 0; $y -le 630; $y += 60) {
-          $graphics.DrawLine($gridPen, 0, $y, 1200, $y)
-        }
+        $graphics.FillRectangle($overlayBrush, 0, 0, 1200, 630)
       } finally {
-        $gridPen.Dispose()
+        $overlayBrush.Dispose()
       }
-      $graphics.DrawImage($Source, 82, 80, 470, 470)
-      $graphics.DrawString('Out Of Sight', $titleFont, $white, 620, 188)
-      $graphics.DrawString('Live aircraft tracker', $bodyFont, $gold, 620, 306)
-      $graphics.DrawString('for Washington state riders.', $bodyFont, $gold, 620, 348)
+      $eyePath = New-Object System.Drawing.Drawing2D.GraphicsPath
+      try {
+        $eyePath.AddBezier(172, 315, 220, 235, 260, 230, 317, 230)
+        $eyePath.AddBezier(317, 230, 374, 230, 414, 235, 462, 315)
+        $eyePath.AddBezier(462, 315, 414, 395, 374, 400, 317, 400)
+        $eyePath.AddBezier(317, 400, 260, 400, 220, 395, 172, 315)
+        $eyePath.CloseFigure()
+        $graphics.FillPath($white, $eyePath)
+      } finally {
+        $eyePath.Dispose()
+      }
+      $graphics.FillEllipse($gold, 262, 260, 110, 110)
+      $graphics.FillEllipse($black, 294, 292, 46, 46)
+      $graphics.DrawString('Out Of Sight', $titleFont, $white, 620, 220)
+      $graphics.DrawString('Track law enforcement aircrafts', $bodyFont, $gold, 620, 330)
+      $graphics.DrawString('across all 50 states.', $bodyFont, $gold, 620, 370)
     } finally {
       $bodyFont.Dispose()
       $titleFont.Dispose()
+      $black.Dispose()
       $gold.Dispose()
       $white.Dispose()
       $graphics.Dispose()
@@ -289,6 +326,7 @@ function New-OgImage([System.Drawing.Image]$Source) {
     }
   } finally {
     $bitmap.Dispose()
+    $background.Dispose()
   }
 }
 
@@ -297,7 +335,7 @@ try {
   foreach ($output in $outputs) {
     New-Icon $source $output.File $output.Size
   }
-  New-OgImage $source
+  New-OgImage
 } finally {
   $source.Dispose()
 }

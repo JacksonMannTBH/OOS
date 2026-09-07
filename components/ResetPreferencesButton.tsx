@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { resetPreferenceCookiesAction } from "@/app/(tabs)/settings/actions";
-import { SettingsCard } from "@/components/SettingsCard";
 import { disableAircraftAlerts } from "@/lib/aircraft-alerts/client";
 import { SS_TOKENS } from "@/lib/tokens";
 
@@ -90,19 +89,7 @@ export function ResetPreferencesButton() {
   };
 
   return (
-    <SettingsCard title="Restore defaults" eyebrow="Reset">
-      <p
-        style={{
-          margin: 0,
-          color: SS_TOKENS.fg1,
-          fontSize: 13,
-          lineHeight: 1.5,
-        }}
-      >
-        Turn off takeoff notifications and clear display, Ride mode, state, and
-        dismissed-prompt preferences on this device.
-      </p>
-
+    <div style={{ display: "grid", gap: 8 }}>
       {message && (
         <p
           role="alert"
@@ -139,6 +126,6 @@ export function ResetPreferencesButton() {
       >
         {busy ? "Resetting…" : "Reset preferences"}
       </button>
-    </SettingsCard>
+    </div>
   );
 }

@@ -1,0 +1,153 @@
+{
+  "include": [
+    {
+      "tails": ["N367PD", "N369PD", "N371PD"], "state": "GA",
+      "operator": "Atlanta Police Department Aviation Unit",
+      "source": "https://www.mdhelicopters.com/?p=2045"
+    },
+    {
+      "tails": ["N812LE", "N977MS"], "state": "AZ",
+      "operator": "Maricopa County Sheriff's Office Aviation Unit",
+      "source": "https://www.heliopsmag.com/heliops/articles/works-well-with-others-maricopa-sheriff/"
+    },
+    {
+      "tails": ["N211FX", "N212FX"], "state": "VA",
+      "operator": "Fairfax County Police Department Helicopter Division",
+      "source": "https://www.fairfaxcounty.gov/police/HelicopterDivision/Fairfax1/Related/FlyBy"
+    },
+    {
+      "tails": ["N531VB", "N911VB"], "state": "VA",
+      "operator": "Virginia Beach Police Department Aviation Unit",
+      "source": "https://s3.us-east-1.amazonaws.com/virginia-beach-departments-docs/police/Your-VBPD/Policies-and-Field-Guides/Policies/General-Order-904-Department-Vehicles.pdf"
+    },
+    {
+      "tails": ["N740KC", "N760KC"], "state": "OK",
+      "operator": "Oklahoma City Police Department Air Support Unit",
+      "source": "https://www.okc.gov/Services/Public-Safety/Police/Police-Support-Units"
+    },
+    {
+      "tails": ["N302TP", "N901TP"], "state": "OK",
+      "operator": "Tulsa Police Department Air Support Unit",
+      "source": "https://www.cityoftulsa.org/media/22110/ifb-23-448-helicopter-competion-parts-and-equipment-for-h125-helicopter.pdf"
+    },
+    {
+      "tails": ["N120PD", "N125PD"], "state": "NM",
+      "operator": "Albuquerque Police Department Air Support Unit",
+      "source": "https://www.cabq.gov/council/find-your-councilor/district-8/news/councilor-dan-champine-applauds-grt-funding-for-apd-chopper"
+    },
+    {
+      "tails": ["N407SD"], "state": "NY",
+      "operator": "Onondaga County Sheriff's Office Aviation Unit",
+      "source": "https://sheriff.ongov.net/police/aviation-unit/"
+    },
+    {
+      "tails": ["N65231", "N67830", "N502LM"], "state": "KY",
+      "operator": "Louisville Metro Police Department Air Unit",
+      "source": "https://www.louisville-police.org/209/Air-Unit"
+    },
+    {
+      "tails": ["N665HC"], "state": "VA",
+      "operator": "Henrico County Police Division / Metro Aviation Unit",
+      "source": "https://henrico.gov/assets/Multi-Year-Plan-2023-2027.pdf",
+      "tailSources": ["https://www.flightradar24.com/data/aircraft/n665hc"]
+    },
+    {
+      "tails": ["N352HP", "N353HP", "N354HP"],
+      "state": "UT",
+      "operator": "Utah Department of Public Safety Aero Bureau",
+      "source": "https://dps.utah.gov/wp-content/uploads/2025/02/2024-Annual-Report-for-Web.pdf"
+    },
+    {
+      "tails": ["N631SD", "N632SD"],
+      "state": "MI",
+      "operator": "Oakland County Sheriff's Office Aviation Unit",
+      "source": "https://www.oakgov.com/government/sheriff/law-enforcement/technical-support-group"
+    },
+    {
+      "tails": ["N511PD"],
+      "state": "MI",
+      "operator": "Detroit Police Department",
+      "source": "https://www.flightradar24.com/data/aircraft/n511pd"
+    },
+    {
+      "tails": ["N803CP", "N804CP", "N808CP"],
+      "state": "MD",
+      "operator": "Baltimore County Police Department Aviation Team",
+      "source": "https://www.baltimorecountymd.gov/files/Documents/Police/2020pdfs/2019annualreport.pdf"
+    },
+    {
+      "tails": ["N451F", "N452F", "N453F"],
+      "state": "MD",
+      "operator": "Baltimore Police Department Aviation Unit",
+      "source": "https://www.baltimorepolice.org/transparency/bpd-policies/1603-aviation-unit"
+    },
+    {
+      "tails": ["N506MP", "N42WB"],
+      "state": "AZ",
+      "operator": "Mesa Police Department Air Support Unit",
+      "source": "https://www.mesaaz.gov/Public-Safety/Mesa-Police/About-Mesa-Police/Air-Support-Unit"
+    },
+    {
+      "tails": ["N430SP", "N9SP"],
+      "state": "NY",
+      "operator": "New York State Police",
+      "source": "https://www.airbus.com/en/newsroom/press-releases/2025-03-new-york-state-police-orders-airbus-h160-and-three-h145-helicopters",
+      "tailSources": ["https://www.policeaviationnews.info/index_html_files/358PANFebruary2026.pdf"]
+    },
+    {
+      "tails": ["N948SP", "N959SP", "N988SP"],
+      "state": "NY",
+      "operator": "New York State Police",
+      "source": "https://www.kodiak.aero/en/multi-mission"
+    },
+    {
+      "tails": ["N67176"],
+      "state": "ID",
+      "operator": "Kootenai County Regional Air Support Unit / Sheriff's Office",
+      "source": "https://www.kcgov.us/DocumentCenter/View/20294/Contract-Agreement-MOU---MOU-for-Air-Support-Unit---Kootenai-County-Regional-Air-Support-Unit"
+    },
+    {
+      "tails": ["N831MA", "N832MA", "N833MA"],
+      "state": "WI",
+      "operator": "Wisconsin State Patrol",
+      "source": "https://wisconsindot.gov/Pages/dsp/about/bureaus/bfo/spec-ops/asu.aspx",
+      "tailSources": ["https://www.flightradar24.com/data/aircraft/n831ma", "https://www.flightradar24.com/data/aircraft/n832ma", "https://www.flightradar24.com/data/aircraft/n833ma"]
+    },
+    {
+      "tails": ["N1SP", "N2SP", "N6SP", "N71SP"],
+      "state": "DE",
+      "operator": "Delaware State Police",
+      "source": "https://dsp.delaware.gov/units/"
+    },
+    {
+      "tails": ["N1NJ", "N3NJ", "N4NJ", "N5NJ", "N7NJ", "N9NJ"],
+      "state": "NJ",
+      "operator": "New Jersey State Police",
+      "source": "https://www.nj.gov/njsp/division/homeland-security/special-operations.shtml"
+    },
+    {
+      "tails": ["N109FB", "N620FB", "N621FB", "N622FB", "N623FB", "N624FB", "N625FB", "N630FB"],
+      "state": "AZ",
+      "operator": "Phoenix Police Department Air Support Unit",
+      "source": "https://www.phoenix.gov/administration/departments/police/about-us/units-divisions/air-support-unit.html"
+    },
+    {
+      "tails": ["N1867", "N911AA", "N911NT"],
+      "state": "AK",
+      "operator": "Alaska Department of Public Safety",
+      "source": "https://aws.state.ak.us/OnlinePublicNotices/Notices/Attachment.aspx?id=155573"
+    }
+  ],
+  "exclude": [
+    {
+      "tail": "N911SZ",
+      "serial": "70-16431",
+      "reason": "Aircraft destroyed in 2022 (CEN22FA317), despite a valid FAA registration remaining in MASTER.",
+      "source": "https://data.ntsb.gov/carol-repgen/api/Aviation/ReportMain/GenerateNewestReport/105488/pdf"
+    }
+  ],
+  "coverageGaps": {
+    "RI": "No crewed law enforcement aircraft with a verified registration and state assignment was identified in this registry review. This does not establish that no aviation support is available.",
+    "VT": "No crewed law enforcement aircraft with a verified registration and state assignment was identified in this registry review. This does not establish that no aviation support is available."
+  }
+}

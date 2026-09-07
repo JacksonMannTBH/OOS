@@ -4,15 +4,16 @@ import { useMemo, useState } from "react";
 import {
   APP_STATES,
   DEFAULT_APP_STATE_ID,
+  getAppState,
   type AppStateId,
 } from "@/lib/app-states";
 import { OPS_AIRCRAFT } from "@/lib/aircraft-directory";
+import { STATE_AIRCRAFT_COVERAGE_NOTES } from "@/lib/state-aircraft-coverage";
 import { SS_TOKENS } from "@/lib/tokens";
 
 export function AboutOpsByState() {
   const [stateId, setStateId] = useState<AppStateId>(DEFAULT_APP_STATE_ID);
-  const selectedState =
-    APP_STATES.find((state) => state.id === stateId) ?? APP_STATES[0];
+  const selectedState = getAppState(stateId);
   const aircraft = useMemo(
     () => OPS_AIRCRAFT.filter((row) => row.stateId === stateId),
     [stateId],
@@ -97,7 +98,7 @@ export function AboutOpsByState() {
           {aircraft.length === 0 && (
             <tr>
               <td colSpan={hasFuelCapacity ? 5 : 4}>
-                No aircraft listed for {selectedState.label}.
+                {STATE_AIRCRAFT_COVERAGE_NOTES[selectedState.code] ?? `No aircraft listed for ${selectedState.label}.`}
               </td>
             </tr>
           )}
