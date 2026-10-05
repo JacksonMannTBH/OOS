@@ -37,6 +37,8 @@ const recommended = [
   "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
   "VAPID_PRIVATE_KEY",
   "VAPID_SUBJECT",
+  "FCM_RELAY_URL",
+  "FCM_RELAY_SECRET",
 ];
 
 const missingRequired = requiredForProduction.filter(

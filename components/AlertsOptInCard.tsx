@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 import { SS_TOKENS } from "@/lib/tokens";
 import {
   enableAircraftAlerts,
@@ -12,13 +13,17 @@ const DISMISS_KEY = "oos_alerts_promo_dismissed_at";
 const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 type Phase = "checking" | "show" | "hidden";
 
-export function AlertsOptInCard({ frameless = false }: { frameless?: boolean }) {
+export function AlertsOptInCard() {
   const [phase, setPhase] = useState<Phase>("checking");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const titleId = useId();
+  const descriptionId = useId();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    setMounted(true);
     const dismissed = Number(window.localStorage.getItem(DISMISS_KEY) ?? 0);
     if (Number.isFinite(dismissed) && Date.now() - dismissed < COOLDOWN_MS) {
       setPhase("hidden");
@@ -43,7 +48,7 @@ export function AlertsOptInCard({ frameless = false }: { frameless?: boolean }) 
       await enableAircraftAlerts({
         stateCode: getSelectedStateCode(),
       });
-      setMessage("Alerts armed.");
+      setPhase("hidden");
     } catch (error) {
       setMessage(messageForArmError(error));
     } finally {
@@ -51,60 +56,102 @@ export function AlertsOptInCard({ frameless = false }: { frameless?: boolean }) 
     }
   }, []);
 
-  if (phase === "checking" || phase === "hidden") return null;
+  if (!mounted || phase === "checking" || phase === "hidden") return null;
 
-  return (
-    <Wrapper frameless={frameless}>
-      <h3
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1000,
+        display: "grid",
+        placeItems: "center",
+        boxSizing: "border-box",
+        padding:
+          "max(20px, env(safe-area-inset-top, 0px)) max(18px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px))",
+        background: "rgba(0, 0, 0, 0.72)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
         style={{
-          fontSize: 16,
-          fontWeight: 700,
+          width: "min(100%, 380px)",
+          boxSizing: "border-box",
+          padding: "24px 22px 20px",
+          borderRadius: 24,
+          border: `1px solid ${SS_TOKENS.hairline2}`,
+          background: "rgba(13, 14, 11, 0.98)",
+          boxShadow: "0 28px 80px rgba(0, 0, 0, 0.62)",
           color: SS_TOKENS.fg0,
-          margin: 0,
-          lineHeight: 1.2,
         }}
       >
-        Want a ping when tracked aircraft launch?
-      </h3>
-      {message && (
-        <p
-          role="status"
+        <div
+          aria-hidden
           style={{
-            fontSize: 12,
-            color: SS_TOKENS.alert,
-            margin: "10px 0 0",
-            lineHeight: 1.45,
+            width: 42,
+            height: 4,
+            marginBottom: 18,
+            borderRadius: 999,
+            background: SS_TOKENS.alert,
+          }}
+        />
+        <h2
+          id={titleId}
+          style={{
+            margin: 0,
+            fontSize: 24,
+            fontWeight: 900,
+            lineHeight: 1.08,
           }}
         >
-          {message}
+          Stay ahead of takeoffs
+        </h2>
+        <p
+          id={descriptionId}
+          style={{
+            margin: "12px 0 0",
+            color: SS_TOKENS.fg1,
+            fontSize: 15,
+            lineHeight: 1.5,
+          }}
+        >
+          Get a notification when tracked aircraft in your selected state launch.
         </p>
-      )}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginTop: frameless ? 6 : 12,
-        }}
-      >
+        {message && (
+          <p
+            role="status"
+            style={{
+              margin: "12px 0 0",
+              color: SS_TOKENS.alert,
+              fontSize: 13,
+              lineHeight: 1.4,
+            }}
+          >
+            {message}
+          </p>
+        )}
         <button
           type="button"
           onClick={onArm}
           disabled={busy}
           style={{
-            minHeight: frameless ? 40 : undefined,
-            padding: frameless ? "0 18px" : "8px 14px",
-            borderRadius: 999,
-            border: frameless ? `2.6px solid ${SS_TOKENS.alert}` : 0,
-            background: frameless ? "#fffdf8" : SS_TOKENS.alert,
-            color: frameless ? "#000000" : "#fffdf8",
-            boxShadow: frameless
-              ? "0 8px 22px rgba(0, 0, 0, 0.24)"
-              : "none",
+            width: "100%",
+            minHeight: 52,
+            marginTop: 22,
+            padding: "0 18px",
+            borderRadius: 16,
+            border: 0,
+            background: SS_TOKENS.alert,
+            color: "#050607",
+            boxShadow: "0 12px 30px rgba(246, 196, 49, 0.18)",
             fontFamily: "var(--font-brand)",
-            fontSize: 12.5,
-            fontWeight: 700,
-            letterSpacing: ".02em",
+            fontSize: 16,
+            fontWeight: 900,
             cursor: busy ? "default" : "pointer",
             opacity: busy ? 0.72 : 1,
             touchAction: "manipulation",
@@ -117,16 +164,17 @@ export function AlertsOptInCard({ frameless = false }: { frameless?: boolean }) 
           type="button"
           onClick={onDismiss}
           style={{
-            minHeight: frameless ? 40 : undefined,
-            padding: frameless ? "0 14px" : "8px 14px",
-            borderRadius: frameless ? 0 : 999,
-            border: frameless ? 0 : `.5px solid ${SS_TOKENS.hairline2}`,
+            width: "100%",
+            minHeight: 46,
+            marginTop: 6,
+            padding: "0 14px",
+            borderRadius: 14,
+            border: 0,
             background: "transparent",
             color: SS_TOKENS.fg1,
             fontFamily: "var(--font-brand)",
-            fontSize: 12.5,
-            fontWeight: 600,
-            letterSpacing: ".02em",
+            fontSize: 14,
+            fontWeight: 700,
             cursor: "pointer",
             touchAction: "manipulation",
             WebkitTapHighlightColor: "transparent",
@@ -134,8 +182,9 @@ export function AlertsOptInCard({ frameless = false }: { frameless?: boolean }) 
         >
           Not now
         </button>
-      </div>
-    </Wrapper>
+      </section>
+    </div>,
+    document.body,
   );
 }
 
@@ -145,27 +194,4 @@ function messageForArmError(error: unknown): string {
   if (message === "unsupported") return "This browser cannot receive web notifications.";
   if (message === "not_configured") return "Notification keys are not configured yet.";
   return "Could not arm alerts. Try again from Settings.";
-}
-
-function Wrapper({
-  children,
-  frameless,
-}: {
-  children: ReactNode;
-  frameless: boolean;
-}) {
-  return (
-    <section
-      style={{
-        background: frameless ? "transparent" : SS_TOKENS.bg1,
-        border: frameless ? 0 : `.5px solid ${SS_TOKENS.hairline}`,
-        borderRadius: frameless ? 0 : 22,
-        boxShadow: frameless ? "none" : SS_TOKENS.shadowSm,
-        padding: frameless ? "0 4px" : "14px 16px",
-        marginBottom: frameless ? -5 : 0,
-      }}
-    >
-      {children}
-    </section>
-  );
 }

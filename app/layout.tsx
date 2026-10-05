@@ -5,6 +5,7 @@ import { SwRegistrar } from "@/components/SwRegistrar";
 import { TooltipProvider } from "@/components/Tooltip";
 import { ThemeController } from "@/components/ThemeController";
 import { SiteHeader } from "@/components/SiteHeader";
+import { AircraftAlertPreferenceSync } from "@/components/AircraftAlertPreferenceSync";
 import { getContrastPref } from "@/lib/user-prefs";
 import "./globals.css";
 
@@ -85,6 +86,7 @@ export default function RootLayout({
           }}
         />
         <ThemeController />
+        <AircraftAlertPreferenceSync />
         <SiteHeader />
         <TooltipProvider>
           {children}

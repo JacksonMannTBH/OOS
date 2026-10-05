@@ -10,6 +10,11 @@ export const dynamic = "force-static";
 
 const PROVIDERS = [
   {
+    name: "FAA Aircraft Registry",
+    detail: "Public aircraft registration and ownership records",
+    href: "https://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_registry/releasable_aircraft_download",
+  },
+  {
     name: "adsb.fi",
     detail: "Primary aircraft observations",
     href: "https://github.com/adsbfi/opendata/blob/main/README.md#terms",
@@ -53,6 +58,14 @@ export default function LegalPage() {
       </LegalSection>
 
       <LegalSection id="privacy" title="What the app handles">
+        <p>
+          <strong>Effective September 7, 2026.</strong> Out Of Sight is operated
+          by Jackson Mann. For privacy questions or deletion requests, email{" "}
+          <a href="mailto:jacksonmann253@gmail.com">
+            jacksonmann253@gmail.com
+          </a>
+          .
+        </p>
         <PrivacyRow title="Live location">
           If you allow location access, your coordinates, speed, and heading are
           used in your browser for map positioning, distance calculations, and
@@ -82,6 +95,17 @@ export default function LegalPage() {
           normally sent with web requests, such as IP address, browser details,
           time, and requested resource. Map requests can reveal the area being
           viewed. Those providers apply their own privacy terms.
+        </PrivacyRow>
+        <PrivacyRow title="Retention and deletion">
+          Spot reports are retained for up to seven days and then scheduled for
+          deletion. Turning off takeoff alerts deletes the associated push
+          subscription from Out Of Sight. Preferences stored on the device can
+          be removed with “Reset preferences” in Display &amp; Time. To request
+          deletion of other data that may be associated with you, email the
+          privacy contact above with enough detail to identify the relevant
+          record, such as its approximate date and time. Data may be retained
+          longer only when reasonably necessary for security, abuse prevention,
+          or legal compliance.
         </PrivacyRow>
       </LegalSection>
 
@@ -119,9 +143,11 @@ export default function LegalPage() {
       <LegalSection id="sources" title="Aircraft data & maps">
         <p>
           Aircraft observations come primarily from adsb.fi, with OpenSky
-          Network used as a fallback. Fleet details are assembled from public
-          registry, agency, county, and fleet records. Out Of Sight has no access
-          to private agency systems or official operational feeds.
+          Network used as a fallback. Aircraft registration and ownership
+          details are derived primarily from the FAA Releasable Aircraft
+          Database. Supplemental public agency records may help resolve
+          ambiguous registrations. Out Of Sight has no access to private agency
+          systems or official operational feeds.
         </p>
         <div className="ss-legal-providers">
           {PROVIDERS.map((provider) => (
@@ -136,9 +162,10 @@ export default function LegalPage() {
         </div>
         <p className="ss-legal-fine-print">
           Third-party services control their own availability, accuracy, terms,
-          and privacy practices. Out Of Sight is not affiliated with or endorsed
-          by any data provider, government agency, aircraft operator, or
-          manufacturer.
+          and privacy practices. Out Of Sight is an independent app. It is not
+          affiliated with, endorsed by, or operated by the FAA or any federal,
+          state, county, or local government agency, data provider, aircraft
+          operator, or manufacturer.
         </p>
         <p className="ss-legal-fine-print">
           OpenSky attribution: Schäfer et al., <cite>Bringing Up OpenSky: A

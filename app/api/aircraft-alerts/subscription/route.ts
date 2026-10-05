@@ -11,7 +11,9 @@ import {
   getAircraftAlertPublicKey,
   isAircraftAlertPushConfigured,
 } from "@/lib/aircraft-alerts/web-push";
+import { isFcmConfigured } from "@/lib/aircraft-alerts/fcm";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
+import { parseAircraftTrackingPreferences, type AircraftTrackingPreferences } from "@/lib/aircraft-tracking";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +22,7 @@ type SubscriptionBody = {
   userId?: unknown;
   subscription?: unknown;
   stateCode?: unknown;
+  excludedAircraftByState?: unknown;
 };
 
 export async function GET(req: Request) {
@@ -31,11 +34,12 @@ export async function GET(req: Request) {
     return NextResponse.json(baseStatus({ enabled: false, message: "missing_user" }));
   }
   const subscriber = await getAircraftAlertSubscriber(userId);
+  const requestedTransport = new URL(req.url).searchParams.get("transport");
   return NextResponse.json(
     baseStatus({
       enabled: Boolean(subscriber?.enabled),
       stateCode: subscriber?.stateCode,
-    }),
+    }, requestedTransport === "fcm" ? "fcm" : subscriber?.subscription.transport),
   );
 }
 
@@ -53,7 +57,10 @@ export async function POST(req: Request) {
     userAgent: req.headers.get("user-agent"),
   });
   return NextResponse.json(
-    baseStatus({ enabled: true, stateCode: subscriber.stateCode }),
+    baseStatus(
+      { enabled: true, stateCode: subscriber.stateCode },
+      subscriber.subscription.transport === "fcm" ? "fcm" : "web_push",
+    ),
   );
 }
 
@@ -66,8 +73,13 @@ export async function PATCH(req: Request) {
   if (!isValidUserId(userId) || !isStateCode(body?.stateCode)) {
     return NextResponse.json({ error: "invalid_request" }, { status: 400 });
   }
+  const preferences = body.excludedAircraftByState === undefined ? undefined : parseAircraftTrackingPreferences(body.excludedAircraftByState);
+  if (preferences === null) {
+    return NextResponse.json({ error: "invalid_aircraft_preferences" }, { status: 400 });
+  }
   const subscriber = await updateAircraftAlertSubscriberPreferences(userId, {
     stateCode: body.stateCode.toUpperCase() as StateCode,
+    ...(preferences !== undefined ? { excludedAircraftByState: preferences } : {}),
   });
   if (!subscriber) {
     return NextResponse.json({ error: "not_subscribed" }, { status: 404 });
@@ -98,10 +110,12 @@ function baseStatus(update: {
   enabled: boolean;
   stateCode?: StateCode;
   message?: string;
-}) {
+}, transport?: "fcm" | "web_push") {
   return {
     supported: true,
-    configured: isSupabaseConfigured() && isAircraftAlertPushConfigured(),
+    configured:
+      isSupabaseConfigured() &&
+      (transport === "fcm" ? isFcmConfigured() : isAircraftAlertPushConfigured()),
     publicKey: getAircraftAlertPublicKey(),
     stateId: update.stateCode ? stateIdForCode(update.stateCode) : undefined,
     ...update,
@@ -115,6 +129,7 @@ function parseSubscriptionBody(body: SubscriptionBody | null):
         userId: string;
         subscription: AircraftAlertPushSubscription;
         stateCode: StateCode;
+        excludedAircraftByState?: AircraftTrackingPreferences;
       };
     }
   | { ok: false; error: string } {
@@ -126,12 +141,15 @@ function parseSubscriptionBody(body: SubscriptionBody | null):
   if (!isStateCode(body?.stateCode)) {
     return { ok: false, error: "invalid_state" };
   }
+  const preferences = body?.excludedAircraftByState === undefined ? undefined : parseAircraftTrackingPreferences(body.excludedAircraftByState);
+  if (preferences === null) return { ok: false, error: "invalid_aircraft_preferences" };
   return {
     ok: true,
     value: {
       userId,
       subscription: body.subscription,
       stateCode: body.stateCode.toUpperCase() as StateCode,
+      excludedAircraftByState: preferences,
     },
   };
 }
@@ -139,10 +157,23 @@ function parseSubscriptionBody(body: SubscriptionBody | null):
 function isPushSubscription(value: unknown): value is AircraftAlertPushSubscription {
   if (!value || typeof value !== "object") return false;
   const subscription = value as Partial<AircraftAlertPushSubscription>;
+  if (
+    "transport" in subscription &&
+    subscription.transport === "fcm" &&
+    "token" in subscription
+  ) {
+    return Boolean(
+      typeof subscription.token === "string" &&
+        subscription.token.length >= 20 &&
+        subscription.token.length <= 4_096,
+    );
+  }
   return Boolean(
+    "endpoint" in subscription &&
     typeof subscription.endpoint === "string" &&
       subscription.endpoint.length > 0 &&
       subscription.endpoint.length <= 2_048 &&
+      "keys" in subscription &&
       subscription.keys &&
       typeof subscription.keys.p256dh === "string" &&
       subscription.keys.p256dh.length > 0 &&

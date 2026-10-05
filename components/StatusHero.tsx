@@ -5,17 +5,23 @@ type Props = {
   status: StatusState;
   showPill?: boolean;
   frameless?: boolean;
+  loading?: boolean;
+  unavailable?: boolean;
 };
 
 export function StatusHero({
   status,
   showPill = true,
   frameless = false,
+  loading = false,
+  unavailable = false,
 }: Props) {
   const isAlert = status.kind === "alert";
   return (
     <section
       className="ss-hero-bg"
+      aria-busy={loading}
+      aria-live="polite"
       style={{
         position: "relative",
         overflow: "hidden",
@@ -46,7 +52,7 @@ export function StatusHero({
           textAlign: "center",
         }}
       >
-        {showPill && <StatusPill label={status.pill} alert={isAlert} />}
+        {showPill && <StatusPill label={loading ? "LOADING" : unavailable ? "UNAVAILABLE" : status.pill} alert={isAlert} />}
 
         <h1
           style={{
@@ -62,7 +68,7 @@ export function StatusHero({
             textTransform: "uppercase",
           }}
         >
-          {status.headline}
+          {loading ? "Loading…" : unavailable ? "Unavailable" : status.headline}
         </h1>
 
         {!frameless && (
@@ -78,7 +84,7 @@ export function StatusHero({
           />
         )}
 
-        {status.footnote && (
+        {(loading || unavailable || status.footnote) && (
           <p
             style={{
               maxWidth: 330,
@@ -90,7 +96,7 @@ export function StatusHero({
               lineHeight: 1.45,
             }}
           >
-            {status.footnote}
+            {loading ? "Checking for active aircraft." : unavailable ? "Aircraft data is temporarily unavailable." : status.footnote}
           </p>
         )}
 

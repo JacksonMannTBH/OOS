@@ -30,9 +30,9 @@ export function RadarLayerControls({
   onReturnToLocation,
   locationDisabled = false,
 }: Props) {
-  const bottom = 14 + bottomBoost;
+  const bottom = bottomBoost;
   const offsetCss = (extra: number) =>
-    `calc(${bottom + extra}px + var(--ss-install-prompt-h, 0px))`;
+    `calc(var(--ss-map-control-bottom, 14px) + ${bottom + extra}px + var(--ss-install-prompt-h, 0px))`;
 
   return (
     <div

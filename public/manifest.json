@@ -1,7 +1,7 @@
 {
   "name": "Out Of Sight",
   "short_name": "Out Of Sight",
-  "description": "Live aircraft tracker for Washington state riders.",
+  "description": "Live law-enforcement and public-safety aircraft tracker for riders across the United States.",
   "start_url": "/home",
   "display": "standalone",
   "orientation": "portrait",

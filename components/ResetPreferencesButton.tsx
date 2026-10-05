@@ -8,6 +8,7 @@ import { SS_TOKENS } from "@/lib/tokens";
 const ALERT_DEVICE_ID_KEY = "oos_aircraft_alert_device_id";
 
 const LOCAL_STORAGE_KEYS = [
+  "oos_aircraft_tracking",
   "ss_wake_lock",
   "ss_ride_status_thresholds",
   "ss_flight_paths_visible",

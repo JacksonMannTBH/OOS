@@ -10,6 +10,9 @@ import { fmtAgoTs } from "@/lib/time";
 import { filterOpsAircraftByState } from "@/lib/aircraft-directory";
 import { useAircraft } from "@/lib/hooks/useAircraft";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
+import { useAircraftTracking } from "@/lib/hooks/useAircraftTracking";
+import { filterTrackedAircraft } from "@/lib/aircraft-tracking";
+import { getAppState } from "@/lib/app-states";
 import { computeStatus } from "@/lib/status";
 import { Card } from "./Card";
 import { PlaneIcon } from "./PlaneIcon";
@@ -50,10 +53,11 @@ export function Glanceable({
 }: Props) {
   const snap = useAircraft(initial, mockOn);
   const stateId = useSelectedStateId();
+  const preferences = useAircraftTracking();
   const [activity, setActivity] = useState<ActivityEntry[]>(initialActivity);
   const stateActivity = useMemo(
-    () => filterOpsAircraftByState(activity, stateId),
-    [activity, stateId],
+    () => filterTrackedAircraft(filterOpsAircraftByState(activity, stateId), preferences, getAppState(stateId).code),
+    [activity, stateId, preferences],
   );
 
   // Poll /api/activity every 30s so the strip stays current without

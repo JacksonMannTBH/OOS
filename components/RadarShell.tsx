@@ -253,7 +253,7 @@ export function RadarShell({
           position: "absolute",
           right: "max(14px, env(safe-area-inset-right, 0px))",
           bottom:
-            "calc(18px + env(safe-area-inset-bottom, 0px) + var(--ss-install-prompt-h, 0px))",
+            "calc(var(--ss-map-control-bottom, 18px) + var(--ss-install-prompt-h, 0px))",
           zIndex: 13,
           width: 72,
           height: 72,

@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import {
   APP_STATES,
-  STATE_CHANGE_EVENT,
-  getSelectedStateCode,
+  stateCodeForId,
   setSelectedStateCode,
   type StateCode,
 } from "@/lib/app-states";
+import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { SS_TOKENS } from "@/lib/tokens";
 
 export function StateSelector({
@@ -17,18 +17,7 @@ export function StateSelector({
   className?: string;
   style?: CSSProperties;
 }) {
-  const [current, setCurrent] = useState<StateCode>(
-    () => getSelectedStateCode(),
-  );
-
-  useEffect(() => {
-    const onChange = (event: Event) => {
-      const detail = (event as CustomEvent<{ code?: StateCode }>).detail;
-      setCurrent(detail?.code ?? getSelectedStateCode());
-    };
-    window.addEventListener(STATE_CHANGE_EVENT, onChange);
-    return () => window.removeEventListener(STATE_CHANGE_EVENT, onChange);
-  }, []);
+  const current = stateCodeForId(useSelectedStateId());
 
   return (
     <select

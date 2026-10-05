@@ -4,6 +4,7 @@ import {
   type StateCode,
 } from "@/lib/app-states";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { parseAircraftTrackingPreferences, type AircraftTrackingPreferences } from "@/lib/aircraft-tracking";
 import type {
   AircraftAlertPushSubscription,
   AircraftAlertSubscriber,
@@ -13,12 +14,14 @@ type UpsertInput = {
   userId: string;
   subscription: AircraftAlertPushSubscription;
   stateCode: StateCode;
+  excludedAircraftByState?: AircraftTrackingPreferences;
   userAgent?: string | null;
 };
 
 type PreferenceUpdate = Partial<{
   enabled: boolean;
   stateCode: StateCode;
+  excludedAircraftByState: AircraftTrackingPreferences;
 }>;
 
 export async function upsertAircraftAlertSubscriber(
@@ -26,21 +29,34 @@ export async function upsertAircraftAlertSubscriber(
 ): Promise<AircraftAlertSubscriber> {
   const db = getSupabaseAdmin();
   const now = new Date().toISOString();
+  const existing = input.excludedAircraftByState === undefined
+    ? await getAircraftAlertSubscriber(input.userId)
+    : null;
+  const excludedAircraftByState = input.excludedAircraftByState ?? existing?.excludedAircraftByState ?? {};
+  const endpointValue = subscriptionEndpoint(input.subscription);
+  const isFcm = input.subscription.transport === "fcm";
+  let p256dh: string | null = null;
+  let auth: string | null = null;
+  if (input.subscription.transport !== "fcm") {
+    p256dh = input.subscription.keys.p256dh;
+    auth = input.subscription.keys.auth;
+  }
 
   await db
     .from("push_endpoints")
     .delete()
     .eq("device_id", input.userId)
-    .neq("endpoint", input.subscription.endpoint);
+    .neq("endpoint", endpointValue);
 
   const { data: endpoint, error: endpointError } = await db
     .from("push_endpoints")
     .upsert(
       {
         device_id: input.userId,
-        endpoint: input.subscription.endpoint,
-        p256dh: input.subscription.keys.p256dh,
-        auth: input.subscription.keys.auth,
+        endpoint: endpointValue,
+        transport: isFcm ? "fcm" : "web_push",
+        p256dh,
+        auth,
         user_agent: input.userAgent ?? null,
         enabled: true,
         disabled_at: null,
@@ -60,6 +76,7 @@ export async function upsertAircraftAlertSubscriber(
       {
         push_endpoint_id: endpoint.id,
         state_code: input.stateCode,
+        excluded_aircraft_by_state: excludedAircraftByState,
         enabled: true,
         updated_at: now,
       },
@@ -74,6 +91,7 @@ export async function upsertAircraftAlertSubscriber(
     enabled: true,
     subscription: input.subscription,
     stateCode: input.stateCode,
+    excludedAircraftByState,
     createdAt: String(endpoint.created_at ?? now),
     updatedAt: now,
     disabledAt: null,
@@ -97,9 +115,10 @@ export async function updateAircraftAlertSubscriberPreferences(
   const now = new Date().toISOString();
   const enabled = update.enabled ?? existing.enabled;
   const stateCode = update.stateCode ?? existing.stateCode;
+  const excludedAircraftByState = update.excludedAircraftByState ?? existing.excludedAircraftByState ?? {};
   const { error: subscriptionError } = await db
     .from("notification_subscriptions")
-    .update({ enabled, state_code: stateCode, updated_at: now })
+    .update({ enabled, state_code: stateCode, excluded_aircraft_by_state: excludedAircraftByState, updated_at: now })
     .eq("push_endpoint_id", endpoint.id);
   if (subscriptionError) {
     throw new Error(`Notification preference write failed: ${subscriptionError.message}`);
@@ -116,6 +135,7 @@ export async function updateAircraftAlertSubscriberPreferences(
     ...existing,
     enabled,
     stateCode,
+    excludedAircraftByState,
     updatedAt: now,
     disabledAt: enabled ? null : now,
   };
@@ -127,11 +147,12 @@ export async function getAircraftAlertSubscriber(
   const { data, error } = await getSupabaseAdmin()
     .from("push_endpoints")
     .select(
-      "device_id,endpoint,p256dh,auth,enabled,created_at,updated_at,disabled_at,notification_subscriptions(state_code,enabled)",
+      "device_id,endpoint,transport,p256dh,auth,enabled,created_at,updated_at,disabled_at,notification_subscriptions(state_code,enabled,excluded_aircraft_by_state)",
     )
     .eq("device_id", userId)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`Notification subscription read failed: ${error.message}`);
+  if (!data) return null;
   const nested = Array.isArray(data.notification_subscriptions)
     ? data.notification_subscriptions[0]
     : data.notification_subscriptions;
@@ -142,14 +163,9 @@ export async function getAircraftAlertSubscriber(
   return {
     userId: String(data.device_id),
     enabled: Boolean(data.enabled && nested?.enabled),
-    subscription: {
-      endpoint: String(data.endpoint),
-      keys: {
-        p256dh: String(data.p256dh),
-        auth: String(data.auth),
-      },
-    },
+    subscription: storedSubscription(data),
     stateCode,
+    excludedAircraftByState: parseAircraftTrackingPreferences(nested?.excluded_aircraft_by_state) ?? {},
     createdAt: String(data.created_at),
     updatedAt: String(data.updated_at),
     disabledAt: data.disabled_at ? String(data.disabled_at) : null,
@@ -172,7 +188,7 @@ export async function listEnabledAircraftAlertSubscribersForState(
   const { data, error } = await getSupabaseAdmin()
     .from("notification_subscriptions")
     .select(
-      "state_code,enabled,push_endpoints(device_id,endpoint,p256dh,auth,enabled,created_at,updated_at,disabled_at)",
+      "state_code,enabled,excluded_aircraft_by_state,push_endpoints(device_id,endpoint,transport,p256dh,auth,enabled,created_at,updated_at,disabled_at)",
     )
     .eq("state_code", stateCode)
     .eq("enabled", true);
@@ -186,13 +202,8 @@ export async function listEnabledAircraftAlertSubscribersForState(
       userId: String(endpoint.device_id),
       enabled: true,
       stateCode,
-      subscription: {
-        endpoint: String(endpoint.endpoint),
-        keys: {
-          p256dh: String(endpoint.p256dh),
-          auth: String(endpoint.auth),
-        },
-      },
+      excludedAircraftByState: parseAircraftTrackingPreferences(row.excluded_aircraft_by_state) ?? {},
+      subscription: storedSubscription(endpoint),
       createdAt: String(endpoint.created_at),
       updatedAt: String(endpoint.updated_at),
       disabledAt: endpoint.disabled_at ? String(endpoint.disabled_at) : null,
@@ -220,4 +231,24 @@ export function subscriberStateId(
   subscriber: AircraftAlertSubscriber,
 ) {
   return stateIdForCode(subscriber.stateCode);
+}
+
+function subscriptionEndpoint(subscription: AircraftAlertPushSubscription): string {
+  return subscription.transport === "fcm" ? subscription.token : subscription.endpoint;
+}
+
+function storedSubscription(row: {
+  endpoint: unknown;
+  transport?: unknown;
+  p256dh?: unknown;
+  auth?: unknown;
+}): AircraftAlertPushSubscription {
+  if (row.transport === "fcm") {
+    return { transport: "fcm", token: String(row.endpoint) };
+  }
+  return {
+    transport: "web_push",
+    endpoint: String(row.endpoint),
+    keys: { p256dh: String(row.p256dh), auth: String(row.auth) },
+  };
 }

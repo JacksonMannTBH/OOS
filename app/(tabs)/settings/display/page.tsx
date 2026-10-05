@@ -17,7 +17,6 @@ export default function DisplaySettingsPage() {
 
   return (
     <SettingsPageShell
-      eyebrow="Settings · Ride mode & display"
       title="Ride mode & display"
       description="Control Ride mode behavior, distance bands, and time preferences."
     >

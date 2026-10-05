@@ -1,6 +1,8 @@
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { aircraftVehicleType } from "@/lib/aircraft-type";
 import { sendAircraftAlertPush } from "./web-push";
+import { sendAircraftAlertFcm } from "./fcm";
+import { isTakeoffDeliverySelected } from "./eligibility";
 
 const MAX_DELIVERIES_PER_RUN = 100;
 const NOTIFICATION_TAG_WINDOW_MS = 30 * 60 * 1_000;
@@ -10,6 +12,7 @@ export type NotificationDispatchSummary = {
   sent: number;
   failed: number;
   expired: number;
+  skipped: number;
 };
 
 export async function dispatchPendingTakeoffNotifications(): Promise<NotificationDispatchSummary> {
@@ -18,7 +21,7 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
   const { data: deliveries, error } = await db
     .from("notification_deliveries")
     .select(
-      "id,attempt_count,notification_events(payload,occurred_at),push_endpoints(id,endpoint,p256dh,auth)",
+      "id,attempt_count,notification_events(state_code,payload,occurred_at),push_endpoints(id,endpoint,transport,p256dh,auth)",
     )
     .in("status", ["pending", "failed"])
     .lte("next_attempt_at", now)
@@ -31,6 +34,7 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
     sent: 0,
     failed: 0,
     expired: 0,
+    skipped: 0,
   };
 
   for (const delivery of deliveries ?? []) {
@@ -63,24 +67,55 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
     }
     const payload = (event.payload ?? {}) as Record<string, unknown>;
     const tail = String(payload.tail ?? "Aircraft");
+    // Recheck immediately before sending so queued/retried alerts respect edits.
+    const { data: preferences, error: preferenceError } = await db
+      .from("notification_subscriptions")
+      .select("enabled,state_code,excluded_aircraft_by_state,push_endpoints(enabled)")
+      .eq("push_endpoint_id", endpoint.id)
+      .maybeSingle();
+    if (preferenceError) {
+      await markFailed(String(delivery.id), claimToken, "preference_read_failed", 2);
+      summary.failed += 1;
+      continue;
+    }
+    const currentEndpoint = Array.isArray(preferences?.push_endpoints)
+      ? preferences.push_endpoints[0]
+      : preferences?.push_endpoints;
+    if (!preferences || !currentEndpoint?.enabled || !isTakeoffDeliverySelected({
+      enabled: Boolean(preferences.enabled),
+      stateCode: String(preferences.state_code),
+      excludedAircraftByState: preferences.excluded_aircraft_by_state,
+    }, event.state_code, tail)) {
+      await db.from("notification_deliveries").update({
+        status: "expired",
+        failure_reason: "not_selected_for_tracking",
+        updated_at: new Date().toISOString(),
+      }).eq("id", delivery.id).eq("claim_token", claimToken);
+      summary.skipped += 1;
+      continue;
+    }
     const notificationCopy = takeoffNotificationCopy(tail, payload.model);
     const detailUrl = `/map?tail=${encodeURIComponent(tail)}`;
-    const result = await sendAircraftAlertPush(
-      {
-        endpoint: String(endpoint.endpoint),
-        keys: {
-          p256dh: String(endpoint.p256dh),
-          auth: String(endpoint.auth),
-        },
-      },
-      {
+    const pushPayload = {
         title: notificationCopy.title,
         body: notificationCopy.body,
         url: detailUrl,
         tag: takeoffNotificationTag(tail, event.occurred_at),
         aircraftTail: tail,
-      },
-    );
+      };
+    const result = endpoint.transport === "fcm"
+      ? await sendAircraftAlertFcm(String(endpoint.endpoint), pushPayload)
+      : await sendAircraftAlertPush(
+          {
+            transport: "web_push",
+            endpoint: String(endpoint.endpoint),
+            keys: {
+              p256dh: String(endpoint.p256dh),
+              auth: String(endpoint.auth),
+            },
+          },
+          pushPayload,
+        );
 
     if (result.ok) {
       await db

@@ -15,10 +15,15 @@ import {
   DEFAULT_RIDE_STATUS_THRESHOLDS,
   type RideStatusThresholds,
 } from "@/lib/ride-mode";
+import { glyphRoleFor } from "@/lib/brand/aircraft-glyphs";
 import {
-  glyphRoleFor,
-  type GlyphRole,
-} from "@/lib/brand/aircraft-glyphs";
+  HELICOPTER_ICON_SIZE,
+  HELICOPTER_ICON_FRAMES,
+  helicopterFrameSrc,
+  helicopterIconKeyFor,
+  helicopterFrameAt,
+  isHelicopterRole,
+} from "@/lib/brand/helicopter-sprite";
 import {
   AIRCRAFT_PATH_COLORS,
   aircraftColorIndex,
@@ -69,22 +74,9 @@ const PLANE_ASSET_VERSION = "cessna-v1";
 const PLANE_ICON_KEY = "aircraft-plane-cessna";
 const AIRCRAFT_LABEL_BG_KEY = "aircraft-label-pill";
 const AIRCRAFT_LABEL_COLOR_KEY_PREFIX = "aircraft-label-pill-color";
-const HELICOPTER_ICON_SIZE = 56;
-const HELICOPTER_ASSET_VERSION = "no-tail-rotor-v1";
-const HELICOPTER_ICON_FRAMES = 12;
-const HELICOPTER_ANIMATION_MS = 480;
-const HELICOPTER_ROLES = new Set<GlyphRole>(["patrol", "sar"]);
-
-function helicopterIconKeyFor(frame: number): string {
-  return `aircraft-helicopter-${frame}`;
-}
 
 function aircraftLabelColorKey(index: number): string {
   return `${AIRCRAFT_LABEL_COLOR_KEY_PREFIX}-${index}`;
-}
-
-function isHelicopterRole(role: GlyphRole): boolean {
-  return HELICOPTER_ROLES.has(role);
 }
 
 function setHelicopterFrame(map: MaplibreMap, activeFrame: number) {
@@ -584,7 +576,7 @@ export default function RadarMap({
         // 0 degrees to north without an artwork-specific heading offset.
         ...helicopterEntries.map(({ frame }) =>
           loadImageBitmap(
-            `/icons/helicopter/custom-no-tail-rotor/frame-${frame}.png?v=${HELICOPTER_ASSET_VERSION}`,
+            helicopterFrameSrc(frame),
             HELICOPTER_ICON_SIZE,
           ),
         ),
@@ -1109,10 +1101,7 @@ export default function RadarMap({
       const sized = 0.86 + 0.14 * (Math.sin(phase * Math.PI * 2) + 1);
       const helicopterFrame = reducedMotionRef.current
         ? 0
-        : Math.floor(
-            (elapsedMs % HELICOPTER_ANIMATION_MS) /
-              (HELICOPTER_ANIMATION_MS / HELICOPTER_ICON_FRAMES),
-          );
+        : helicopterFrameAt(elapsedMs);
       try {
         map.setLayoutProperty("rider", "icon-size", sized);
         if (helicopterFrame !== lastHelicopterFrameRef.current) {

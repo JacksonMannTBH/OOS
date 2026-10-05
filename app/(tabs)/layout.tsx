@@ -3,20 +3,27 @@ import { ScreenAwake } from "@/components/ScreenAwake";
 import { AppBadge } from "@/components/AppBadge";
 import { SettingsHomeButton } from "@/components/SettingsHomeButton";
 import { getSpeedWarningEnabled } from "@/lib/flags";
+import { Suspense } from "react";
 
-export default async function TabsLayout({
+async function ConfiguredSpeedWarning() {
+  const enabled = await getSpeedWarningEnabled();
+  return <SpeedWarning enabled={enabled} />;
+}
+
+export default function TabsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const speedWarningEnabled = await getSpeedWarningEnabled();
   return (
     <>
       <div id="main-content">{children}</div>
       <SettingsHomeButton />
       <ScreenAwake />
       <AppBadge />
-      <SpeedWarning enabled={speedWarningEnabled} />
+      <Suspense fallback={null}>
+        <ConfiguredSpeedWarning />
+      </Suspense>
     </>
   );
 }

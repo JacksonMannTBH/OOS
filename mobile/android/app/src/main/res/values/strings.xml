@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Out Of Sight</string>
+    <string name="title_activity_main">Out Of Sight</string>
+    <string name="package_name">live.outofsight.app</string>
+    <string name="custom_url_scheme">live.outofsight.app</string>
+</resources>

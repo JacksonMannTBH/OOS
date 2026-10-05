@@ -12,9 +12,32 @@ dist
 # misc
 .DS_Store
 *.pem
+*.jks
+*.keystore
+mobile/android/app/google-services.json
+mobile/node_modules/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/local.properties
+supabase/.temp/
+.firebase/
+firebase/functions/lib/
+firebase/functions/node_modules/
+firebase/functions/.secret.local
 .cache/
 .idea
 .vscode
+
+# Android build products and local state
+android/.gradle/
+android/build/
+android/app/build/
+android/*.apk
+android/*.aab
+android/*.idsig
+android/hs_err_pid*.log
+android/local.properties
 
 # logs
 npm-debug.log*
@@ -50,3 +73,8 @@ tests/visual/out/
 AUDIT-2026-05-07.md
 .env.development
 .env.production
+
+# Local agent previews, diagnostics, and temporary working files
+.codex-local/
+tmp/
+firebase-debug.log

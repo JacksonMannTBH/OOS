@@ -38,6 +38,13 @@
   --ss-radius-xl: 24px;
   --ss-tabbar-bottom: max(8px, calc(env(safe-area-inset-bottom, 0px) - 18px));
   --ss-tabbar-bottom-map: var(--ss-tabbar-bottom);
+  --ss-map-control-bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+}
+
+@media (max-width: 768px) {
+  :root {
+    --ss-map-control-bottom: max(42px, calc(env(safe-area-inset-bottom, 0px) + 14px));
+  }
 }
 
 @media (display-mode: standalone) {
@@ -558,7 +565,7 @@ body[data-theme="dark"] textarea {
   box-sizing: border-box;
   padding: 12px 14px;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 20px;
+  grid-template-columns: 40px minmax(0, 1fr);
   align-items: center;
   gap: 13px;
   color: inherit;
@@ -585,13 +592,92 @@ body[data-theme="dark"] textarea {
   background: rgba(246, 196, 49, 0.035);
 }
 
+.ss-settings-aircraft-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ss-settings-aircraft-list li + li {
+  border-top: 1px solid var(--ss-hairline);
+}
+
+.ss-settings-aircraft-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+}
+
+.ss-settings-aircraft-row input {
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  flex-shrink: 0;
+  accent-color: var(--ss-alert);
+  cursor: pointer;
+}
+
+.ss-settings-aircraft-copy {
+  display: grid;
+  flex: 1;
+  gap: 5px;
+  color: var(--ss-fg0);
+  overflow-wrap: anywhere;
+  min-width: 0;
+  text-decoration: none;
+}
+
+/* Extend the information link across the row, beneath the checkbox itself. */
+.ss-settings-aircraft-copy::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.ss-settings-aircraft-copy:focus-visible::after {
+  outline: 2px solid var(--ss-alert);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+.ss-aircraft-reset {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--ss-hairline);
+  border-radius: 12px;
+  background: var(--ss-surface);
+  color: var(--ss-alert);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ss-aircraft-reset:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.ss-settings-aircraft-list strong {
+  color: var(--ss-alert);
+}
+
+.ss-settings-aircraft-list small {
+  color: var(--ss-fg2);
+}
+
+.ss-settings-aircraft-row:hover {
+  background: rgba(246, 196, 49, 0.035);
+}
+
 .ss-settings-row__icon {
   width: 40px;
   height: 40px;
   display: grid;
   place-items: center;
-  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
-  border-radius: 12px;
 }
 
 .ss-settings-row__icon svg {
@@ -621,14 +707,6 @@ body[data-theme="dark"] textarea {
   font-size: 12px;
   font-weight: 650;
   line-height: 1.35;
-}
-
-.ss-settings-row__chevron {
-  color: var(--ss-fg3);
-  font-size: 25px;
-  font-weight: 400;
-  line-height: 1;
-  text-align: right;
 }
 
 .ss-settings-back {

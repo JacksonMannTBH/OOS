@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { filterTrackedAircraft } from "../aircraft-tracking";
+import { useAircraftTracking } from "./useAircraftTracking";
+import { useSelectedStateId } from "./useSelectedStateId";
 import {
-  STATE_CHANGE_EVENT,
-  getSelectedStateCode,
+  stateCodeForId,
   type StateCode,
 } from "@/lib/app-states";
 import type { Snapshot } from "@/lib/types";
@@ -172,19 +174,9 @@ function snapshotMatchesState(
 }
 
 export function useAircraft(initial: Snapshot, mockOn = false): Snapshot {
+  const preferences = useAircraftTracking();
   const [snapshot, setSnapshot] = useState(initial);
-  const [stateCode, setStateCode] = useState<StateCode>(
-    () => getSelectedStateCode(),
-  );
-
-  useEffect(() => {
-    const onStateChange = (event: Event) => {
-      const detail = (event as CustomEvent<{ code?: StateCode }>).detail;
-      setStateCode(detail?.code ?? getSelectedStateCode());
-    };
-    window.addEventListener(STATE_CHANGE_EVENT, onStateChange);
-    return () => window.removeEventListener(STATE_CHANGE_EVENT, onStateChange);
-  }, []);
+  const stateCode = stateCodeForId(useSelectedStateId());
 
   useEffect(() => {
     const requestPath = aircraftUrl(mockOn, stateCode);
@@ -192,5 +184,8 @@ export function useAircraft(initial: Snapshot, mockOn = false): Snapshot {
     return subscribeToAircraft(requestPath, setSnapshot, seed);
   }, [initial, mockOn, stateCode]);
 
-  return snapshot;
+  return useMemo(() => snapshotMatchesState(snapshot, stateCode) ? {
+    ...snapshot,
+    aircraft: filterTrackedAircraft(snapshot.aircraft, preferences, stateCode),
+  } : EMPTY_AIRCRAFT_SNAPSHOT, [snapshot, preferences, stateCode]);
 }

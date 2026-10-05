@@ -4,6 +4,7 @@ import {
   getAircraftAlertSubscriber,
 } from "@/lib/aircraft-alerts/store";
 import { sendAircraftAlertPush } from "@/lib/aircraft-alerts/web-push";
+import { sendAircraftAlertFcm } from "@/lib/aircraft-alerts/fcm";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -23,12 +24,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "not_subscribed" }, { status: 404 });
   }
 
-  const result = await sendAircraftAlertPush(subscriber.subscription, {
+  const payload = {
     title: "Aircraft alerts ready",
     body: `Notification test. ${subscriber.stateCode} takeoff alerts are enabled.`,
     url: "/map",
     tag: "aircraft-alert-test",
-  });
+  };
+  const result = subscriber.subscription.transport === "fcm"
+    ? await sendAircraftAlertFcm(subscriber.subscription.token, payload)
+    : await sendAircraftAlertPush(subscriber.subscription, payload);
 
   if (!result.ok) {
     if (result.reason === "expired") {

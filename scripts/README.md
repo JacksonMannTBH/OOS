@@ -3,6 +3,8 @@
 - `check-env.mjs` validates local and Netlify environment configuration.
 - `clean-build-state.mjs` removes stale Next.js build state before a build.
 - `gen-icons.mjs` regenerates the current Out Of Sight icon bundle.
+- `gen-android-icons.ps1` regenerates Play Store, TWA, and Capacitor launcher
+  icons with Android-safe artwork padding.
 - `generate-national-aircraft.py` creates the national catalog and source audit
   from a downloaded FAA registry archive and reviewed overrides.
 - `generate-national-aircraft-migration.ts` fills a CLI-created migration with

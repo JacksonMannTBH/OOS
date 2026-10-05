@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { LogoMark } from "./brand/Logo";
 import { filterOpsAircraftByState } from "@/lib/aircraft-directory";
-import { useAircraft } from "@/lib/hooks/useAircraft";
+import { EMPTY_AIRCRAFT_SNAPSHOT, useAircraft } from "@/lib/hooks/useAircraft";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
 import { useRideStatusThresholds } from "@/lib/hooks/useRideStatusThresholds";
@@ -18,20 +18,21 @@ import { ProximityFlash } from "./ProximityFlash";
 import { SettingsButton } from "./SettingsButton";
 import { TakeOffButton } from "./TakeOffButton";
 import { StatusHero } from "./StatusHero";
+import { HomeBackground } from "./HomeBackground";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
 const HOME_TOP_OFFSET_PX = 50;
-const HOME_BACKGROUND_IMAGE = "/images/home-map-background.png";
 type WatcherEntry = { plane: Aircraft; distanceNm: number | null };
 
 type Props = {
-  initial: Snapshot;
+  initial?: Snapshot;
   mockOn?: boolean;
   mockParam?: string;
 };
 
-export function DashShell({ initial, mockOn = false, mockParam }: Props) {
+export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, mockParam }: Props) {
   const snap = useAircraft(initial, mockOn);
+  const loading = snap.fetched_at <= 0;
   const stateId = useSelectedStateId();
   const { pos } = useRiderPos();
   const rideThresholds = useRideStatusThresholds();
@@ -101,20 +102,7 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
 
   return (
     <>
-      <div
-        aria-hidden
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
-          backgroundColor: "#050607",
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.20), rgba(0, 0, 0, 0.45)), url(${HOME_BACKGROUND_IMAGE})`,
-          backgroundPosition: "center top",
-          backgroundRepeat: "no-repeat",
-          backgroundSize: "cover",
-        }}
-      />
+      <HomeBackground />
       <main
         style={{
           height: "100dvh",
@@ -180,20 +168,11 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
         >
           <StatusHero
             status={status}
+            loading={loading}
+            unavailable={snap.source_ok === false && airborne.length === 0}
             showPill={false}
             frameless
           />
-          <div
-            style={{
-              position: "absolute",
-              right: 0,
-              bottom: 0,
-              left: 0,
-              zIndex: 2,
-            }}
-          >
-            <AlertsOptInCard frameless />
-          </div>
         </div>
 
         <div
@@ -248,6 +227,7 @@ export function DashShell({ initial, mockOn = false, mockParam }: Props) {
           }
           color={nearestBand?.color}
         />
+        <AlertsOptInCard />
       </main>
     </>
   );

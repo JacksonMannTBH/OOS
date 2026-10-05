@@ -1,6 +1,6 @@
 import webpush, { type PushSubscription } from "web-push";
 import { readServerEnv } from "@/lib/supabase/server";
-import type { AircraftAlertPushSubscription } from "./types";
+import type { AircraftAlertWebPushSubscription } from "./types";
 
 let configured = false;
 
@@ -25,7 +25,7 @@ export function getAircraftAlertPublicKey(): string {
 }
 
 export async function sendAircraftAlertPush(
-  subscription: AircraftAlertPushSubscription,
+  subscription: AircraftAlertWebPushSubscription,
   payload: AircraftAlertPushPayload,
 ): Promise<AircraftAlertPushResult> {
   if (!configureWebPush()) return { ok: false, reason: "not_configured" };

@@ -11,7 +11,7 @@ import {
   enableAircraftAlerts,
   readAircraftAlertStatus,
   sendAircraftAlertTest,
-  syncAircraftAlertPreferences,
+  AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT,
 } from "@/lib/aircraft-alerts/client";
 import type { AircraftAlertStatus } from "@/lib/aircraft-alerts/types";
 import { SS_TOKENS } from "@/lib/tokens";
@@ -47,19 +47,23 @@ export function AlertsSettings() {
       const next = getSelectedStateCode();
       setStateCode(next);
       setMessage(null);
-      void syncAircraftAlertPreferences({ stateCode: next })
-        .then((status) => {
-          if (status) setDeliveryState(deliveryStateFromStatus(status));
-        })
-        .catch(() =>
-          setMessage(
-            "State saved on this device, but the notification subscription could not be updated.",
-          ),
-        );
     };
 
     window.addEventListener(STATE_CHANGE_EVENT, onStateChange);
-    return () => window.removeEventListener(STATE_CHANGE_EVENT, onStateChange);
+    const onPreferenceSync = (event: Event) => {
+      const detail = (event as CustomEvent<{ status?: AircraftAlertStatus; error?: boolean }>).detail;
+      if (detail.error) {
+        setMessage("Selections are saved on this device, but takeoff notifications could not be updated. We’ll retry when the app reconnects.");
+      } else {
+        if (detail.status) setDeliveryState(deliveryStateFromStatus(detail.status));
+        setMessage(null);
+      }
+    };
+    window.addEventListener(AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, onPreferenceSync);
+    return () => {
+      window.removeEventListener(STATE_CHANGE_EVENT, onStateChange);
+      window.removeEventListener(AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, onPreferenceSync);
+    };
   }, []);
 
   const onArm = useCallback(async () => {

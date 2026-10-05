@@ -4,6 +4,8 @@ import Link from "next/link";
 import { getAppState } from "@/lib/app-states";
 import { STATE_AIRCRAFT_COVERAGE_NOTES } from "@/lib/state-aircraft-coverage";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
+import { useAircraftTracking } from "@/lib/hooks/useAircraftTracking";
+import { isAircraftTracked } from "@/lib/aircraft-tracking";
 import type { AircraftCatalogEntry } from "@/lib/aircraft-data";
 import { StateSelector } from "./StateSelector";
 import { SettingsBackLink } from "./SettingsBackLink";
@@ -15,8 +17,9 @@ export function AircraftCatalogView({
 }) {
   const stateId = useSelectedStateId();
   const selectedState = getAppState(stateId);
+  const preferences = useAircraftTracking();
   const rows = catalog.filter(
-    (entry) => entry.homeStateCode === selectedState.code,
+    (entry) => entry.homeStateCode === selectedState.code && isAircraftTracked(preferences, selectedState.code, entry.aircraft.tail),
   );
   const headingId = `catalog-${selectedState.id}`;
 
@@ -358,7 +361,9 @@ export function AircraftCatalogView({
             {rows.length === 0 && (
               <li className="ss-catalog-item">
                 <div className="ss-catalog-row">
-                  {STATE_AIRCRAFT_COVERAGE_NOTES[selectedState.code] ?? `No aircraft listed for ${selectedState.label}.`}
+                  {catalog.some((entry) => entry.homeStateCode === selectedState.code)
+                    ? <>No aircraft selected for {selectedState.label}. <Link href="/settings/alerts">Choose aircraft</Link></>
+                    : STATE_AIRCRAFT_COVERAGE_NOTES[selectedState.code] ?? `No aircraft listed for ${selectedState.label}.`}
                 </div>
               </li>
             )}

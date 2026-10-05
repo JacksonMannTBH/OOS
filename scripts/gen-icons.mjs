@@ -32,16 +32,16 @@ const outputs = [
   { file: "out-of-sight-apple-touch-icon.png", size: 180 },
   { file: "out-of-sight-icon-192.png", size: 192 },
   { file: "out-of-sight-icon-512.png", size: 512 },
-  { file: "out-of-sight-maskable-192.png", size: 192 },
-  { file: "out-of-sight-maskable-512.png", size: 512 },
+  { file: "out-of-sight-maskable-192.png", size: 192, scale: 0.78 },
+  { file: "out-of-sight-maskable-512.png", size: 512, scale: 0.78 },
   { file: "favicon-16.png", size: 16 },
   { file: "favicon-32.png", size: 32 },
   { file: "favicon-96.png", size: 96 },
   { file: "apple-touch-icon.png", size: 180 },
   { file: "icon-192.png", size: 192 },
   { file: "icon-512.png", size: 512 },
-  { file: "icon-maskable-192.png", size: 192 },
-  { file: "icon-maskable-512.png", size: 512 },
+  { file: "icon-maskable-192.png", size: 192, scale: 0.78 },
+  { file: "icon-maskable-512.png", size: 512, scale: 0.78 },
 ];
 
 const ogOutputs = ["out-of-sight-og-image.png", "og-image.png"];
@@ -72,8 +72,9 @@ function findChrome() {
   return chrome;
 }
 
-function renderIconHtml({ size }) {
+function renderIconHtml({ size, scale = 1 }) {
   const logoUrl = pathToFileURL(logoImage).href;
+  const artworkSize = Math.round(size * scale);
   return `<!doctype html>
 <html>
   <head>
@@ -87,12 +88,14 @@ function renderIconHtml({ size }) {
         margin: 0;
         overflow: hidden;
         background: #000000;
+        display: grid;
+        place-items: center;
       }
 
       img {
         display: block;
-        width: ${size}px;
-        height: ${size}px;
+        width: ${artworkSize}px;
+        height: ${artworkSize}px;
         object-fit: cover;
       }
     </style>
@@ -192,7 +195,10 @@ function pinnedTabSvg() {
 
 function powershellGenerator() {
   const psOutputs = outputs
-    .map(({ file, size }) => `  @{ File = '${file}'; Size = ${size} }`)
+    .map(
+      ({ file, size, scale = 1 }) =>
+        `  @{ File = '${file}'; Size = ${size}; Scale = ${scale} }`,
+    )
     .join("\n");
 
   return `
@@ -240,14 +246,16 @@ function Save-Png([System.Drawing.Bitmap]$Bitmap, [string]$Path) {
   Move-Item -LiteralPath $tmpPath -Destination $Path -Force
 }
 
-function New-Icon([System.Drawing.Image]$Source, [string]$File, [int]$Size) {
+function New-Icon([System.Drawing.Image]$Source, [string]$File, [int]$Size, [double]$Scale) {
   $bitmap = New-Object System.Drawing.Bitmap $Size, $Size
   try {
     $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
     try {
       Set-Quality $graphics
       $graphics.Clear([System.Drawing.Color]::Black)
-      $graphics.DrawImage($Source, 0, 0, $Size, $Size)
+      $artworkSize = [int][Math]::Round($Size * $Scale)
+      $offset = [int][Math]::Round(($Size - $artworkSize) / 2)
+      $graphics.DrawImage($Source, $offset, $offset, $artworkSize, $artworkSize)
     } finally {
       $graphics.Dispose()
     }
@@ -333,7 +341,7 @@ function New-OgImage() {
 $source = [System.Drawing.Image]::FromFile($logoPath)
 try {
   foreach ($output in $outputs) {
-    New-Icon $source $output.File $output.Size
+    New-Icon $source $output.File $output.Size $output.Scale
   }
   New-OgImage
 } finally {

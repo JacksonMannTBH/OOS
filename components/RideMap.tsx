@@ -6,7 +6,15 @@ import maplibregl, {
   Map as MaplibreMap,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { aircraftSvg, glyphRoleFor } from "@/lib/brand/aircraft-glyphs";
+import { glyphRoleFor } from "@/lib/brand/aircraft-glyphs";
+import {
+  HELICOPTER_ICON_SIZE,
+  HELICOPTER_ICON_FRAMES,
+  helicopterFrameSrc,
+  helicopterIconKeyFor,
+  helicopterFrameAt,
+  isHelicopterRole,
+} from "@/lib/brand/helicopter-sprite";
 import { MAP_STYLE_URL } from "@/lib/map-style";
 import type {
   RideContact,
@@ -190,6 +198,31 @@ function RideMapCanvas(props: RideMapState) {
     collapseMapAttribution(container);
     mapRef.current = map;
     let disposed = false;
+    let animationFrame: number | null = null;
+    let lastHelicopterFrame = 0;
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const syncHelicopterAnimation = () => {
+      if (animationFrame != null) cancelAnimationFrame(animationFrame);
+      animationFrame = null;
+      if (!readyRef.current || disposed) return;
+      setHelicopterFrame(map, 0);
+      lastHelicopterFrame = 0;
+      if (motionQuery.matches) return;
+
+      const start = performance.now();
+      const tick = (now: number) => {
+        if (disposed) return;
+        const frame = helicopterFrameAt(now - start);
+        if (frame !== lastHelicopterFrame) {
+          setHelicopterFrame(map, frame);
+          lastHelicopterFrame = frame;
+        }
+        animationFrame = requestAnimationFrame(tick);
+      };
+      animationFrame = requestAnimationFrame(tick);
+    };
+    motionQuery.addEventListener("change", syncHelicopterAnimation);
 
     const onLoad = async () => {
       applyRideMapTheme(map);
@@ -202,6 +235,7 @@ function RideMapCanvas(props: RideMapState) {
       addRideLayers(map);
       readyRef.current = true;
       updateRideMap(map, latestRef.current, false);
+      syncHelicopterAnimation();
       collapseMapAttribution(container);
     };
 
@@ -209,6 +243,8 @@ function RideMapCanvas(props: RideMapState) {
     return () => {
       disposed = true;
       readyRef.current = false;
+      if (animationFrame != null) cancelAnimationFrame(animationFrame);
+      motionQuery.removeEventListener("change", syncHelicopterAnimation);
       map.off("load", onLoad);
       map.remove();
       mapRef.current = null;
@@ -342,7 +378,12 @@ function addRideLayers(map: MaplibreMap) {
     type: "symbol",
     source: "ride-contacts",
     layout: {
-      "icon-image": ["get", "icon"],
+      "icon-image": [
+        "case",
+        ["==", ["get", "iconFamily"], "helicopter"],
+        helicopterIconKeyFor(0),
+        ["get", "icon"],
+      ],
       "icon-size": ["case", ["boolean", ["get", "nearest"], false], 0.95, 0.76],
       "icon-rotate": ["get", "track"],
       "icon-rotation-alignment": "map",
@@ -416,6 +457,7 @@ function setContactData(map: MaplibreMap, state: RideMapState) {
     if (contact.distanceNm > state.distanceBands.watchNm) return;
     if (contact.plane.lat == null || contact.plane.lon == null) return;
     const role = glyphRoleFor(contact.plane.role);
+    const iconFamily = isHelicopterRole(role) ? "helicopter" : "plane";
     features.push({
       type: "Feature",
       geometry: {
@@ -423,7 +465,10 @@ function setContactData(map: MaplibreMap, state: RideMapState) {
         coordinates: [contact.plane.lon, contact.plane.lat],
       },
       properties: {
-        icon: iconKey(role),
+        iconFamily,
+        icon: iconFamily === "helicopter"
+          ? helicopterIconKeyFor(0)
+          : RIDE_PLANE_ICON_KEY,
         track: contact.plane.heading ?? 0,
         nearest: index === 0,
         color: index === 0 ? statusColor : "#f6c431",
@@ -541,24 +586,14 @@ function collapseMapAttribution(container: HTMLDivElement) {
 }
 
 async function loadAircraftIcons() {
-  const helicopterRoles = ["patrol", "sar"] as const;
   return await Promise.all([
     loadImageBitmap(
       `/icons/plane/cessna-body.png?v=${PLANE_ASSET_VERSION}`,
       MAP_ICON_SIZE,
     ).then((image) => ({ key: RIDE_PLANE_ICON_KEY, image })),
-    ...helicopterRoles.map(async (role) => ({
-      key: iconKey(role),
-      image: await loadSvgBitmap(
-        aircraftSvg(role, {
-          size: MAP_ICON_SIZE,
-          tone: "radar",
-          color: "#f6c431",
-          strokeColor: "#050908",
-          blipColor: "#050908",
-        }),
-        MAP_ICON_SIZE,
-      ),
+    ...Array.from({ length: HELICOPTER_ICON_FRAMES }, async (_, frame) => ({
+      key: helicopterIconKeyFor(frame),
+      image: await loadImageBitmap(helicopterFrameSrc(frame), HELICOPTER_ICON_SIZE),
     })),
   ]);
 }
@@ -573,27 +608,14 @@ async function loadImageBitmap(src: string, size: number): Promise<ImageBitmap> 
   });
 }
 
-async function loadSvgBitmap(svg: string, size: number): Promise<ImageBitmap> {
-  const blob = new Blob([svg], { type: "image/svg+xml" });
-  const url = URL.createObjectURL(blob);
-  try {
-    const image = new Image(size, size);
-    image.src = url;
-    await image.decode();
-    return await createImageBitmap(image, {
-      resizeWidth: size,
-      resizeHeight: size,
-    });
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-function iconKey(role: string): string {
-  if (role === "fixed_wing" || role === "transport") {
-    return RIDE_PLANE_ICON_KEY;
-  }
-  return `ride-aircraft-${role}`;
+function setHelicopterFrame(map: MaplibreMap, frame: number) {
+  if (!map.getLayer("ride-contacts")) return;
+  map.setLayoutProperty("ride-contacts", "icon-image", [
+    "case",
+    ["==", ["get", "iconFamily"], "helicopter"],
+    helicopterIconKeyFor(frame),
+    ["get", "icon"],
+  ]);
 }
 
 function circleRingCoords(
