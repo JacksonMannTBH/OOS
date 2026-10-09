@@ -93,6 +93,14 @@ These probes target no real device and do not verify iPhone delivery. The owner'
 test failed before the messaging-permission repair; a new physical-device test
 and confirmation of the Apple push configuration are still required.
 
+An Apple APNs key named **OOS Push Notifications** was created on October 9 for
+team `C6S63TAR8C`: key ID `N9S6G4FN8F`, Team Scoped, **Sandbox & Production**.
+The downloaded private key is stored outside the repository with owner-only
+permissions. Upload to the Firebase Apple app remains pending: its browser
+console fails to list apps despite verified owner API access and an enabled
+Firebase Management API. The owner was given the upload details for Safari.
+Creating the Apple key alone does not configure Firebase or verify delivery.
+
 1. Add an **Apple/iOS app** to the existing Firebase project using
    `live.outofsight.app` (the Android registration is separate).
 2. Download its `GoogleService-Info.plist` and place it at

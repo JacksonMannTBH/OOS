@@ -133,6 +133,11 @@ location behavior alone. Check the entire configured app and its partners.
   messaging role. Authenticated requests now reach validation and FCM. Invalid
   diagnostic tokens were used; actual iPhone delivery and the Apple push
   configuration remain unverified after this repair.
+- Apple APNs key `N9S6G4FN8F` (**OOS Push Notifications**) was created for team
+  `C6S63TAR8C`, with Sandbox & Production access. Its private key is secured
+  outside Git. Firebase upload remains pending because the browser console
+  cannot load the app configuration; owner API access and the Management API
+  were verified. Delivery must be tested after the upload completes.
 - The local Help page now has a support contact, separate native and browser
   notification instructions, and a location summary covering on-device use and map requests.
   Both public Help and Legal URLs returned HTTP 200 on October 9, 2026. The
