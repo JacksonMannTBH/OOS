@@ -163,7 +163,19 @@ location behavior alone. Check the entire configured app and its partners.
   The Firebase relay update deployed successfully; its existing URL and Cloud
   Run URL reject unauthenticated requests. The physical-iPhone test notification
   passed; the remaining release checks are listed above.
-- Latest local package: **1.0 (4)**. The selected original 1.25-second Radar ping
+- Latest local package: **1.0 (5)**. Live Activity Lock Screen backgrounds now
+  follow the distance-band color: green Clear, blue Watch, amber Warning, red
+  Stop. Dynamic Island status, distance, icon, and keyline share the band color.
+  Stale or failed updates preserve the complete last known result and its
+  timestamp; fresh data replaces it. A new session creates the activity only
+  after a known result, while the Home Live control can stop pending tracking.
+  Nineteen native calculation/retention checks, the signed device build, and
+  archive/export passed. App/widget build 5, signatures/profiles, production
+  APNs, and disabled debugging were verified. Installation was blocked by an unavailable trusted iPhone connection;
+  the owner was asked to reconnect and unlock it. Physical display testing
+  remains pending. The bundled Help explains retained state; publish the updated
+  support content before release. No App Store upload occurred.
+- The prior package **1.0 (4)** bundles the selected original 1.25-second Radar ping
   is bundled in the iPhone app and selected by the deployed Firebase push relay
   for tests and aircraft alerts. The signed build installed and launched on the
   owner's iPhone. Eleven notification checks, type checks, mobile interface build,

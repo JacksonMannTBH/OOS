@@ -104,6 +104,40 @@ enum LiveTrackingCoreTests {
                 locationDate: now, configuration: config, now: now)
             require(result.rideState == "Updating", "Invalid location")
         }
+        check("a new session waits for a known state instead of showing Searching or a false Clear") {
+            require(RideTrackingCalculator.displayedContent(summary(nil), previous: nil) == nil, "Missing initial feed")
+            require(RideTrackingCalculator.displayedContent(summary(snapshot([], ok: false)), previous: nil) == nil, "Failed initial feed")
+            require(RideTrackingCalculator.displayedContent(summary(snapshot([])), previous: nil)?.rideState == "Clear", "A healthy empty feed starts Clear")
+        }
+        check("all four last known states survive expired feed and location without losing aircraft or distance") {
+            for (latitude, state) in [(0.01, "Stop"), (0.05, "Warning"), (0.1, "Watch"), (0.25, "Clear")] {
+                let previous = summary(snapshot([plane(latitude: latitude)]))
+                require(previous.rideState == state, "Distance must determine the original state")
+                let unavailable = RideTrackingCalculator.summarize(snapshot: snapshot([plane(latitude: latitude)]),
+                    lat: 0, lon: 0, locationDate: now, configuration: config, now: now.addingTimeInterval(120))
+                let retained = RideTrackingCalculator.displayedContent(unavailable, previous: previous)
+                require(retained == previous, "Preserve \(state), aircraft, distance, timestamp, and deadline")
+                require(retained!.validUntil < now.addingTimeInterval(120), "Keeping the display must not extend data freshness")
+            }
+        }
+        check("missing, failed, mock, and unlocated data retain the last result instead of clearing it") {
+            let previous = summary(snapshot([plane()]))
+            for candidate in [summary(nil), summary(snapshot([], ok: false)),
+                              summary(snapshot([], source: "mock")), summary(snapshot([plane(latitude: nil)]))] {
+                require(RideTrackingCalculator.displayedContent(candidate, previous: previous) == previous, "Unavailable update must retain last result")
+            }
+        }
+        check("fresh recovery replaces a retained state and healthy empty data can clear it") {
+            let previous = summary(snapshot([plane()]))
+            let fresh = summary(snapshot([plane("NEW", latitude: 0.1)]))
+            require(RideTrackingCalculator.displayedContent(fresh, previous: previous) == fresh, "Fresh aircraft and Watch must replace Stop")
+            let clear = summary(snapshot([]))
+            require(RideTrackingCalculator.displayedContent(clear, previous: fresh) == clear, "Healthy empty feed may replace Watch with Clear")
+        }
+        check("an unavailable placeholder cannot become the last known display") {
+            let placeholder = RideTrackingContent.waiting("Waiting for aircraft data", now: now)
+            require(RideTrackingCalculator.displayedContent(summary(nil), previous: placeholder) == nil, "Never present Updating as a retained state")
+        }
         try check("API decoding and shared ActivityKit content encoding preserve fields") {
             let json = """
             {"fetched_at":1800000000000,"source":"adsbfi","source_ok":true,

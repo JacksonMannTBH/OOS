@@ -117,7 +117,7 @@ private final class LiveTrackingSession: NSObject, @preconcurrency CLLocationMan
 
     var status: [String: Any] {
         ["supported": true, "enabled": ActivityAuthorizationInfo().areActivitiesEnabled,
-         "active": activity != nil && !stopping, "message": errorMessage]
+         "active": sessionID != nil && !stopping, "message": errorMessage]
     }
 
     func clearOrphanedActivities() async {
@@ -139,26 +139,10 @@ private final class LiveTrackingSession: NSObject, @preconcurrency CLLocationMan
               locationManager.authorizationStatus != .restricted else {
             throw failure("Allow location access for OOS in iPhone Settings to start live tracking.")
         }
-        if activity != nil { configure(config); return }
+        if sessionID != nil { configure(config); return }
         errorMessage = ""
         configuration = config
-        var initial = RideTrackingContent.waiting("Waiting for current location")
-        initial.stateName = config.stateName
-        activity = try Activity.request(attributes: RideTrackingAttributes(stateName: config.stateName),
-                                        content: ActivityContent(state: initial, staleDate: initial.validUntil),
-                                        pushType: nil)
         sessionID = UUID()
-        let id = sessionID
-        let current = activity!
-        activityMonitor = Task { [weak self] in
-            for await state in current.activityStateUpdates {
-                guard !Task.isCancelled, let self, self.sessionID == id else { return }
-                if state == .ended || state == .dismissed {
-                    await self.stop()
-                    return
-                }
-            }
-        }
         timer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
         }
@@ -169,7 +153,7 @@ private final class LiveTrackingSession: NSObject, @preconcurrency CLLocationMan
     }
 
     func configure(_ config: RideTrackingConfiguration) {
-        guard activity != nil, !stopping else { return }
+        guard sessionID != nil, !stopping else { return }
         if configuration?.stateCode != config.stateCode {
             request?.cancel()
             request = nil
@@ -210,13 +194,13 @@ private final class LiveTrackingSession: NSObject, @preconcurrency CLLocationMan
     }
 
     private func beginLocationUpdates() {
-        guard activity != nil, !stopping else { return }
+        guard sessionID != nil, !stopping else { return }
         locationManager.allowsBackgroundLocationUpdates = true
         locationManager.startUpdatingLocation()
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        guard activity != nil else { return }
+        guard sessionID != nil else { return }
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse: beginLocationUpdates()
         case .denied, .restricted:
@@ -227,14 +211,14 @@ private final class LiveTrackingSession: NSObject, @preconcurrency CLLocationMan
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard activity != nil, let location = locations.last, location.horizontalAccuracy >= 0,
+        guard sessionID != nil, let location = locations.last, location.horizontalAccuracy >= 0,
               location.horizontalAccuracy <= 100, abs(location.timestamp.timeIntervalSinceNow) <= 30 else { return }
         position = location
         refresh()
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        guard activity != nil else { return }
+        guard sessionID != nil else { return }
         position = nil
         refresh()
     }
@@ -277,18 +261,46 @@ private final class LiveTrackingSession: NSObject, @preconcurrency CLLocationMan
     }
 
     private func publish() {
-        guard let current = activity, let config = configuration, let id = sessionID else { return }
-        var content = RideTrackingCalculator.summarize(snapshot: snapshot,
+        guard let config = configuration, let id = sessionID else { return }
+        var candidate = RideTrackingCalculator.summarize(snapshot: snapshot,
             lat: position?.coordinate.latitude, lon: position?.coordinate.longitude,
             locationDate: position?.timestamp, configuration: config)
-        content.stateName = config.stateName
+        candidate.stateName = config.stateName
+        let previous = lastScheduledContent ?? activity?.content.state
+        guard let content = RideTrackingCalculator.displayedContent(candidate, previous: previous) else { return }
+        if activity == nil {
+            lastScheduledContent = content
+            // ActivityKit requires foreground creation. Returning to the app
+            // reconciles preferences and retries if the first fix arrived later.
+            guard UIApplication.shared.applicationState == .active else { return }
+            do {
+                let current = try Activity.request(attributes: RideTrackingAttributes(stateName: content.stateName),
+                    content: ActivityContent(state: content, staleDate: content.validUntil), pushType: nil)
+                activity = current
+                lastScheduledContent = content
+                activityMonitor = Task { [weak self] in
+                    for await state in current.activityStateUpdates {
+                        guard !Task.isCancelled, let self, self.sessionID == id else { return }
+                        if state == .ended || state == .dismissed {
+                            await self.stop()
+                            return
+                        }
+                    }
+                }
+            } catch {
+                errorMessage = error.localizedDescription
+                Task { await stop() }
+            }
+            return
+        }
+        guard let current = activity else { return }
         // Updating every GPS callback is unnecessary; distance is shown to one decimal.
-        let previous = lastScheduledContent ?? current.content.state
-        if previous.aircraft == content.aircraft, previous.rideState == content.rideState,
-           previous.message == content.message,
-           previous.stateName == content.stateName,
-           rounded(previous.distanceNm) == rounded(content.distanceNm),
-           abs(previous.validUntil.timeIntervalSince(content.validUntil)) < 10 { return }
+        let previousContent = previous ?? current.content.state
+        if previousContent.aircraft == content.aircraft, previousContent.rideState == content.rideState,
+           previousContent.message == content.message,
+           previousContent.stateName == content.stateName,
+           rounded(previousContent.distanceNm) == rounded(content.distanceNm),
+           abs(previousContent.validUntil.timeIntervalSince(content.validUntil)) < 10 { return }
         pendingContent = content
         lastScheduledContent = content
         guard publishing == nil else { return }

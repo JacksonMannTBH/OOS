@@ -61,9 +61,11 @@ Live tracking continues when you leave or end Ride Mode. Tap the Live Activity
 to reopen Home.
 
 Live tracking requires iOS 16.2 or later, location permission, and Live Activities
-enabled for OOS in iPhone Settings. If data becomes outdated, the display shows
-**Updates paused** or an unavailable-data message instead of a current ride
-state. Connectivity, location availability, and iOS background limits affect
+enabled for OOS in iPhone Settings. The Live Activity appears after the first
+known aircraft state. Its color follows your distance settings: green for Clear,
+blue for Watch, amber for Warning, and red for Stop. If updates pause, it keeps
+the last available state, aircraft, and distance; the Updated time shows when
+that result was recorded. Connectivity, location availability, and iOS background limits affect
 updates. Force-quitting OOS stops updating; reopen it to start a new session.
 Apple ends a Live Activity after at most eight hours. This feature is separate
 from takeoff notifications.

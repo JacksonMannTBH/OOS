@@ -190,9 +190,16 @@ Home. State, aircraft exclusions, and distance-band settings are reconciled
 across all screens while a session is active.
 
 Freshness limits: rider fix 30 seconds, feed 45 seconds, aircraft position 90
-seconds. Missing, stale, mock, or failed source data cannot claim Clear.
-ActivityKit's stale date changes the display to **Updates paused** if the app
-is suspended or terminated. Runtime, connectivity, and delivery are not
+seconds. Missing, stale, mock, or failed source data cannot produce a new state.
+Build **1.0 (5)** keeps the entire last known result when updates are unavailable:
+Clear, Watch, Warning, or Stop, aircraft, distance, and the original Updated time.
+ActivityKit's stale date no longer replaces that display with gray, Searching,
+Updating, or Updates paused. A new session waits for its first known result
+before creating the activity; the Home Live control can stop it while waiting.
+The Lock Screen background uses the distance-band color: green Clear, blue
+Watch, amber Warning, and red Stop. Dynamic Island status, distance, icon, and
+keyline use the same band color. Fresh recovery replaces the retained result;
+holding a result does not extend its freshness deadline. Runtime, connectivity, and delivery are not
 guaranteed; Apple limits an activity to eight hours. Physical-device background,
 Lock Screen, dismissal, deep-link, and permission testing remains required.
 This local implementation does not need Firebase/APNs delivery credentials;
@@ -333,7 +340,7 @@ Manual acceptance checks once preview/device access is available:
 | Ride / Wake mode off | Screen can sleep with Ride open | Pending |
 | Ride / Wake mode on | Screen stays awake in Ride and sleeps normally after End Ride | Pending |
 | Live tracking / start | One activity shows nearest aircraft, nm, selected state, and custom ride status | Pending on physical iPhone |
-| Live tracking / other app and locked phone | Location and aircraft data refresh; stale content changes to Updates paused | Pending on physical iPhone |
+| Live tracking / other app and locked phone | Updates refresh; stale content keeps the last state, color, aircraft, distance, and timestamp | Pending on physical iPhone |
 | Live tracking / stop on Home | Activity disappears and background location/polling stops | Pending on physical iPhone |
 | Live tracking / End Ride | Ride exits and screen-wake stops; Live tracking remains active until stopped on Home | Pending on physical iPhone |
 | Live tracking / system dismissal and relaunch | Background location stops; a killed session is not silently restarted | Pending on physical iPhone |

@@ -21,16 +21,16 @@ struct OOSLiveTrackingWidget: Widget {
                 HStack(alignment: .firstTextBaseline) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(context.state.aircraft).font(.headline).lineLimit(1)
-                        Text(context.isStale ? "Updates paused · open OOS" : context.state.message)
+                        Text(context.state.message)
                             .font(.caption).foregroundStyle(Color.white.opacity(0.65)).lineLimit(1)
                     }
                     Spacer(minLength: 12)
-                    Text(distance(context)).font(.title2.weight(.bold)).monospacedDigit()
+                    Text(distance(context)).font(.title2.weight(.bold)).monospacedDigit().foregroundStyle(tint(context))
                 }
             }
             .padding(16)
             .foregroundStyle(.white)
-            .activityBackgroundTint(Color(red: 0.03, green: 0.03, blue: 0.03))
+            .activityBackgroundTint(tint(context, brightness: 0.28))
             .activitySystemActionForegroundColor(.white)
             .widgetURL(URL(string: "oos://home"))
         } dynamicIsland: { context in
@@ -46,23 +46,23 @@ struct OOSLiveTrackingWidget: Widget {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(context.state.aircraft).font(.headline).lineLimit(1)
-                            Text(context.isStale ? "Updates paused · open OOS" : context.state.message)
+                            Text(context.state.message)
                                 .font(.caption).foregroundStyle(Color.white.opacity(0.65)).lineLimit(1)
                         }
                         Spacer()
-                        Text(distance(context)).font(.title3.weight(.bold)).monospacedDigit()
+                        Text(distance(context)).font(.title3.weight(.bold)).monospacedDigit().foregroundStyle(tint(context))
                     }
                     .padding(.top, 4)
                     .foregroundStyle(.white)
                 }
             } compactLeading: {
-                Text(context.isStale ? "…" : context.state.rideState.uppercased())
+                Text(label(context))
                     .font(.caption2.weight(.bold)).foregroundStyle(tint(context))
             } compactTrailing: {
-                Text(context.isStale ? "—" : compactDistance(context))
+                Text(compactDistance(context))
                     .font(.caption2.weight(.bold)).monospacedDigit().foregroundStyle(tint(context))
             } minimal: {
-                Image(systemName: context.isStale ? "clock" : "airplane").foregroundStyle(tint(context))
+                Image(systemName: "airplane").foregroundStyle(tint(context))
                     .accessibilityLabel("OOS \(label(context)), \(distance(context))")
             }
             .widgetURL(URL(string: "oos://home"))
@@ -71,23 +71,22 @@ struct OOSLiveTrackingWidget: Widget {
     }
 
     private func label(_ context: ActivityViewContext<RideTrackingAttributes>) -> String {
-        context.isStale ? "Updates paused" : context.state.rideState.uppercased()
+        context.state.rideState.uppercased()
     }
     private func distance(_ context: ActivityViewContext<RideTrackingAttributes>) -> String {
-        guard !context.isStale, let distance = context.state.distanceNm else { return "— nm" }
+        guard let distance = context.state.distanceNm else { return "— nm" }
         return String(format: "%.1f nm", distance)
     }
     private func compactDistance(_ context: ActivityViewContext<RideTrackingAttributes>) -> String {
-        guard let distance = context.state.distanceNm else { return context.state.rideState == "Clear" ? "Clear" : "…" }
+        guard let distance = context.state.distanceNm else { return "—" }
         return String(format: "%.1f", distance)
     }
-    private func tint(_ context: ActivityViewContext<RideTrackingAttributes>) -> Color {
-        guard !context.isStale else { return .gray }
+    private func tint(_ context: ActivityViewContext<RideTrackingAttributes>, brightness: Double = 1) -> Color {
         switch context.state.rideState {
-        case "Stop": return Color(red: 1, green: 0.30, blue: 0.31)
-        case "Warning": return Color(red: 0.96, green: 0.77, blue: 0.19)
-        case "Watch": return Color(red: 0.38, green: 0.65, blue: 0.98)
-        case "Clear": return Color(red: 0.22, green: 0.85, blue: 0.54)
+        case "Stop": return Color(red: 1 * brightness, green: 0.30 * brightness, blue: 0.31 * brightness)
+        case "Warning": return Color(red: 0.96 * brightness, green: 0.77 * brightness, blue: 0.19 * brightness)
+        case "Watch": return Color(red: 0.38 * brightness, green: 0.65 * brightness, blue: 0.98 * brightness)
+        case "Clear": return Color(red: 0.22 * brightness, green: 0.85 * brightness, blue: 0.54 * brightness)
         default: return .gray
         }
     }

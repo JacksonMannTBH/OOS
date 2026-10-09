@@ -10,6 +10,10 @@ struct RideTrackingContent: Codable, Hashable {
     var validUntil: Date
     var stateName: String = ""
 
+    var hasKnownRideState: Bool {
+        ["Clear", "Watch", "Warning", "Stop"].contains(rideState)
+    }
+
     static func waiting(_ message: String, now: Date = Date()) -> Self {
         Self(aircraft: "Nearest aircraft", distanceNm: nil, rideState: "Updating",
              message: message, updatedAt: now, validUntil: now.addingTimeInterval(30))
@@ -52,6 +56,15 @@ struct RideTrackingAircraft: Decodable {
 }
 
 enum RideTrackingCalculator {
+    // Unavailable data must not invent a fresh distance or state. Keep the
+    // complete last known result, including its original timestamp/deadline.
+    // A new session waits for its first real result before showing an activity.
+    static func displayedContent(_ candidate: RideTrackingContent,
+                                 previous: RideTrackingContent?) -> RideTrackingContent? {
+        if candidate.hasKnownRideState { return candidate }
+        return previous?.hasKnownRideState == true ? previous : nil
+    }
+
     static func distanceNm(lat: Double, lon: Double, aircraftLat: Double, aircraftLon: Double) -> Double {
         let r = Double.pi / 180
         let dLat = (aircraftLat - lat) * r
