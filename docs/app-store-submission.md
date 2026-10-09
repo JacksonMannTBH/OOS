@@ -163,7 +163,24 @@ location behavior alone. Check the entire configured app and its partners.
   The Firebase relay update deployed successfully; its existing URL and Cloud
   Run URL reject unauthenticated requests. The physical-iPhone test notification
   passed; the remaining release checks are listed above.
-- Latest local package: **1.0 (7)**. Adds the selected small Status first
+- Latest local package: **1.0 (8)**. Addresses unexpected Live Activity
+  disappearance reported while the phone is locked. Recovers an existing
+  active/stale activity on launch instead of ending it, holds and resumes a
+  dedicated background location session on iOS 17+, and retains the last result
+  during location-permission interruptions. Only explicit Stop requests immediate
+  removal; system ending/dismissal releases background work without overriding
+  iOS display retention. Ended, dismissed, and explicitly stopped sessions are
+  never silently recreated. A bounded local lifecycle/reason log contains no
+  rider coordinates or push tokens and is not uploaded. Nine recovery tests,
+  twenty tracking tests, seven widget-storage tests, release configuration checks,
+  and the signed device build/install passed. Release archive and App Store
+  export passed; both targets have verified signatures, distribution profiles,
+  App Group, matching build 8, and debugging disabled. Production APNs and the
+  original Radar sound were verified. Automatic launch was blocked by the
+  locked phone. The requested 10-minute locked-phone check and physical
+  restart recovery remain pending; the fixes do not prove the sole cause of the
+  owner's report. No website deployment or App Store upload occurred.
+- Prior package: **1.0 (7)**. Adds the selected small Status first
   Home Screen widget, independent of Live Tracking. It shows the large colored
   ride state, aircraft distance, Plane/Heli and tail, selected state code, and
   original update time. App and widget share preferences and last results in

@@ -8,6 +8,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MessagingDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        if #available(iOS 16.2, *) { LiveTrackingSession.shared.recoverExistingActivity() }
         // Allow local UI development before Firebase configuration is supplied.
         // Do not create a messaging identifier until the user opts into alerts.
         if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist", inDirectory: "Configuration"),

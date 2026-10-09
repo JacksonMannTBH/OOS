@@ -208,8 +208,9 @@ confirmed the state/distance/type/tail display and tapping the widget opens Home
 The pending Help contact edit was excluded from the packaged interface and
 left untouched. No website deployment or App Store upload occurred.
 
-The owner's earlier report of unexpected Live Activity termination still needs
-diagnosis; that is separate from this independent Home Screen widget.
+The owner subsequently reported unexpected Live Activity termination while the
+phone was locked. Build 8 addresses session recovery and background location;
+physical locked-phone confirmation remains pending (see below).
 
 Run widget-storage checks from `mobile/` with:
 
@@ -224,10 +225,45 @@ Home includes a small top-left **Live** button on native iOS 16.2+.
 `OOSLiveTracking` starts an ActivityKit session and a Core Location watch from
 the foreground. It uses When In Use authorization, background-location mode,
 and the system location indicator. It never requests Always authorization.
-The session survives navigating away from Home, ending Ride, or switching to another app;
-Tapping **Live** again on Home or system activity dismissal stops location,
-polling, pending requests, and the Live Activity. Relaunching the app ends orphaned
-activities and does not silently restart tracking.
+The session survives navigating away from Home, ending Ride, or switching to another app.
+Tapping **Live** again on Home stops location, polling, pending requests, and
+removes the Live Activity. System ending or dismissal stops background work
+without issuing a second immediate removal. An ended activity may remain visible
+under iOS's retention policy. Relaunch recovers an existing active or stale
+activity using saved settings; it never recreates an ended, dismissed, or
+explicitly stopped activity.
+
+Build **1.0 (8)** addresses the owner's report of Live Activities disappearing
+while the phone is locked. Launch previously ended every activity that did not
+belong to the new in-memory session. The app now restores an ongoing activity
+early in launch, including its preferences and last result. On iOS 17+ it holds a
+`CLBackgroundActivitySession`, resuming it immediately after launch to retain
+When In Use background eligibility. Location denial/restriction pauses updates
+and retains the activity; a temporary activity-creation error keeps the pending
+user-started session and retries in the foreground after 30 seconds.
+
+A bounded local diagnostic log records lifecycle events, background session
+eligibility, activity state changes, and stop reasons. It contains no rider
+coordinates or push tokens and is not uploaded. Session and log files use
+protection that permits access while locked after the first device unlock.
+Both files are under the app's `Library/Application Support/OOSLiveTracking/`.
+Nine recovery/persistence checks, twenty tracking checks, and seven widget
+storage checks pass. Signed Release archive and App Store export also passed;
+both targets have verified distribution profiles, signatures, App Group, matching
+build 8, and debugging disabled. Production APNs and the original Radar sound
+were verified. The signed debug build is installed on the owner's iPhone;
+automatic launch was blocked because the phone was locked. The requested
+10-minute locked-phone check and recovery on the physical device remain pending.
+These fixes address definite automatic cleanup paths, but do not establish the
+sole cause of the original locked-screen disappearance. iOS still controls
+background runtime and Live Activity lifetime.
+
+Run recovery checks from `mobile/` with:
+
+```sh
+xcrun swiftc ios/App/Shared/RideTrackingData.swift ios/App/Shared/LiveTrackingRecovery.swift ios/Tests/LiveTrackingRecoveryTests.swift -o /tmp/oos-live-recovery-tests
+/tmp/oos-live-recovery-tests
+```
 
 The native session polls the existing HTTPS aircraft endpoint at most once per
 15 seconds while iOS supplies background runtime. It sends the selected state
@@ -408,7 +444,7 @@ Manual acceptance checks once preview/device access is available:
 | Live tracking / other app and locked phone | Updates refresh; stale content keeps the last state, color, aircraft, distance, and timestamp | Pending on physical iPhone |
 | Live tracking / stop on Home | Activity disappears and background location/polling stops | Pending on physical iPhone |
 | Live tracking / End Ride | Ride exits and screen-wake stops; Live tracking remains active until stopped on Home | Pending on physical iPhone |
-| Live tracking / system dismissal and relaunch | Background location stops; a killed session is not silently restarted | Pending on physical iPhone |
+| Live tracking / system dismissal and relaunch | Recover an ongoing active/stale activity after restart; ended/dismissed or explicitly stopped activities do not restart tracking | Recovery policy checks pass; physical test pending |
 | Live tracking / permission and tap | Denial is explained; activity tap reopens Home; settings changes reconcile | Pending on physical iPhone |
 | Background / return | Location and wake behavior resume correctly without duplicate subscriptions | Pending |
 | No connection / retry | Honest unavailable state, then recovery after connection returns | Pending |

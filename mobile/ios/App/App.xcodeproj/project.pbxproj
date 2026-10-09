@@ -34,6 +34,7 @@
 		A00900000000000000000006 /* HomeWidgetRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000004 /* HomeWidgetRefresh.swift */; };
 		A00900000000000000000008 /* HomeWidgetAppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000007 /* HomeWidgetAppUpdater.swift */; };
 		A0090000000000000000000A /* HomeScreenWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000009 /* HomeScreenWidget.swift */; };
+		A01000000000000000000002 /* LiveTrackingRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01000000000000000000001 /* LiveTrackingRecovery.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -88,6 +89,7 @@
 		A00900000000000000000007 /* HomeWidgetAppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgetAppUpdater.swift; sourceTree = "<group>"; };
 		A00900000000000000000009 /* HomeScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreenWidget.swift; sourceTree = "<group>"; };
 		A0090000000000000000000B /* Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widget.entitlements; sourceTree = "<group>"; };
+		A01000000000000000000001 /* LiveTrackingRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTrackingRecovery.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -168,6 +170,7 @@
 			isa = PBXGroup;
 			children = (
 				A00600000000000000000003 /* RideTrackingData.swift */,
+				A01000000000000000000001 /* LiveTrackingRecovery.swift */,
 				A00900000000000000000001 /* HomeWidgetStore.swift */,
 				A00900000000000000000004 /* HomeWidgetRefresh.swift */,
 				A00600000000000000000006 /* RideTrackingAttributes.swift */,
@@ -298,6 +301,7 @@
 				A00700000000000000000002 /* NotificationSetupPlugin.swift in Sources */,
 				A00600000000000000000002 /* LiveTrackingPlugin.swift in Sources */,
 				A00600000000000000000004 /* RideTrackingData.swift in Sources */,
+				A01000000000000000000002 /* LiveTrackingRecovery.swift in Sources */,
 				A00900000000000000000002 /* HomeWidgetStore.swift in Sources */,
 				A00900000000000000000005 /* HomeWidgetRefresh.swift in Sources */,
 				A00900000000000000000008 /* HomeWidgetAppUpdater.swift in Sources */,
@@ -465,7 +469,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -490,7 +494,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -513,7 +517,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = LiveTrackingWidget/Widget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LiveTrackingWidget/Info.plist;
@@ -538,7 +542,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = LiveTrackingWidget/Widget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LiveTrackingWidget/Info.plist;
