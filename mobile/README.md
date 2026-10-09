@@ -210,7 +210,7 @@ left untouched. No website deployment or App Store upload occurred.
 
 The owner subsequently reported unexpected Live Activity termination while the
 phone was locked. Build 8 addresses session recovery and background location;
-physical locked-phone confirmation remains pending (see below).
+the owner reports that it remains working with the phone locked (see below).
 
 Run widget-storage checks from `mobile/` with:
 
@@ -252,10 +252,12 @@ storage checks pass. Signed Release archive and App Store export also passed;
 both targets have verified distribution profiles, signatures, App Group, matching
 build 8, and debugging disabled. Production APNs and the original Radar sound
 were verified. The signed debug build is installed on the owner's iPhone;
-automatic launch was blocked because the phone was locked. The requested
-10-minute locked-phone check and recovery on the physical device remain pending.
-These fixes address definite automatic cleanup paths, but do not establish the
-sole cause of the original locked-screen disappearance. iOS still controls
+automatic launch was blocked because the phone was locked. After installation,
+the owner reported that Live Tracking was still working in response to the
+locked-phone test request on October 9, 2026. Exact elapsed time was not provided;
+longer-duration behavior and restart recovery on the physical device remain
+unverified. These fixes address definite automatic cleanup paths, but do not
+establish the sole cause of the original locked-screen disappearance. iOS still controls
 background runtime and Live Activity lifetime.
 
 Run recovery checks from `mobile/` with:

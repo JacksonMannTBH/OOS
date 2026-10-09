@@ -177,9 +177,11 @@ location behavior alone. Check the entire configured app and its partners.
   export passed; both targets have verified signatures, distribution profiles,
   App Group, matching build 8, and debugging disabled. Production APNs and the
   original Radar sound were verified. Automatic launch was blocked by the
-  locked phone. The requested 10-minute locked-phone check and physical
-  restart recovery remain pending; the fixes do not prove the sole cause of the
-  owner's report. No website deployment or App Store upload occurred.
+  locked phone. The owner subsequently reported that Live Tracking was still
+  working in response to the locked-phone test request on October 9, 2026.
+  Exact elapsed time was not provided; longer-duration behavior and physical
+  restart recovery remain unverified. The fixes do not prove the sole cause of
+  the original report. No website deployment or App Store upload occurred.
 - Prior package: **1.0 (7)**. Adds the selected small Status first
   Home Screen widget, independent of Live Tracking. It shows the large colored
   ride state, aircraft distance, Plane/Heli and tail, selected state code, and
