@@ -78,6 +78,7 @@ export type IngestionSummary = {
   trackedAircraftCount: number;
   sourceHealthy: boolean;
   byState: Record<string, StateIngestionSummary>;
+  priorityAircraftTails: string[];
 };
 
 export type StateIngestionSummary = {
@@ -386,9 +387,10 @@ export async function getDatabaseSnapshot(
 export async function ingestSnapshot(
   snapshot: Snapshot,
   workerId: string,
+  options: { catalogSeeded?: boolean } = {},
 ): Promise<IngestionSummary> {
   const db = getSupabaseAdmin();
-  await ensureCatalogSeeded();
+  if (!options.catalogSeeded) await ensureCatalogSeeded();
   const snapshotObservedAt = new Date(snapshot.fetched_at).toISOString();
 
   if (snapshot.source_ok === false) {
@@ -412,18 +414,19 @@ export async function ingestSnapshot(
       trackedAircraftCount: 0,
       sourceHealthy: false,
       byState: {},
+      priorityAircraftTails: [],
     };
   }
 
-  const catalogData = await readAllCatalogPages(
-    (from, to) => db
+  const catalogData = await readCatalogKeyBatches(
+    snapshot.aircraft.map((aircraft) => aircraft.tail.toUpperCase()),
+    (tails) => db
       .from("aircraft")
       .select(
         "id,tail,icao24,home_state_code,operator,model,nickname,base,role,role_confidence,role_description,role_note",
       )
       .eq("active", true)
-      .order("id")
-      .range(from, to),
+      .in("tail", tails),
     "Ingestion catalog read failed",
   );
 
@@ -863,7 +866,39 @@ export async function ingestSnapshot(
     trackedAircraftCount: snapshot.aircraft.length,
     sourceHealthy: true,
     byState,
+    priorityAircraftTails: catalog.filter((row) => {
+      const state = stateRows.find((state) => state.aircraft_id === row.id)
+        ?? currentByAircraft.get(row.id);
+      return isPriorityAircraftState(state);
+    }).map((row) => row.tail),
   };
+}
+
+function isPriorityAircraftState(state: {
+  flight_session_id?: unknown;
+  observation_status?: unknown;
+} | undefined): boolean {
+  return Boolean(state?.flight_session_id) ||
+    state?.observation_status === "airborne" ||
+    state?.observation_status === "airborne_candidate" ||
+    state?.observation_status === "landing_candidate";
+}
+
+/** Restore priority from durable lifecycle state across minute-long workers. */
+export async function getPriorityAircraftTails(): Promise<string[]> {
+  const db = getSupabaseAdmin();
+  const states = await readAllCatalogPages(
+    (from, to) => db.from("aircraft_current_state")
+      .select("aircraft_id,flight_session_id,observation_status")
+      .order("aircraft_id").range(from, to),
+    "Priority state read failed",
+  );
+  const aircraft = await readCatalogKeyBatches(
+    states.filter(isPriorityAircraftState).map((state) => String(state.aircraft_id)),
+    (ids) => db.from("aircraft").select("tail").eq("active", true).in("id", ids),
+    "Priority aircraft read failed",
+  );
+  return aircraft.map((row) => String(row.tail));
 }
 
 export function fleetEntryStateCode(entry: FleetEntry): StateCode {

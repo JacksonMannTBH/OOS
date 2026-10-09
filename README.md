@@ -45,11 +45,25 @@ Set these encrypted environment variables in Netlify:
 - Optional: `OPENSKY_CLIENT_ID` and `OPENSKY_CLIENT_SECRET`
 
 The scheduled `aircraft-ingest` function runs once per minute and starts a
-background function that samples at deadline-based offsets. The configured
-interval is a minimum; the national fleet currently requires 30-second offsets
-to allow time for rate-limited requests and persistence. Each
-sample fetches the complete tracked fleet in rate-limited ICAO batches and
-writes it to Supabase in one combined ingestion pass. Source observation times
+background worker with two queues sharing one provider request budget.
+Airborne aircraft, takeoff candidates, and open flight sessions target the
+configured interval (10 seconds by default); other aircraft target at least
+30 seconds so new takeoffs are still discovered. Each batch contains at most
+75 aircraft and is published to Supabase before the next batch starts.
+Only queried aircraft are updated; other batches retain their current state.
+Landing candidates stay in the fast queue until landing is confirmed.
+
+The worker starts batches for up to 55 seconds and leaves at least 1.1 seconds
+between batches. Provider calls have an 8-second timeout. Slow providers,
+persistence, and a large airborne fleet can extend actual update intervals.
+When both queues are overdue, discovery receives at least every other batch.
+Recent ingestion logs preserve per-aircraft attempt times across workers so
+unfinished discovery work stays ahead of aircraft already checked. Logs now
+describe individual batches, including `batch_kind`, `queried_tails`, the
+target interval, and scheduling lag; per-state counts cover that batch only.
+The browser's existing 10-second refresh interval is unchanged.
+
+Source observation times
 deduplicate unchanged positions, and already-unknown aircraft are not rewritten
 on every pass. Notification retries run once per minute and immediately after a
 detected takeoff. The database retains only the active flight's aircraft

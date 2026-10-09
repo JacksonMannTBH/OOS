@@ -3,7 +3,7 @@
 // batches so every scheduled sample reaches the upstream source.
 
 import { fleetHex } from "./seed";
-import { getAircraftCatalogEntries, getCatalog } from "./aircraft-data";
+import { getAircraftCatalogEntries, getCatalog, type AircraftCatalogEntry } from "./aircraft-data";
 import { fetchOpenSky } from "./opensky";
 import { ADSB_FI_BATCH_SIZE, ADSB_FI_REQUEST_SPACING_MS } from "./adsb-limits";
 import {
@@ -46,7 +46,7 @@ const pendingSnapshots = new Map<StateCode, Promise<Snapshot>>();
 async function fetchAdsbFi(hexes: string[]): Promise<NormalizedAc[]> {
   if (hexes.length === 0) return [];
   const url = `https://opendata.adsb.fi/api/v2/icao/${hexes.join(",")}`;
-  const r = await fetch(url, FETCH_OPTS);
+  const r = await fetch(url, { ...FETCH_OPTS, signal: AbortSignal.timeout(8_000) });
   if (!r.ok) throw new Error(`adsb.fi ${r.status}`);
   const j = (await r.json()) as AdsbFiResp;
   return normalizeAdsbFiPayload(j);
@@ -205,6 +205,20 @@ export async function buildFleetSnapshot(
   const live = await fetchLiveAircraft(fleetHexes, true);
 
   return joinFleetWithLiveData(fleet, homeStateByTail, live);
+}
+
+/** Only queried aircraft belong in a partial snapshot. Never synthesize
+ * unobserved rows for aircraft in other batches. */
+export async function buildFleetBatchSnapshot(
+  catalog: AircraftCatalogEntry[],
+): Promise<Snapshot> {
+  const fleet = catalog.map((entry) => entry.aircraft);
+  const hexes = [...new Set(fleet.map(fleetHex).filter((hex) => /^[0-9a-f]{6}$/i.test(hex)))];
+  if (hexes.length > ADSB_FI_BATCH_SIZE) throw new Error("Aircraft batch exceeds provider limit");
+  const live = await fetchLiveAircraft(hexes, false);
+  return joinFleetWithLiveData(fleet, new Map(
+    catalog.map((entry) => [entry.aircraft.tail.toUpperCase(), entry.homeStateCode]),
+  ), live);
 }
 
 async function buildSnapshotUncached(

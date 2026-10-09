@@ -47,6 +47,7 @@ export async function getOpenskyToken(): Promise<string | null> {
     },
     body,
     cache: "no-store",
+    signal: AbortSignal.timeout(8_000),
   });
   if (!r.ok) {
     const detail = await r.text().catch(() => "");
@@ -161,7 +162,7 @@ export async function fetchOpenSky(hexes: string[]): Promise<NormalizedAc[]> {
     const token = await getOpenskyToken();
     const headers: Record<string, string> = { "User-Agent": UA };
     if (token) headers.Authorization = `Bearer ${token}`;
-    return fetch(url, { headers, cache: "no-store" });
+    return fetch(url, { headers, cache: "no-store", signal: AbortSignal.timeout(8_000) });
   };
 
   let r = await doFetch();

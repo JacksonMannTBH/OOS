@@ -1,13 +1,17 @@
 import type { Config } from "@netlify/functions";
 import { APP_STATES } from "../../lib/app-states";
-import { buildFleetSnapshot } from "../../lib/adsb";
-import { getAircraftCatalogEntries, ingestSnapshot } from "../../lib/aircraft-data";
+import { buildFleetBatchSnapshot } from "../../lib/adsb";
+import {
+  ensureCatalogSeeded, getAircraftCatalogEntries, getPriorityAircraftTails,
+  ingestSnapshot, type AircraftCatalogEntry,
+} from "../../lib/aircraft-data";
+import { readAllCatalogPages } from "../../lib/catalog-pagination";
+import { runPriorityIngestion, type IngestionBatch } from "../../lib/priority-ingestion";
+import { fleetHex } from "../../lib/seed";
 import { dispatchPendingTakeoffNotifications } from "../../lib/aircraft-alerts/dispatcher";
 import { getSupabaseAdmin } from "../../lib/supabase/server";
 import {
-  buildSampleOffsets,
   normalizeAircraftSampleInterval,
-  fleetSampleInterval,
 } from "../../lib/ingestion-schedule";
 
 const LEASE_SECONDS = 150;
@@ -36,54 +40,49 @@ export default async function aircraftIngestBackground(
 
   const db = getSupabaseAdmin();
   const workerId = crypto.randomUUID();
-  const { data: claimed, error: claimError } = await db.rpc("claim_worker_lease", {
-    lease_name: "aircraft-ingestion",
-    lease_owner: workerId,
-    lease_seconds: LEASE_SECONDS,
-  });
-  if (claimError) throw new Error(`Worker lease failed: ${claimError.message}`);
-  if (!claimed) return;
+  // A final slow batch may cross the minute boundary. Give the previous
+  // worker time to publish and release its lease instead of losing this
+  // entire minute's invocation. The database still permits just one owner.
+  const claimDeadline = Date.now() + 45_000;
+  for (;;) {
+    const { data: claimed, error: claimError } = await db.rpc("claim_worker_lease", {
+      lease_name: "aircraft-ingestion",
+      lease_owner: workerId,
+      lease_seconds: LEASE_SECONDS,
+    });
+    if (claimError) throw new Error(`Worker lease failed: ${claimError.message}`);
+    if (claimed) break;
+    if (Date.now() >= claimDeadline) return;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
 
   try {
-    const catalog = await getAircraftCatalogEntries();
-    const sampleIntervalMs = fleetSampleInterval(configuredSampleIntervalMs(), catalog.length);
-    const workerStartedAt = Date.now();
-    const sampleOffsets = buildSampleOffsets(sampleIntervalMs);
+    await ensureCatalogSeeded();
+    const [catalog, priorityTails, lastAttemptByTail] = await Promise.all([
+      getAircraftCatalogEntries(), getPriorityAircraftTails(), recentBatchAttempts(),
+    ]);
+    const catalogByTail = new Map(catalog
+      .filter((entry) => /^[0-9a-f]{6}$/i.test(fleetHex(entry.aircraft)))
+      .map((entry) => [entry.aircraft.tail, entry]));
     let notificationWorkerRuns = 0;
-
-    for (const [sampleIndex, offsetMs] of sampleOffsets.entries()) {
-      const scheduledAt = workerStartedAt + offsetMs;
-      const waitMs = scheduledAt - Date.now();
-      if (waitMs > 0) await wait(waitMs);
-
-      const startLagMs = Date.now() - scheduledAt;
-      if (startLagMs >= sampleIntervalMs) {
-        console.warn(
-          `[aircraft-ingest] skipping sample ${sampleIndex}; ` +
-            `worker is ${startLagMs}ms behind schedule`,
+    let sampleIndex = 0;
+    await runPriorityIngestion({
+      tails: [...catalogByTail.keys()],
+      priorityTails,
+      lastAttemptByTail,
+      priorityIntervalMs: configuredSampleIntervalMs(),
+      sample: async (batch) => {
+        const result = await sampleAircraftBatch(
+          workerId, sampleIndex++, batch,
+          batch.tails.map((tail) => catalogByTail.get(tail)!),
         );
-        await recordSkippedSample(
-          workerId,
-          sampleIndex,
-          sampleIntervalMs,
-          scheduledAt,
-          startLagMs,
-        );
-        continue;
-      }
-
-      const result = await sampleAllStates(
-        workerId,
-        sampleIndex,
-        sampleIntervalMs,
-        scheduledAt,
-        startLagMs,
-      );
-      if (result.takeoffsCreated > 0) {
-        await runNotificationWorker(workerId);
-        notificationWorkerRuns += 1;
-      }
-    }
+        if (result.takeoffsCreated > 0) {
+          await runNotificationWorker(workerId);
+          notificationWorkerRuns += 1;
+        }
+        return result.priorityTails;
+      },
+    });
 
     // Retry pending deliveries once per minute even when no new takeoff was
     // detected. A takeoff-triggered run already satisfies this minute's pass.
@@ -108,13 +107,14 @@ export const config: Config = {
   method: "POST",
 };
 
-async function sampleAllStates(
+async function sampleAircraftBatch(
   workerId: string,
   sampleIndex: number,
-  sampleIntervalMs: number,
-  scheduledAt: number,
-  startLagMs: number,
-): Promise<{ takeoffsCreated: number }> {
+  batch: IngestionBatch,
+  catalog: AircraftCatalogEntry[],
+): Promise<{ takeoffsCreated: number; priorityTails: string[] | undefined }> {
+  const { intervalMs: sampleIntervalMs, scheduledAt } = batch;
+  const startLagMs = Math.max(0, Date.now() - scheduledAt);
   const db = getSupabaseAdmin();
   const startedAt = new Date().toISOString();
   const { data: run, error: runError } = await db
@@ -124,6 +124,8 @@ async function sampleAllStates(
       started_at: startedAt,
       status: "running",
       metadata: {
+        batch_kind: batch.kind,
+        queried_tails: batch.tails,
         sample_index: sampleIndex,
         sample_interval_ms: sampleIntervalMs,
         scheduled_at: new Date(scheduledAt).toISOString(),
@@ -136,11 +138,11 @@ async function sampleAllStates(
 
   try {
     const cycleStartedAt = Date.now();
-    const snapshot = await buildFleetSnapshot(
-      APP_STATES.map((state) => state.code),
-    );
-    const result = await ingestSnapshot(snapshot, workerId);
-    const reports: StateIngestionReport[] = APP_STATES.map((state) => {
+    const snapshot = await buildFleetBatchSnapshot(catalog);
+    // This write publishes immediately, before another provider batch begins.
+    const result = await ingestSnapshot(snapshot, workerId, { catalogSeeded: true });
+    const coveredStates = new Set(catalog.map((entry) => entry.homeStateCode));
+    const reports: StateIngestionReport[] = APP_STATES.filter((state) => coveredStates.has(state.code)).map((state) => {
       const aircraft = snapshot.aircraft.filter(
         (item) => item.home_state_code === state.code,
       );
@@ -195,6 +197,8 @@ async function sampleAllStates(
         takeoffs_created: result.takeoffsCreated,
         error: runError,
         metadata: {
+          batch_kind: batch.kind,
+          queried_tails: batch.tails,
           sample_index: sampleIndex,
           sample_interval_ms: sampleIntervalMs,
           scheduled_at: new Date(scheduledAt).toISOString(),
@@ -207,7 +211,10 @@ async function sampleAllStates(
     if (updateError) {
       throw new Error(`Ingestion run update failed: ${updateError.message}`);
     }
-    return { takeoffsCreated: result.takeoffsCreated };
+    return {
+      takeoffsCreated: result.takeoffsCreated,
+      priorityTails: result.sourceHealthy ? result.priorityAircraftTails : undefined,
+    };
   } catch (error) {
     await db
       .from("ingestion_runs")
@@ -221,31 +228,26 @@ async function sampleAllStates(
   }
 }
 
-async function recordSkippedSample(
-  workerId: string,
-  sampleIndex: number,
-  sampleIntervalMs: number,
-  scheduledAt: number,
-  startLagMs: number,
-): Promise<void> {
+/** Attempt history also preserves discovery progress if a worker runs out of
+ * time or a provider fails. Unqueried tails stay oldest and run next minute. */
+async function recentBatchAttempts(): Promise<Map<string, number>> {
   const db = getSupabaseAdmin();
-  const { error } = await db.from("ingestion_runs").insert({
-    worker_id: workerId,
-    started_at: new Date(scheduledAt).toISOString(),
-    finished_at: new Date().toISOString(),
-    status: "skipped",
-    error: `sample_start_lag_${startLagMs}ms`,
-    metadata: {
-      sample_index: sampleIndex,
-      sample_interval_ms: sampleIntervalMs,
-      scheduled_at: new Date(scheduledAt).toISOString(),
-      start_lag_ms: startLagMs,
-      skip_reason: "worker_behind_schedule",
-    },
-  });
-  if (error) {
-    throw new Error(`Skipped ingestion run write failed: ${error.message}`);
+  const since = new Date(Date.now() - 5 * 60_000).toISOString();
+  const runs = await readAllCatalogPages(
+    (from, to) => db.from("ingestion_runs").select("id,started_at,metadata")
+      .gte("started_at", since).order("id").range(from, to),
+    "Recent aircraft batches read failed",
+  );
+  const attempts = new Map<string, number>();
+  for (const run of runs) {
+    const at = Date.parse(String(run.started_at));
+    const tails = run.metadata?.queried_tails;
+    if (!Number.isFinite(at) || !Array.isArray(tails)) continue;
+    for (const tail of tails) {
+      if (typeof tail === "string") attempts.set(tail, Math.max(attempts.get(tail) ?? 0, at));
+    }
   }
+  return attempts;
 }
 
 async function runNotificationWorker(workerId: string) {
@@ -282,8 +284,4 @@ async function runNotificationWorker(workerId: string) {
     }
     throw error;
   }
-}
-
-function wait(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
