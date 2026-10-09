@@ -66,16 +66,17 @@ Setup status updated October 9, 2026: **Out Of Sight iPhone** is registered in
 Firebase project `out-of-sight-d3216` with bundle ID `live.outofsight.app`.
 Its matching configuration is installed locally and ignored by Git. The live
 subscription endpoint reports FCM relay configuration present; this does not
-verify delivery. Firebase has neither a development nor a production APNs key
-or certificate for the iPhone app at the last console check on October 8.
+verify delivery by itself. On October 9 the owner uploaded the development
+APNs key and confirmed that **Send test notification** arrived on the iPhone.
 Apple enrollment is active per the owner's October 9 update. Xcode is now signed
 in and an Apple Development signing identity is installed. Team `C6S63TAR8C` is configured for
 both targets in Debug and Release. The signed development build is installed
 and launched on the owner's iPhone; the owner confirmed Home loads normally.
-The local App Store export also passed signing verification. The APNs connection,
-physical-iPhone delivery testing remain unfinished.
+The local App Store export also passed signing verification. The development
+push delivery test passed; foreground/background/locked-device behavior,
+notification taps, opt-out, and TestFlight production delivery still need testing.
 The matching website changes were published on October 9, 2026 and the installed
-app was relaunched. APNs configuration remains required for takeoff notifications.
+app was relaunched. Actual automatic takeoff-alert triggering is not yet verified.
 The `sendAircraftAlert` Firebase function update was deployed on October 9, 2026.
 Both its existing Cloud Functions URL and Cloud Run URL respond, reject GET
 with 405, and reject an unauthenticated POST with 401. These checks verify
@@ -89,17 +90,18 @@ The relay's runtime service account also lacked Firebase messaging permission;
 it now has `roles/firebasecloudmessaging.admin` on this project. An authenticated
 empty-body request now reaches validation (400), and a diagnostic request with
 an intentionally invalid device token reaches FCM (`messaging/invalid-argument`).
-These probes target no real device and do not verify iPhone delivery. The owner's
-test failed before the messaging-permission repair; a new physical-device test
-and confirmation of the Apple push configuration are still required.
+These diagnostic probes targeted no real device. After completing development
+APNs configuration, the owner confirmed successful test notification delivery
+on October 9. The relay logged HTTP 200 responses at 18:18–18:19 UTC.
 
 An Apple APNs key named **OOS Push Notifications** was created on October 9 for
 team `C6S63TAR8C`: key ID `N9S6G4FN8F`, Team Scoped, **Sandbox & Production**.
 The downloaded private key is stored outside the repository with owner-only
-permissions. Upload to the Firebase Apple app remains pending: its browser
-console fails to list apps despite verified owner API access and an enabled
-Firebase Management API. The owner was given the upload details for Safari.
-Creating the Apple key alone does not configure Firebase or verify delivery.
+permissions. The in-app browser console cannot list apps despite verified owner
+API access and an enabled Firebase Management API. The owner completed the
+development upload in Safari and confirmed delivery. The same key supports
+production, but its production upload was not independently verified; test
+notification delivery again using a TestFlight build before release.
 
 1. Add an **Apple/iOS app** to the existing Firebase project using
    `live.outofsight.app` (the Android registration is separate).

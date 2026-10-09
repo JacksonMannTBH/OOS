@@ -124,20 +124,22 @@ location behavior alone. Check the entire configured app and its partners.
   iPhone build readiness as well as server
   readiness, and automatic promotions are suppressed when alerts cannot be
   enabled. The signed app includes the notification-readiness plugin, and the
-  Firebase relay update was deployed on October 9. The APNs connection and
-  actual push delivery remain pending.
+  Firebase relay update was deployed on October 9. Development test push
+  delivery is now confirmed by the owner; production delivery remains untested.
   This setup is separate from the Live tracking location session.
 - October 9 notification repair: corrected the relay secret's trailing line
   ending, deployed Firebase secret version 2, saved the matching Netlify
   production Functions value, and granted the relay runtime account the Firebase
   messaging role. Authenticated requests now reach validation and FCM. Invalid
-  diagnostic tokens were used; actual iPhone delivery and the Apple push
-  configuration remain unverified after this repair.
+  diagnostic tokens were used initially. After the development APNs upload,
+  the owner confirmed that Send test notification arrived on the physical iPhone.
+  The relay logged HTTP 200 responses at 18:18–18:19 UTC on October 9.
 - Apple APNs key `N9S6G4FN8F` (**OOS Push Notifications**) was created for team
   `C6S63TAR8C`, with Sandbox & Production access. Its private key is secured
-  outside Git. Firebase upload remains pending because the browser console
-  cannot load the app configuration; owner API access and the Management API
-  were verified. Delivery must be tested after the upload completes.
+  outside Git. The owner reported uploading the development credential in
+  Safari, then confirmed delivery. Production upload has not been independently
+  verified; TestFlight delivery, background/locked-device behavior, notification
+  taps, opt-out, and automatic takeoff-alert triggering still require checks.
 - The local Help page now has a support contact, separate native and browser
   notification instructions, and a location summary covering on-device use and map requests.
   Both public Help and Legal URLs returned HTTP 200 on October 9, 2026. The
@@ -146,7 +148,8 @@ location behavior alone. Check the entire configured app and its partners.
   promotional text 131, description 1015, and keywords 74 UTF-8 bytes. The icon
   is 1024 by 1024 pixels without an alpha channel. The matching iPhone Firebase
   configuration was installed on October 8, 2026; the local release configuration
-  check now passes. Firebase's iPhone app has no APNs key or certificate, Apple
+  check now passes. The development APNs key upload and test delivery are now
+  confirmed by the owner. Apple
   enrollment is now active per the owner's October 9 update; Xcode is signed in
   and the Apple Development certificate is installed. Team `C6S63TAR8C` is configured on
   both targets for Debug and Release. The unsigned Release build passed. The owner's
@@ -156,8 +159,8 @@ location behavior alone. Check the entire configured app and its partners.
   signatures and App Store profiles, matching Team/version/build, and debugging
   disabled; the app has the production APNs entitlement. No upload has occurred.
   The Firebase relay update deployed successfully; its existing URL and Cloud
-  Run URL reject unauthenticated requests. Physical-iPhone delivery testing
-  remains unfinished.
+  Run URL reject unauthenticated requests. The physical-iPhone test notification
+  passed; the remaining release checks are listed above.
 - Latest local package: **1.0 (3)**. Live tracking is controlled by the compact
   Home Live button, persists after End Ride, and its activity tap opens Home.
   Ride display settings include a saved Show speedometer switch. Map styles are
