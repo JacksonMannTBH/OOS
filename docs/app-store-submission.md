@@ -114,17 +114,19 @@ location behavior alone. Check the entire configured app and its partners.
 
 ## Release findings
 
-- The current live website still selects native push only on Android and does
-  not suppress its Home Screen install banner inside iOS. The local client
-  fixes both. Alert controls now check iPhone build readiness as well as server
+- The website changes were published on October 9, 2026 in commit
+  `2463c10a1e47288fccd67ee90b7e791fa9e3d351`, Netlify deploy
+  `6ac90785d2d2e70008af2944`. The client now supports native iPhone push and
+  suppresses the Home Screen install banner inside iOS. Alert controls check
+  iPhone build readiness as well as server
   readiness, and automatic promotions are suppressed when alerts cannot be
-  enabled. Publish the web changes and rebuild the native app to include the
-  notification-readiness plugin; configuration and actual push delivery remain
-  pending. This setup is separate from the Live tracking location session.
+  enabled. The signed app includes the notification-readiness plugin; the APNs
+  connection, Firebase relay deployment, and actual push delivery remain pending.
+  This setup is separate from the Live tracking location session.
 - The local Help page now has a support contact, separate native and browser
   notification instructions, and a location summary covering on-device use and map requests.
-  Both public Help and Legal URLs returned HTTP 200 on October 8, 2026. The live
-  Help page still lacks the contact link; deploy the updated page before submission.
+  Both public Help and Legal URLs returned HTTP 200 on October 9, 2026. The
+  published Help page includes the contact link and Live Tracking instructions.
 - Listing text is within the current limits: name 12 characters, subtitle 30,
   promotional text 131, description 1015, and keywords 74 UTF-8 bytes. The icon
   is 1024 by 1024 pixels without an alpha channel. The matching iPhone Firebase
@@ -138,15 +140,15 @@ location behavior alone. Check the entire configured app and its partners.
   archive and local App Store export passed. Both exported targets have verified
   signatures and App Store profiles, matching Team/version/build, and debugging
   disabled; the app has the production APNs entitlement. No upload has occurred.
-  Service deployment and physical-iPhone delivery testing remain unfinished.
+  Firebase relay deployment and physical-iPhone delivery testing remain unfinished.
 - Spot reporting has been removed from the app, API, and admin navigation. The
   historical database migrations and seven-day cleanup remain intact for older
-  records; no production database data was deleted. Deploy the new backend to
-  remove the existing live endpoint.
-- Live tracking is implemented locally as an opt-in native location session and
+  records; no production database data was deleted. The removed live `/api/spot`
+  endpoint returned 404 after deployment.
+- Live tracking is implemented as an opt-in native location session and
   WidgetKit Live Activity, independent of takeoff-alert push delivery. The button,
-  privacy text, and help content require a web deployment; both the app and
-  widget require an updated signed iPhone build. Before listing the feature,
+  privacy text, and help content are published; both the app and widget are
+  included in the signed iPhone build. Before listing the feature,
   verify start/stop, updates while another app is open and while locked, stale
   data, permission denial, system dismissal, and the Ride Mode deep link on a
   physical device. Native calculation checks and builds do not verify those

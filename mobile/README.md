@@ -70,7 +70,9 @@ in and an Apple Development signing identity is installed. Team `C6S63TAR8C` is 
 both targets in Debug and Release. The signed development build is installed
 and launched on the owner's iPhone; the owner confirmed Home loads normally.
 The local App Store export also passed signing verification. The APNs connection,
-service deployment, and physical-iPhone delivery testing remain unfinished.
+Firebase relay deployment and physical-iPhone delivery testing remain unfinished.
+The matching website changes were published on October 9, 2026 and the installed
+app was relaunched. APNs configuration remains required for takeoff notifications.
 
 1. Add an **Apple/iOS app** to the existing Firebase project using
    `live.outofsight.app` (the Android registration is separate).
@@ -177,6 +179,13 @@ References: [ActivityKit](https://developer.apple.com/documentation/activitykit/
   distribution profiles, debugging disabled, and production APNs entitlement
   on the app. Output files are ignored by Git. No TestFlight/App Store upload
   has occurred; push delivery and Live Activity behavior remain unverified.
+- The owner approved publishing the prepared website changes. Commit
+  `2463c10a1e47288fccd67ee90b7e791fa9e3d351` deployed successfully to
+  `https://outofsight.live` as Netlify deploy `6ac90785d2d2e70008af2944`.
+  Home, Ride, Help, and Legal returned HTTP 200; the removed `/api/spot` route
+  returned 404. The published Ride client contains the Live Tracking button
+  and native plugin integration. These checks do not verify rendered phone UI
+  or Live Activity behavior. The app was relaunched for owner-led testing.
 
 ### Pre-enrollment validation — October 8, 2026
 
