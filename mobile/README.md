@@ -207,6 +207,18 @@ Lock Screen, dismissal, deep-link, and permission testing remains required.
 This local implementation does not need Firebase/APNs delivery credentials;
 it updates ActivityKit on the device during the location session.
 
+Build **1.0 (6)** adds `Plane` or `Heli` immediately before the tail number on
+the Lock Screen and expanded Dynamic Island. Nicknames remain before the
+typed tail, and unavailable updates retain the complete aircraft label.
+The native feed decoder uses the fleet role (`patrol`/`sar` for helicopters,
+`fixed_wing`/`transport` for planes), falling back to the existing aircraft-model
+classification when the role is missing or unknown. Twenty native checks and
+the signed device build passed; the build installed and launched on the owner's
+iPhone. The release archive and local App Store export passed; both exported
+targets have matching build 6, verified signatures and distribution profiles,
+and debugging disabled. Production APNs and the bundled Radar sound were
+verified. Label display awaits the owner's check. No App Store upload occurred.
+
 Run the shared native calculation checks with:
 
 ```sh

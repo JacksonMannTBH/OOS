@@ -49,7 +49,7 @@ enum LiveTrackingCoreTests {
         }
         check("nearest aircraft is selected by distance, ignoring grounded aircraft") {
             let result = summary(snapshot([plane("FAR", latitude: 0.1), plane("GROUND", latitude: 0, airborne: false), plane("NEAR")]))
-            require(result.aircraft == "NEAR", "Must select nearest airborne contact")
+            require(result.aircraft == "Plane NEAR", "Must select nearest airborne contact")
             require(abs((result.distanceNm ?? 0) - 0.6004) < 0.002, "Must calculate nautical miles")
             require(result.rideState == "Stop", "Nearest contact should determine status")
         }
@@ -57,7 +57,7 @@ enum LiveTrackingCoreTests {
             var selected = config
             selected.excludedTails = ["N123"]
             let result = summary(snapshot([plane(), plane("OTHER", latitude: 0.1)]), configuration: selected)
-            require(result.aircraft == "OTHER" && result.rideState == "Watch", "Excluded aircraft cannot determine state")
+            require(result.aircraft == "Plane OTHER" && result.rideState == "Watch", "Excluded aircraft cannot determine state")
         }
         check("healthy empty feed can show Clear without inventing a distance") {
             let result = summary(snapshot([]))
@@ -146,9 +146,37 @@ enum LiveTrackingCoreTests {
             """
             let feed = try JSONDecoder().decode(RideTrackingSnapshot.self, from: Data(json.utf8))
             let result = summary(feed)
-            require(result.aircraft == "Patrol · N123", "Identity preserved")
+            require(result.aircraft == "Patrol · Plane N123", "Type and nickname preserved before the tail number")
             let roundtrip = try JSONDecoder().decode(RideTrackingContent.self, from: JSONEncoder().encode(result))
             require(roundtrip == result, "App and widget must share content serialization")
+        }
+        try check("fleet role labels take priority and older feeds fall back to the aircraft model") {
+            for (model, role, expected) in [
+                ("Cessna", "patrol", "Heli"),
+                ("Eurocopter MH-65E Dolphin", "sar", "Heli"),
+                ("Bell", "fixed_wing", "Plane"),
+                ("Beechcraft B200", "transport", "Plane"),
+                ("McDonnell Douglas 369E", "unknown", "Heli"),
+                ("Cessna 182T", "unknown", "Plane")
+            ] {
+                let data = try JSONSerialization.data(withJSONObject: [
+                    "tail": "N123", "model": model, "role": role, "airborne": true,
+                    "lat": 0.01, "lon": 0, "last_seen_min": 0
+                ])
+                let aircraft = try JSONDecoder().decode(RideTrackingAircraft.self, from: data)
+                let result = summary(snapshot([aircraft]))
+                require(result.aircraft == "\(expected) N123", "Decoded role must determine label for \(role)")
+                require(RideTrackingCalculator.displayedContent(summary(nil), previous: result) == result,
+                        "Stale data must retain the type alongside the tail")
+            }
+            for model in ["McDonnell Douglas 369E", "Bell OH-58A", "Airbus AS350B3 / H125", "Robinson R66"] {
+                let base = plane()
+                let helicopter = RideTrackingAircraft(tail: base.tail, model: model, nickname: nil,
+                    airborne: true, lat: base.lat, lon: base.lon,
+                    position_observed_at: base.position_observed_at, last_seen_min: nil)
+                require(summary(snapshot([helicopter])).aircraft == "Heli N123", "Older feed's helicopter model: \(model)")
+            }
+            require(summary(snapshot([])).aircraft == "No tracked aircraft airborne", "No type label without an aircraft")
         }
         print("\(passed) native live tracking checks passed")
     }

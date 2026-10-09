@@ -53,6 +53,18 @@ struct RideTrackingAircraft: Decodable {
     let lon: Double?
     let position_observed_at: String?
     let last_seen_min: Double?
+    var role: String? = nil
+
+    var vehicleLabel: String {
+        // Match the app's fleet icons; use the model for older feeds without a role.
+        switch role {
+        case "patrol", "sar": return "Heli"
+        case "fixed_wing", "transport": return "Plane"
+        default:
+            let helicopterModel = #"\b(airbus|eurocopter|as350|h125|h135|h145|ec120|ec130|ec135|ec145|bk117|mbb|bell|mcdonnell douglas|md helicopters|md\s?(?:369|500|520|530|600)|369e|369ff|500n|600n|hughes|schweizer|robinson|r44|r66|jet\s?ranger|iroquois|huey|dolphin|uh-1|uh-60|hh-1|oh-58|th-57|th-67|sikorsky|s-70|agusta|leonardo|enstrom)\b"#
+            return model.range(of: helicopterModel, options: [.regularExpression, .caseInsensitive]) == nil ? "Plane" : "Heli"
+        }
+    }
 }
 
 enum RideTrackingCalculator {
@@ -122,7 +134,8 @@ enum RideTrackingCalculator {
         if let nearest {
             expiry = min(expiry, nearest.expiry)
             let nickname = nearest.plane.nickname?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let name = nickname.isEmpty ? nearest.plane.tail : "\(nickname) · \(nearest.plane.tail)"
+            let identity = "\(nearest.plane.vehicleLabel) \(nearest.plane.tail)"
+            let name = nickname.isEmpty ? identity : "\(nickname) · \(identity)"
             return RideTrackingContent(aircraft: name, distanceNm: nearest.distance,
                                        rideState: configuration.label(distanceNm: nearest.distance),
                                        message: nearest.plane.model, updatedAt: min(feedDate, locationDate),

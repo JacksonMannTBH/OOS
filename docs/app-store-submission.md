@@ -163,7 +163,16 @@ location behavior alone. Check the entire configured app and its partners.
   The Firebase relay update deployed successfully; its existing URL and Cloud
   Run URL reject unauthenticated requests. The physical-iPhone test notification
   passed; the remaining release checks are listed above.
-- Latest local package: **1.0 (5)**. Live Activity Lock Screen backgrounds now
+- Latest local package: **1.0 (6)**. Live Activity aircraft labels include
+  `Plane` or `Heli` immediately before the tail number on the Lock Screen and
+  expanded Dynamic Island. Nicknames, distance-band colors, and last-known
+  state retention are preserved. Twenty native checks and the signed device
+  build passed. The build installed and launched on the owner's iPhone; label
+  display awaits the owner's check. Release archive/export passed; both exported
+  targets have matching build 6, verified signatures and distribution profiles,
+  and debugging disabled. Production APNs and the bundled Radar sound were
+  verified. No App Store upload occurred.
+- The prior package **1.0 (5)** added Live Activity Lock Screen backgrounds that
   follow the distance-band color: green Clear, blue Watch, amber Warning, red
   Stop. Dynamic Island status, distance, icon, and keyline share the band color.
   Stale or failed updates preserve the complete last known result and its
