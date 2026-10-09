@@ -6,6 +6,7 @@ import maplibregl, {
   GeoJSONSource,
   MapMouseEvent,
   MapGeoJSONFeature,
+  type ExpressionSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAP_LABEL_FONT, MAP_STYLE_URL } from "@/lib/map-style";
@@ -75,6 +76,10 @@ const PLANE_ASSET_VERSION = "cessna-v1";
 const PLANE_ICON_KEY = "aircraft-plane-cessna";
 const AIRCRAFT_LABEL_BG_KEY = "aircraft-label-pill";
 const AIRCRAFT_LABEL_COLOR_KEY_PREFIX = "aircraft-label-pill-color";
+// Keep the text and its pill in sync; report age must not affect visibility.
+const AIRCRAFT_LABEL_ZOOM_OPACITY: ExpressionSpecification = [
+  "interpolate", ["linear"], ["zoom"], 7, 0, 8.5, 1,
+];
 
 function aircraftLabelColorKey(index: number): string {
   return `${AIRCRAFT_LABEL_COLOR_KEY_PREFIX}-${index}`;
@@ -375,8 +380,7 @@ const EMPTY_SNAPSHOT: Snapshot = {
 // marker keeps moving continuously and the next sample can reconcile it from
 // its exact on-screen position without a stop/jump cycle.
 const ANIM_MS = 10_500;
-const STALE_FADE_START_MS = 30_000;
-const STALE_FADE_END_MS = 120_000;
+const POSITION_FRESHNESS_MS = 30_000;
 const MAX_TURN_BANK_DEG = 6;
 
 function setFuelCardTail(map: MaplibreMap, tail: string | null): void {
@@ -427,18 +431,7 @@ function observationTimeMs(aircraft: Aircraft, now: number): number {
   if (typeof aircraft.last_seen_min === "number") {
     return now - Math.max(0, aircraft.last_seen_min) * 60_000;
   }
-  return aircraft.observed === false ? now - STALE_FADE_START_MS : now;
-}
-
-function staleOpacity(observedAtMs: number, now: number): number {
-  const ageMs = Math.max(0, now - observedAtMs);
-  if (ageMs <= STALE_FADE_START_MS) return 1;
-  const fade = Math.min(
-    1,
-    (ageMs - STALE_FADE_START_MS) /
-      (STALE_FADE_END_MS - STALE_FADE_START_MS),
-  );
-  return 1 - fade * 0.65;
+  return aircraft.observed === false ? now - POSITION_FRESHNESS_MS : now;
 }
 
 // Re-center the map on the followed plane when EITHER:
@@ -705,7 +698,7 @@ export default function RadarMap({
           "icon-size": 0.95,
         },
         paint: {
-          "icon-opacity": ["coalesce", ["get", "opacity"], 1],
+          "icon-opacity": 1,
         },
       });
       map.addLayer({
@@ -745,25 +738,9 @@ export default function RadarMap({
           "text-letter-spacing": 0.07,
         },
         paint: {
-          "icon-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            7,
-            0,
-            8.5,
-            ["coalesce", ["get", "opacity"], 1],
-          ],
+          "icon-opacity": AIRCRAFT_LABEL_ZOOM_OPACITY,
           "text-color": "#071012",
-          "text-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            7,
-            0,
-            8.5,
-            ["coalesce", ["get", "opacity"], 1],
-          ],
+          "text-opacity": AIRCRAFT_LABEL_ZOOM_OPACITY,
         },
       });
       map.addLayer({
@@ -801,13 +778,9 @@ export default function RadarMap({
           "text-letter-spacing": 0,
         },
         paint: {
-          "icon-opacity": ["coalesce", ["get", "opacity"], 1],
+          "icon-opacity": 1,
           "text-color": "#f5f2e8",
-          "text-opacity": [
-            "*",
-            ["coalesce", ["get", "opacity"], 1],
-            0.78,
-          ],
+          "text-opacity": 0.78,
         },
         // Fuel estimates stay hidden until a rider selects an aircraft.
         filter: [
@@ -1237,7 +1210,7 @@ export default function RadarMap({
       const iconFamily = isHelicopterRole(glyphRole) ? "helicopter" : "plane";
       const observedAtMs = observationTimeMs(a, now);
       const isFresh =
-        a.observed !== false && now - observedAtMs <= STALE_FADE_START_MS;
+        a.observed !== false && now - observedAtMs <= POSITION_FRESHNESS_MS;
       const targetTrack = normalizeHeading(
         a.heading ?? newFromTrack.get(a.tail) ?? 0,
       );
@@ -1341,7 +1314,6 @@ export default function RadarMap({
           iconFamily: meta.iconFamily,
           track,
           displayTrack: normalizeHeading(track + bank),
-          opacity: staleOpacity(meta.observedAtMs, Date.now()),
           color: meta.color,
           labelIcon: meta.labelIcon,
           label: meta.label,
