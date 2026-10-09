@@ -28,8 +28,11 @@ npm run sync
 npm run open
 ```
 
-The shell connects to the production Next.js app and uses native Capacitor
-plugins for Android permissions and Firebase notifications. After Firebase and
+The app packages its own screens, Help, styles, fonts, and images. Only data and
+notification requests use the production HTTPS backend. Native Capacitor plugins
+handle Android permissions and Firebase notifications. Install root dependencies
+with `npm ci` before installing dependencies here; the mobile build reuses shared
+React components and assets from the parent project. After Firebase and
 the backend environment are configured, run `npm run build:bundle`; it prompts
 for the existing upload-key password without printing it and writes
 `mobile/android/out-of-sight-capacitor-release.aab`.
@@ -37,7 +40,7 @@ for the existing upload-key password without printing it and writes
 ## iPhone / Xcode
 
 The iPhone target is `ios/App/App.xcodeproj`, scheme **App**, display name
-**Out Of Sight**, bundle ID `live.outofsight.app`, version 1.0, build 1, iOS 15+.
+**Out Of Sight**, bundle ID `live.outofsight.app`, version 1.0, build 2, iOS 15+.
 It uses Swift Package Manager, Capacitor 8.5.1, and Firebase Messaging 12.4.0.
 The first release targets iPhone; iPad-specific layouts have not been validated.
 
@@ -209,7 +212,7 @@ References: [ActivityKit](https://developer.apple.com/documentation/activitykit/
   UI remain unverified. The device was not erased.
 - Visual inspection remains pending: Device Hub access was not approved and the
   local browser-preview request was declined. Do not count these as passed tests.
-- These changes are local. The native shell still loads the existing live site.
+- At that validation date, the changes were local and the native shell still loaded the live site. See the bundled-interface section for the current architecture.
 
 Manual acceptance checks once preview/device access is available:
 
@@ -238,23 +241,41 @@ the configured app; the existing Android artwork is not an iPhone screenshot.
 The [App Store submission draft](../docs/app-store-submission.md) contains listing
 copy, reviewer notes, a screenshot plan, and the privacy questions still to resolve.
 
-### Hosted web app and local testing
+### Bundled interface and data service
 
-The iOS shell loads `https://outofsight.live`, matching the existing Android
-architecture. Building the native app does **not** deploy changes to that
-website. Until the web deployment, the installed shell sees the current live
-website, rather than the new local iOS permission/notification behavior.
-The bundled `offline.html` is displayed if the initial network load fails.
-It offers retry and does not represent unavailable aircraft data as current.
+Both Capacitor apps now load `www/index.html` from the installed app. There is
+no `server.url`. Vite builds the shared public screens into local JavaScript,
+CSS, Help content, and assets; lightweight adapters provide navigation, images,
+lazy-loaded maps, and on-device display preferences without Next.js server code.
+`npm run sync` builds and copies the interface to Android; `npm run sync:ios`
+builds and copies it to iOS. `www/` and the copied native assets are generated
+and ignored by Git. The older Bubblewrap/TWA fallback in `../android` still
+opens the website and is not affected by this change.
 
-For local integration testing, start the root web app with `npm run dev`, run
-`npm run sync:ios`, then temporarily set `server.url` to `http://localhost:3000`
-and `server.cleartext` to `true` in the **generated/ignored**
-`ios/App/App/capacitor.config.json`. Build directly in Xcode without another
-sync. A simulator can reach the Mac's localhost; a physical iPhone cannot.
-Run `npm run sync:ios` again afterward to restore production settings.
-Local live data requires the backend environment described in the root README.
-Never archive a build pointing at a local development server.
+App screen changes require a new app build and store update. Website deployment
+alone no longer replaces the installed interface. The shared source still means
+website and app changes can reuse components; deployment and distribution are
+separate. Live aircraft data, map tiles, flight history, forecasts, and alerts
+require internet access. Home, Help, and local display controls can open offline;
+missing data must never be presented as fresh Clear status.
+
+The app routes local `/api/` fetches to `https://outofsight.live` through native
+CapacitorHttp. The new read-only `/api/mobile` endpoint exposes the public
+catalog, flight details, forecasts/learning state, and speed-warning setting.
+Existing aircraft, trail, location-state, and alert endpoints remain in use.
+The server retains database access and secrets. A bundler guard rejects server
+modules and database clients. Shared flight links use public HTTPS addresses;
+notification taps and `oos://ride` return to the packaged interface.
+
+Preferences are stored on the device. Moving from the hosted origin to the
+local app origin creates a separate preference store; recheck selected state,
+aircraft exclusions, Ride thresholds, and notification enrollment after installing
+this build. Existing HTTPS-origin settings are not automatically migrated.
+
+For local work, run `npm run build:web` and `npm run typecheck` here, then sync
+and build the relevant native target. Rebuild and sync after interface changes.
+Keep the production API origin for device integration testing; never add a
+remote UI URL to the release configuration.
 
 ### Before TestFlight
 
@@ -266,7 +287,7 @@ npm run archive:ios
 npm run export:ios
 ```
 
-The release check verifies the production URL, Firebase project and bundle ID,
+The release check verifies the packaged interface, native HTTPS transport, Firebase project and bundle ID,
 app/widget version and build consistency, and production APNs entitlements.
 The archive command additionally requires automatic signing and the same valid
 Apple Team ID on both targets; it lets Xcode update provisioning with the

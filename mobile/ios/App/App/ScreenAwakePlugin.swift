@@ -89,7 +89,7 @@ class OOSBridgeViewController: CAPBridgeViewController {
     }
 
     func openRide() {
-        guard isViewLoaded, let webView = bridge?.webView, let base = bridge?.config.serverURL else {
+        guard isViewLoaded, let webView = bridge?.webView, let base = bridge?.config.localURL else {
             openRideOnLoad = true
             return
         }

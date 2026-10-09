@@ -15,7 +15,7 @@ export function SwRegistrar() {
       const listener = PushNotifications.addListener(
         "pushNotificationActionPerformed",
         ({ notification }) => {
-          const url = notificationPath(notification.data?.url, window.location.origin);
+          const url = notificationPath(notification.data?.url, window.location.href);
           if (url) {
             window.location.assign(url);
           }

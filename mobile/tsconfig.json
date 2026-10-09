@@ -1,0 +1,29 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "incremental": false,
+    "plugins": [],
+    "paths": {
+      "@/*": ["../*"],
+      "next/navigation": ["./frontend/navigation.tsx"],
+      "next/link": ["./frontend/navigation.tsx"],
+      "next/image": ["./frontend/compat/image.tsx"],
+      "next/dynamic": ["./frontend/compat/dynamic.tsx"],
+      "@/lib/aircraft-data": ["./frontend/data.ts"],
+      "@/lib/registry": ["./frontend/data.ts"],
+      "@/lib/snapshot": ["./frontend/data.ts"],
+      "@/lib/flights": ["./frontend/data.ts"],
+      "@/lib/learning": ["./frontend/data.ts"],
+      "@/lib/predictor": ["./frontend/data.ts"],
+      "@/lib/flags": ["./frontend/data.ts"],
+      "@/lib/user-prefs": ["./frontend/preferences.ts"],
+      "@/app/(tabs)/settings/actions": ["./frontend/preferences.ts"],
+      "@/components/TimeFormatSetting": ["./frontend/PreferenceSettings.tsx"],
+      "@/components/ContrastSetting": ["./frontend/PreferenceSettings.tsx"],
+      "@/lib/config": ["./frontend/config.ts"]
+    }
+  },
+  "include": ["frontend/**/*.ts", "frontend/**/*.tsx", "vite.config.ts", "capacitor.config.ts"],
+  "exclude": ["node_modules", "ios", "android", "www"]
+}

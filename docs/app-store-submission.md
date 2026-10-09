@@ -73,10 +73,11 @@ distance in nautical miles, and Stop/Warning/Watch/Clear using the user's Ride
 Mode thresholds. Expired location or aircraft data does not display a fresh
 Clear state. Tap the activity to reopen Ride Mode.
 
-The iPhone app uses Capacitor with hosted content at https://outofsight.live,
-native location access, native screen-wake support, and a WidgetKit Live Activity.
-Live content requires
-connectivity. A bundled connection screen handles an initial loading failure.
+The iPhone app uses Capacitor with its screens, Help, and assets packaged inside
+the app, native location access, native screen-wake support, and a WidgetKit Live
+Activity. Live aircraft data, map tiles, flight history, forecasts, and alerts use
+online services. Home, Help, and local display controls can open offline.
+Unavailable aircraft data must not appear as a fresh Clear state.
 
 After notification configuration and testing are complete, include these steps:
 Open Settings → Notifications & state, select a state, turn notifications on,
@@ -159,7 +160,7 @@ location behavior alone. Check the entire configured app and its partners.
 - The Settings Store link opens an apparel gallery labeled “Coming soon.”
   Finish that experience or remove the unfinished entry from the release before
   submission; do not advertise purchasing while no checkout exists.
-- The iPhone shell loads hosted web content. Demonstrate the tested map,
+- The iPhone app packages its interface locally. Demonstrate the tested map,
   location, Ride Mode, and notification utility in review. Approval is still
   subject to Apple's minimum-functionality assessment.
 - Verify permission to distribute each aircraft-data source and map asset in the

@@ -3,15 +3,17 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "sync": "cap sync android",
+    "sync": "npm run build:web && cap sync android",
     "open": "cap open android",
-    "sync:ios": "cap sync ios",
+    "sync:ios": "npm run build:web && cap sync ios",
     "open:ios": "cap open ios",
-    "build:ios": "cap sync ios && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ios/DerivedData CODE_SIGNING_ALLOWED=NO build",
+    "build:ios": "npm run sync:ios && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath ios/DerivedData CODE_SIGNING_ALLOWED=NO build",
     "build:bundle": "powershell -ExecutionPolicy Bypass -File ./scripts/build-bundle.ps1",
     "check:ios:release": "node scripts/check-ios-release.mjs",
-    "archive:ios": "cap sync ios && node scripts/check-ios-release.mjs --require-signing && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination \"generic/platform=iOS\" -derivedDataPath ios/DerivedData -archivePath ios/App/output/OutOfSight.xcarchive -allowProvisioningUpdates archive",
-    "export:ios": "node scripts/check-ios-release.mjs --require-signing && xcodebuild -exportArchive -archivePath ios/App/output/OutOfSight.xcarchive -exportOptionsPlist ios/ExportOptions.plist -exportPath ios/App/output/AppStore -allowProvisioningUpdates"
+    "archive:ios": "npm run sync:ios && node scripts/check-ios-release.mjs --require-signing && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination \"generic/platform=iOS\" -derivedDataPath ios/DerivedData -archivePath ios/App/output/OutOfSight.xcarchive -allowProvisioningUpdates archive",
+    "export:ios": "node scripts/check-ios-release.mjs --require-signing && xcodebuild -exportArchive -archivePath ios/App/output/OutOfSight.xcarchive -exportOptionsPlist ios/ExportOptions.plist -exportPath ios/App/output/AppStore -allowProvisioningUpdates",
+    "build:web": "vite build --config vite.config.ts && node scripts/finish-web-build.mjs",
+    "typecheck": "tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.1",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.1",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vite": "^8.3.4"
   }
 }

@@ -15,24 +15,12 @@
 
 import { cacheGet, cacheSet, cacheSetIfAbsent } from "./cache";
 
-export const LEARNING_THRESHOLD_DAYS = 30;
+import { LEARNING_THRESHOLD_DAYS, type LearningState } from "./learning-contract";
+export { LEARNING_THRESHOLD_DAYS, type LearningState } from "./learning-contract";
 
 const META_KEY = "meta:first_sample_ts";
 const READ_CACHE_KEY = "ss:learning-state:v1";
 const READ_CACHE_TTL_SECONDS = 5 * 60;
-
-export type LearningState = {
-  /** ISO timestamp of the first sample ever ingested. null = nothing seen yet. */
-  firstSampleIso: string | null;
-  /** Whole days elapsed since firstSampleIso, capped at LEARNING_THRESHOLD_DAYS. */
-  daysElapsed: number;
-  /** Whole days remaining to reach LEARNING_THRESHOLD_DAYS. 0 once we cross the line. */
-  daysRemaining: number;
-  /** 0..1 fraction of the learning window completed. */
-  progress: number;
-  /** True until daysElapsed >= LEARNING_THRESHOLD_DAYS. */
-  stillLearning: boolean;
-};
 
 const MS_PER_DAY = 86_400_000;
 

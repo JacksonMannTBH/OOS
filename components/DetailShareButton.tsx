@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SS_TOKENS } from "@/lib/tokens";
+import { publicPageUrl } from "@/lib/public-url";
 
 type ShareState = "idle" | "shared" | "copied" | "error";
 
@@ -29,7 +30,7 @@ export function DetailShareButton({
 
   const onShare = async () => {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-    const url = new URL(normalizedPath, window.location.origin).toString();
+    const url = publicPageUrl(normalizedPath);
     try {
       if (typeof navigator.share === "function") {
         try {

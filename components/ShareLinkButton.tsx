@@ -1,4 +1,5 @@
 "use client";
+import { publicPageUrl } from "@/lib/public-url";
 
 import { useEffect, useRef, useState } from "react";
 import { SS_TOKENS } from "@/lib/tokens";
@@ -24,7 +25,7 @@ export function ShareLinkButton({
 
   const onClick = async () => {
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-    const url = new URL(normalizedPath, window.location.origin).toString();
+    const url = publicPageUrl(normalizedPath);
     try {
       // Prefer native share sheet on mobile; fall back to clipboard.
       const navAny = navigator as Navigator & {

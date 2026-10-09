@@ -14,8 +14,11 @@ if (!fs.existsSync(configPath)) {
 } else {
   const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
   if (config.appId !== "live.outofsight.app") errors.push("Unexpected iOS app identifier.");
-  if (config.server?.url !== "https://outofsight.live" || config.server?.cleartext !== false) {
-    errors.push("Release builds must load https://outofsight.live with cleartext disabled. Run npm run sync:ios.");
+  if (config.server?.url || config.server?.cleartext !== false || config.plugins?.CapacitorHttp?.enabled !== true) {
+    errors.push("Release builds must bundle their interface and enable native HTTPS data requests. Run npm run sync:ios.");
+  }
+  for (const file of ["index.html", "offline.html", ".vite/manifest.json", "bundle-info.json"]) {
+    if (!fs.existsSync(path.join(app, "public", file))) errors.push(`Missing packaged interface file: ${file}. Run npm run sync:ios.`);
   }
 }
 const firebasePath = path.join(app, "Configuration/GoogleService-Info.plist");

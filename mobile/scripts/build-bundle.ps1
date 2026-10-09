@@ -110,7 +110,7 @@ try {
   }
 
   Push-Location $mobileRoot
-  & npx cap sync android
+  & npm run sync
   if ($LASTEXITCODE -ne 0) { throw "Capacitor sync failed." }
   Pop-Location
 

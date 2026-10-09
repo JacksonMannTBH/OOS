@@ -15,7 +15,7 @@ takeoff notifications.
 - adsb.fi with OpenSky fallback for live aircraft observations
 - Web Push with VAPID for browsers and Firebase Cloud Messaging for the
   Capacitor Android app
-- Capacitor 8 Android and iPhone shells in `mobile/`
+- Capacitor 8 Android and iPhone apps with a bundled interface in `mobile/`; live data uses the HTTPS backend
 
 ## Local setup
 

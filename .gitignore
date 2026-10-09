@@ -82,3 +82,6 @@ AUDIT-2026-05-07.md
 .codex-local/
 tmp/
 firebase-debug.log
+
+# Packaged mobile interface (regenerated from mobile/frontend)
+mobile/www/

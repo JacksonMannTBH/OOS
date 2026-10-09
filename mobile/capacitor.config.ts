@@ -5,7 +5,6 @@ const config: CapacitorConfig = {
   appName: "Out Of Sight",
   webDir: "www",
   server: {
-    url: "https://outofsight.live",
     cleartext: false,
     errorPath: "offline.html",
   },
@@ -15,6 +14,7 @@ const config: CapacitorConfig = {
     backgroundColor: "#050607",
   },
   plugins: {
+    CapacitorHttp: { enabled: true },
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert", "banner", "list"],
     },

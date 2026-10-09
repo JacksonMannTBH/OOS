@@ -1,0 +1,10 @@
+import { createRoot } from "react-dom/client";
+import App from "./App";
+import { connectBackend } from "./network";
+import { connectNavigation } from "./navigation";
+import { getContrastPref } from "./preferences";
+import "../../app/globals.css";
+connectBackend();
+connectNavigation();
+document.body.dataset.contrast = getContrastPref();
+createRoot(document.getElementById("root")!).render(<App />);

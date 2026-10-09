@@ -11,3 +11,10 @@ test("notification taps cannot navigate to another origin", () => {
     assert.equal(notificationPath(value, "https://outofsight.live"), null);
   }
 });
+
+test("notification taps work from bundled app origins without permitting another host", () => {
+  for (const base of ["capacitor://localhost/ride", "https://localhost/settings/alerts"]) {
+    assert.equal(notificationPath("/plane/N123?state=WA#details", base), "/plane/N123?state=WA#details");
+    for (const value of ["//example.com", "/\\example.com", "/\n/evil.com", "capacitor://other-host/ride", "https://outofsight.live/ride"]) assert.equal(notificationPath(value, base), null);
+  }
+});

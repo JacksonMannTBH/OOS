@@ -41,7 +41,7 @@ function aircraftUrl(mockOn: boolean, stateCode: StateCode): string {
 }
 
 function freshAircraftUrl(requestPath: string): string {
-  const url = new URL(requestPath, window.location.origin);
+  const url = new URL(requestPath, window.location.href);
   url.searchParams.set("_", String(Date.now()));
   return `${url.pathname}${url.search}`;
 }
