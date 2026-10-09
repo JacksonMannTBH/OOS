@@ -18,6 +18,7 @@ import { ProximityFlash } from "./ProximityFlash";
 import { SettingsButton } from "./SettingsButton";
 import { TakeOffButton } from "./TakeOffButton";
 import { StatusHero } from "./StatusHero";
+import { LiveTrackingButton } from "./LiveTrackingButton";
 import { HomeBackground } from "./HomeBackground";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
@@ -119,6 +120,10 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
           gap: "clamp(14px, 4vw, 18px)",
         }}
       >
+        <LiveTrackingButton mockOn={mockOn} style={{
+          position: "absolute", top: `calc(max(8px, env(safe-area-inset-top)) + ${HOME_TOP_OFFSET_PX - 30}px)`,
+          left: "clamp(14px, 5vw, 20px)", zIndex: 3,
+        }} />
         <SettingsButton
           label=""
           variant="plain"

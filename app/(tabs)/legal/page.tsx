@@ -77,8 +77,8 @@ export default function LegalPage() {
           you use other apps or lock your phone. Your device calculates the nearest
           tracked aircraft, distance, and ride state and shows them in a Live
           Activity. Your coordinates are not sent with aircraft-data requests.
-          Stop live tracking or End Ride ends this session and background location
-          access. If location or aircraft data expires, the activity shows that
+          Tap Live again on Home to end this session and background location access.
+          Ending Ride Mode does not stop Live tracking. If location or aircraft data expires, the activity shows that
           updates are paused or unavailable.
         </PrivacyRow>
         <PrivacyRow title="Takeoff alerts">

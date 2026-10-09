@@ -4,8 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import nextDynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ScreenAwake } from "./ScreenAwake";
-import { LiveTrackingButton } from "./LiveTrackingButton";
-import { stopLiveTracking } from "@/lib/live-tracking";
+import { useSpeedometerVisible } from "@/lib/hooks/useSpeedometerVisible";
 import { useAircraft } from "@/lib/hooks/useAircraft";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
 import { useDeviceHeading } from "@/lib/hooks/useDeviceHeading";
@@ -55,21 +54,8 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
   const heading = useDeviceHeading(riderPos?.heading);
   const [now, setNow] = useState(initial.fetched_at);
   const rideThresholds = useRideStatusThresholds();
-  const [endingRide, setEndingRide] = useState(false);
-  const [endRideError, setEndRideError] = useState("");
-
-  async function endRide() {
-    if (endingRide) return;
-    setEndingRide(true);
-    setEndRideError("");
-    try {
-      await stopLiveTracking();
-      router.push("/");
-    } catch {
-      setEndRideError("Live tracking could not stop. Please try again.");
-      setEndingRide(false);
-    }
-  }
+  const showSpeedometer = useSpeedometerVisible();
+  const endRide = () => router.push("/home");
 
   useRideChrome();
 
@@ -218,7 +204,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
             contacts={contacts}
             distanceBands={rideThresholds}
           />
-          <RiderSpeedBadge speedMps={riderPos?.speedMps ?? null} />
+          {showSpeedometer && <RiderSpeedBadge speedMps={riderPos?.speedMps ?? null} />}
         </div>
         {nearestFuelText && (
           <div
@@ -287,11 +273,9 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
             <RideSummaryMetric label="GS" value={nearestSummary.groundSpeed} />
           </div>
         </div>
-        <LiveTrackingButton mockOn={mockOn} />
         <button
           type="button"
           onClick={() => void endRide()}
-          disabled={endingRide}
           aria-label="End Ride and return to the main app"
           style={{
             width: "min(100%, 460px)",
@@ -308,9 +292,8 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          {endingRide ? "Ending ride…" : "End Ride"}
+          End Ride
         </button>
-        {endRideError && <p role="alert" style={{ color: "#f6c431", fontSize: 13 }}>{endRideError}</p>}
       </footer>
     </main>
   );

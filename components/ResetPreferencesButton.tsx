@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { resetPreferenceCookiesAction } from "@/app/(tabs)/settings/actions";
 import { disableAircraftAlerts } from "@/lib/aircraft-alerts/client";
+import { SPEEDOMETER_STORAGE_KEY } from "@/lib/ride-display";
+import { stopLiveTracking } from "@/lib/live-tracking";
 import { SS_TOKENS } from "@/lib/tokens";
 
 const ALERT_DEVICE_ID_KEY = "oos_aircraft_alert_device_id";
 
 const LOCAL_STORAGE_KEYS = [
+  SPEEDOMETER_STORAGE_KEY,
   "oos_aircraft_tracking",
   "ss_wake_lock",
   "ss_ride_status_thresholds",
@@ -56,7 +59,7 @@ export function ResetPreferencesButton() {
     if (typeof window === "undefined") return;
     if (
       !window.confirm(
-        "Turn off notifications and reset all preferences on this device?",
+        "Stop live tracking, turn off notifications, and reset all preferences on this device?",
       )
     ) {
       return;
@@ -76,6 +79,7 @@ export function ResetPreferencesButton() {
         notificationsWereDisabled = true;
       }
 
+      await stopLiveTracking();
       await resetPreferenceCookiesAction();
       clearLocalStorage();
       window.location.assign("/settings");
@@ -83,7 +87,7 @@ export function ResetPreferencesButton() {
       setMessage(
         notificationsWereDisabled
           ? "Notifications were turned off, but the remaining preferences could not be reset. Try again."
-          : "Preferences were not reset because notifications could not be turned off. Try again.",
+          : "Preferences could not be reset. Try again.",
       );
       setBusy(false);
     }

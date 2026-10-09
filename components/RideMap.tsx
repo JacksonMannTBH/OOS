@@ -16,6 +16,7 @@ import {
   isHelicopterRole,
 } from "@/lib/brand/helicopter-sprite";
 import { MAP_STYLE_URL } from "@/lib/map-style";
+import { darkMapStyle } from "@/lib/dark-map-style";
 import type {
   RideContact,
   RideStatus,
@@ -181,7 +182,6 @@ function RideMapCanvas(props: RideMapState) {
 
     const map = new maplibregl.Map({
       container,
-      style: MAP_STYLE_URL,
       center: [initial.rider.lon, initial.rider.lat],
       zoom: 10,
       bearing: 0,
@@ -197,6 +197,7 @@ function RideMapCanvas(props: RideMapState) {
     );
     collapseMapAttribution(container);
     mapRef.current = map;
+    map.setStyle(MAP_STYLE_URL, { transformStyle: (_, style) => darkMapStyle(style, "ride") });
     let disposed = false;
     let animationFrame: number | null = null;
     let lastHelicopterFrame = 0;

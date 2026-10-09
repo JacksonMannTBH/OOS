@@ -21,6 +21,7 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAP_STYLE_URL } from "@/lib/map-style";
+import { darkMapStyle } from "@/lib/dark-map-style";
 import { SS_TOKENS } from "@/lib/tokens";
 import type { TrackPoint } from "@/lib/tracks";
 
@@ -103,7 +104,6 @@ export default function PlaneTrackMap({
     const initialCoords = pointsToCoords(points);
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: MAP_STYLE_URL,
       center: initialCoords[0] ?? PUGET_SOUND,
       zoom: initialCoords.length < 2 ? SHORT_TRACK_ZOOM : FALLBACK_ZOOM,
       attributionControl: { compact: true },
@@ -115,6 +115,7 @@ export default function PlaneTrackMap({
       doubleClickZoom: true,
     });
     mapRef.current = map;
+    map.setStyle(MAP_STYLE_URL, { transformStyle: (_, style) => darkMapStyle(style, "radar") });
 
     map.addControl(new NavigationControl({ showCompass: true }), "top-right");
 

@@ -43,20 +43,22 @@ unavailable. You can still browse aircraft information and choose a state.
 
 Use [Settings → Ride mode & display](/settings/display) to change distance bands
 or turn “Keep the screen awake” on or off. Wake mode applies while Ride Mode is
-open. End Ride restores normal screen sleep. Screen-wake support varies by
-browser and device.
+open. Use **Show speedometer** in these settings to show or hide your MPH
+speedometer in Ride Mode. End Ride restores normal screen sleep. Screen-wake
+support varies by browser and device.
 
 ## Live tracking on iPhone
 
-In Ride Mode, tap **Turn on live tracking** to show the nearest tracked airborne
-aircraft, distance in nautical miles, and ride state on the Lock Screen and in
+On Home, tap the small **Live** button in the top-left corner to show the nearest
+tracked airborne aircraft, distance in nautical miles, and ride state on the Lock Screen and in
 the Dynamic Island on supported iPhones. It uses your selected state's aircraft
 and the Stop, Warning, Watch, and Clear distance settings from Ride Mode.
 
 Location access continues during this session while you use other apps or lock
 the phone. Distances are calculated on your device; aircraft-data requests do
-not include your coordinates. Tap **Stop live tracking** or **End Ride** to stop
-the session. Tap the Live Activity to reopen Ride Mode.
+not include your coordinates. Tap **Live** again on Home to stop the session.
+Live tracking continues when you leave or end Ride Mode. Tap the Live Activity
+to reopen Home.
 
 Live tracking requires iOS 16.2 or later, location permission, and Live Activities
 enabled for OOS in iPhone Settings. If data becomes outdated, the display shows

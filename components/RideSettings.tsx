@@ -14,6 +14,8 @@ import {
   readStoredWakeLockEnabled,
   writeStoredWakeLockEnabled,
 } from "@/lib/wake-lock";
+import { useSpeedometerVisible } from "@/lib/hooks/useSpeedometerVisible";
+import { writeSpeedometerVisible } from "@/lib/ride-display";
 import { SettingsCard } from "./SettingsCard";
 
 type ThresholdKey = keyof RideStatusThresholds;
@@ -42,6 +44,7 @@ const DISTANCE_FIELDS: ReadonlyArray<{
 ];
 
 export function RideSettings() {
+  const showSpeedometer = useSpeedometerVisible();
   const [wakeMode, setWakeMode] = useState(true);
   const [thresholds, setThresholds] = useState<RideStatusThresholds>(
     DEFAULT_RIDE_STATUS_THRESHOLDS,
@@ -114,6 +117,13 @@ export function RideSettings() {
               cursor: "pointer",
             }}
           />
+        </label>
+      </SettingsCard>
+
+      <SettingsCard title="Speedometer" eyebrow="Ride mode">
+        <label style={{ minHeight: 52, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, color: SS_TOKENS.fg0, cursor: "pointer" }}>
+          <span><strong style={{ display: "block", fontSize: 14, fontWeight: 800 }}>Show speedometer</strong><small style={{ display: "block", marginTop: 4, color: SS_TOKENS.fg2, fontSize: 12, lineHeight: 1.4 }}>Display your speed in miles per hour in Ride mode.</small></span>
+          <input type="checkbox" checked={showSpeedometer} onChange={event => writeSpeedometerVisible(event.target.checked)} style={{ width: 22, height: 22, flexShrink: 0, accentColor: SS_TOKENS.alert, cursor: "pointer" }} />
         </label>
       </SettingsCard>
 

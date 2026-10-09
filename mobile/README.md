@@ -40,7 +40,7 @@ for the existing upload-key password without printing it and writes
 ## iPhone / Xcode
 
 The iPhone target is `ios/App/App.xcodeproj`, scheme **App**, display name
-**Out Of Sight**, bundle ID `live.outofsight.app`, version 1.0, build 2, iOS 15+.
+**Out Of Sight**, bundle ID `live.outofsight.app`, version 1.0, build 3, iOS 15+.
 It uses Swift Package Manager, Capacitor 8.5.1, and Firebase Messaging 12.4.0.
 The first release targets iPhone; iPad-specific layouts have not been validated.
 
@@ -128,12 +128,12 @@ reading. A valid GPS course remains the fallback when device heading is absent.
 
 ### Live tracking on iPhone
 
-Ride Mode includes a **Turn on live tracking** button on native iOS 16.2+.
+Home includes a small top-left **Live** button on native iOS 16.2+.
 `OOSLiveTracking` starts an ActivityKit session and a Core Location watch from
 the foreground. It uses When In Use authorization, background-location mode,
 and the system location indicator. It never requests Always authorization.
-The session survives navigating away from Ride or switching to another app;
-**Stop live tracking**, **End Ride**, or system activity dismissal stops location,
+The session survives navigating away from Home, ending Ride, or switching to another app;
+Tapping **Live** again on Home or system activity dismissal stops location,
 polling, pending requests, and the Live Activity. Relaunching the app ends orphaned
 activities and does not silently restart tracking.
 
@@ -144,7 +144,9 @@ computed locally using the selected aircraft exclusions and Ride thresholds.
 The widget shows aircraft identification, nautical miles, and Stop/Warning/Watch/
 Clear in the Lock Screen and expanded Dynamic Island. The compact presentation
 shows state and distance; the minimal presentation uses the status color.
-`oos://ride` opens Ride Mode from the activity.
+`oos://home` opens Home from the activity. Legacy `oos://ride` links also open
+Home. State, aircraft exclusions, and distance-band settings are reconciled
+across all screens while a session is active.
 
 Freshness limits: rider fix 30 seconds, feed 45 seconds, aircraft position 90
 seconds. Missing, stale, mock, or failed source data cannot claim Clear.
@@ -164,6 +166,37 @@ xcrun swiftc ios/App/Shared/RideTrackingData.swift ios/Tests/LiveTrackingCoreTes
 
 References: [ActivityKit](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities),
 [background location](https://developer.apple.com/documentation/corelocation/cllocationmanager/allowsbackgroundlocationupdates).
+
+### Home Live control and Ride display — October 9, 2026
+
+Build **1.0 (3)** adds the compact Home Live button and the saved Show speedometer
+setting under Ride mode & display. The speedometer defaults on, can be hidden
+without affecting aircraft ground-speed information, and resets with device
+preferences. Live tracking continues across navigation and End Ride. Stop it
+from Home or dismiss the system activity. Reset preferences also stops tracking.
+Activity taps return to Home; the native receiver accepts old Ride activity
+links and routes them to Home too. Global preference synchronization updates
+active tracking after state, aircraft exclusions, or distance bands change.
+
+Radar, Ride, and flight-detail maps now start without a provider style and apply
+our dark palette through MapLibre's style transform before the fetched style is
+committed. Loading surfaces remain dark. This avoids displaying the provider's
+light style while icons load; data, geometry, attribution, and provider resources
+are preserved. Existing separate aircraft-opacity edits in RadarMap remain
+outside this change's commit and are included in the local native build.
+
+Verification: 112 automated checks, 14 native calculation checks, root/mobile
+type checks, the Next.js production build, the packaged mobile build, signed
+iPhone development build, installation, archive, and local App Store export
+passed. App/widget signatures, Team/version/build, App Store profiles, production
+APNs, disabled debugging, and packaged asset hashes were verified. The phone was
+locked during automated launch; owner-led visual/control checks are pending.
+Android interface assets are synchronized as version code 6 / version 1.1.4;
+its native release build still needs the Android tools and existing upload key.
+
+These are bundled app changes. The source commit skips Netlify deployment;
+the live website is unchanged. Before public app release, publish the revised
+Help/privacy instructions to the support website. No App Store upload occurred.
 
 ### Bundled-interface validation — October 9, 2026
 
@@ -257,9 +290,10 @@ Manual acceptance checks once preview/device access is available:
 | Ride / Wake mode on | Screen stays awake in Ride and sleeps normally after End Ride | Pending |
 | Live tracking / start | One activity shows nearest aircraft, nm, selected state, and custom ride status | Pending on physical iPhone |
 | Live tracking / other app and locked phone | Location and aircraft data refresh; stale content changes to Updates paused | Pending on physical iPhone |
-| Live tracking / stop and End Ride | Activity disappears and background location/polling stops | Pending on physical iPhone |
+| Live tracking / stop on Home | Activity disappears and background location/polling stops | Pending on physical iPhone |
+| Live tracking / End Ride | Ride exits and screen-wake stops; Live tracking remains active until stopped on Home | Pending on physical iPhone |
 | Live tracking / system dismissal and relaunch | Background location stops; a killed session is not silently restarted | Pending on physical iPhone |
-| Live tracking / permission and tap | Denial is explained; activity tap reopens Ride Mode; settings changes reconcile | Pending on physical iPhone |
+| Live tracking / permission and tap | Denial is explained; activity tap reopens Home; settings changes reconcile | Pending on physical iPhone |
 | Background / return | Location and wake behavior resume correctly without duplicate subscriptions | Pending |
 | No connection / retry | Honest unavailable state, then recovery after connection returns | Pending |
 | State and aircraft selection | Choices survive closing and reopening | Pending |
@@ -296,7 +330,7 @@ catalog, flight details, forecasts/learning state, and speed-warning setting.
 Existing aircraft, trail, location-state, and alert endpoints remain in use.
 The server retains database access and secrets. A bundler guard rejects server
 modules and database clients. Shared flight links use public HTTPS addresses;
-notification taps and `oos://ride` return to the packaged interface.
+notification taps and `oos://home` return to the packaged interface.
 
 Preferences are stored on the device. Moving from the hosted origin to the
 local app origin creates a separate preference store; recheck selected state,

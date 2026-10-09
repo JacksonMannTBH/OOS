@@ -1,3 +1,4 @@
+import { LiveTrackingPreferenceSync } from "@/components/LiveTrackingPreferenceSync";
 import type { Metadata, Viewport } from "next";
 import { BASE_URL } from "@/lib/config";
 import { IOSInstallPrompt } from "@/components/IOSInstallPrompt";
@@ -86,7 +87,7 @@ export default function RootLayout({
           }}
         />
         <ThemeController />
-        <AircraftAlertPreferenceSync />
+        <AircraftAlertPreferenceSync /><LiveTrackingPreferenceSync />
         <SiteHeader />
         <TooltipProvider>
           {children}

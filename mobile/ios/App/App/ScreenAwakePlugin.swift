@@ -73,7 +73,7 @@ public class ScreenAwakePlugin: CAPPlugin, CAPBridgedPlugin {
 }
 
 class OOSBridgeViewController: CAPBridgeViewController {
-    var openRideOnLoad = false
+    var openHomeOnLoad = false
 
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(ScreenAwakePlugin())
@@ -85,15 +85,15 @@ class OOSBridgeViewController: CAPBridgeViewController {
         super.viewDidLoad()
         // Capacitor performs its initial navigation in super.viewDidLoad().
         // Apply a cold-launch activity link afterward so it isn't overwritten.
-        if openRideOnLoad { openRide() }
+        if openHomeOnLoad { openHome() }
     }
 
-    func openRide() {
+    func openHome() {
         guard isViewLoaded, let webView = bridge?.webView, let base = bridge?.config.localURL else {
-            openRideOnLoad = true
+            openHomeOnLoad = true
             return
         }
-        openRideOnLoad = false
-        webView.load(URLRequest(url: base.appendingPathComponent("ride")))
+        openHomeOnLoad = false
+        webView.load(URLRequest(url: base.appendingPathComponent("home")))
     }
 }

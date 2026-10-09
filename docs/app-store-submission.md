@@ -64,14 +64,16 @@ Aircraft observations depend on third-party coverage and actual flight activity.
 A state may have no currently airborne aircraft. The catalog remains available
 to browse. Location permission is optional; allowing it enables position,
 distance, speed, and Ride Mode features. Ride Mode includes an optional
-screen-wake setting and a user-started Live tracking session on iOS 16.2+.
+screen-wake setting, an optional MPH speedometer, and a user-started Live
+tracking session from the small Live button on Home on iOS 16.2+.
 Live tracking uses background location to calculate aircraft distances on the
 device while another app is open or the phone is locked. It does not request
-Always location authorization. Stop live tracking or End Ride ends the session.
+Always location authorization. Tap Live on Home to start or stop the session. Ending Ride Mode leaves
+Live tracking running.
 The activity shows the nearest tracked airborne aircraft in the selected state,
 distance in nautical miles, and Stop/Warning/Watch/Clear using the user's Ride
 Mode thresholds. Expired location or aircraft data does not display a fresh
-Clear state. Tap the activity to reopen Ride Mode.
+Clear state. Tap the activity to reopen Home.
 
 The iPhone app uses Capacitor with its screens, Help, and assets packaged inside
 the app, native location access, native screen-wake support, and a WidgetKit Live
@@ -145,6 +147,17 @@ location behavior alone. Check the entire configured app and its partners.
   The Firebase relay update deployed successfully; its existing URL and Cloud
   Run URL reject unauthenticated requests. Physical-iPhone delivery testing
   remains unfinished.
+- Latest local package: **1.0 (3)**. Live tracking is controlled by the compact
+  Home Live button, persists after End Ride, and its activity tap opens Home.
+  Ride display settings include a saved Show speedometer switch. Map styles are
+  transformed dark before commitment to prevent the light startup frame.
+  112 automated checks, 14 native calculation checks, type checks, web/mobile
+  builds, signed device build/install, and App Store archive/export passed.
+  Exported app/widget signatures, profiles, production APNs, matching version,
+  and disabled debugging were verified. The launch attempt was blocked by the
+  locked phone; owner visual/control checks remain pending. The source commit
+  skips website deployment; publish the revised Help/privacy text to the live
+  support website before public app release. No upload has occurred.
 - The bundled-interface build 1.0 (2) supersedes the earlier hosted build.
   Both mobile projects now package screens and assets locally. Root/mobile type
   checks, both frontend builds, 108 tests, signed iPhone build/archive/export,
@@ -163,7 +176,7 @@ location behavior alone. Check the entire configured app and its partners.
   privacy text, and help content are published; both the app and widget are
   included in the signed iPhone build. Before listing the feature,
   verify start/stop, updates while another app is open and while locked, stale
-  data, permission denial, system dismissal, and the Ride Mode deep link on a
+  data, permission denial, system dismissal, and the Home deep link on a
   physical device. Native calculation checks and builds do not verify those
   system behaviors.
 - The Settings Store link opens an apparel gallery labeled “Coming soon.”

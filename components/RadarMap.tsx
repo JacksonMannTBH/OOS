@@ -9,6 +9,7 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MAP_LABEL_FONT, MAP_STYLE_URL } from "@/lib/map-style";
+import { darkMapStyle } from "@/lib/dark-map-style";
 import { SS_TOKENS } from "@/lib/tokens";
 import type { Aircraft } from "@/lib/types";
 import {
@@ -458,7 +459,7 @@ export default function RadarMap({
   rider,
   showDistanceRings = false,
   distanceRingThresholds = DEFAULT_RIDE_STATUS_THRESHOLDS,
-  darkMode = false,
+  darkMode = true,
   showFuelEstimate = false,
   stateCode,
   focusRequest,
@@ -521,7 +522,6 @@ export default function RadarMap({
       : null;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: MAP_STYLE_URL,
       center: initialState
         ? [initialState.centerLon, initialState.centerLat]
         : [-122.3, 47.6],
@@ -550,6 +550,7 @@ export default function RadarMap({
     map.on("styledata", collapseAttributionPreset);
     collapseAttributionPreset();
     mapRef.current = map;
+    map.setStyle(MAP_STYLE_URL, { transformStyle: (_, style) => darkMapStyle(style, "radar") });
     const motionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)") ?? null;
     reducedMotionRef.current = Boolean(motionQuery?.matches);
     const onMotionPreferenceChange = (event: MediaQueryListEvent) => {
@@ -1375,7 +1376,7 @@ export default function RadarMap({
       style={{
         position: "absolute",
         inset: 0,
-        background: darkMode ? "#000000" : SS_TOKENS.bg0,
+        background: "#050607",
       }}
     />
   );

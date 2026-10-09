@@ -1,3 +1,4 @@
+import { LiveTrackingPreferenceSync } from "@/components/LiveTrackingPreferenceSync";
 import { Component, useEffect, useState, type ReactNode, type ComponentType } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ThemeController } from "@/components/ThemeController";
@@ -84,7 +85,7 @@ export default function App() {
   const revision = useRevision();
   const [speedWarning, setSpeedWarning] = useState(false);
   useEffect(() => { void getSpeedWarningEnabled().then(setSpeedWarning).catch(() => {}); }, []);
-  return <><ThemeController /><AircraftAlertPreferenceSync /><SkipLink /><SiteHeader /><TooltipProvider>
+  return <><ThemeController /><AircraftAlertPreferenceSync /><LiveTrackingPreferenceSync /><SkipLink /><SiteHeader /><TooltipProvider>
     <ScreenBoundary key={location + revision}><div id="main-content"><RouteScreen location={location} /></div></ScreenBoundary>
     <SettingsHomeButton /><AppBadge /><SpeedWarning enabled={speedWarning} /><SwRegistrar />
   </TooltipProvider></>;

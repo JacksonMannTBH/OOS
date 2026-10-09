@@ -32,7 +32,7 @@ struct OOSLiveTrackingWidget: Widget {
             .foregroundStyle(.white)
             .activityBackgroundTint(Color(red: 0.03, green: 0.03, blue: 0.03))
             .activitySystemActionForegroundColor(.white)
-            .widgetURL(URL(string: "oos://ride"))
+            .widgetURL(URL(string: "oos://home"))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
@@ -65,7 +65,7 @@ struct OOSLiveTrackingWidget: Widget {
                 Image(systemName: context.isStale ? "clock" : "airplane").foregroundStyle(tint(context))
                     .accessibilityLabel("OOS \(label(context)), \(distance(context))")
             }
-            .widgetURL(URL(string: "oos://ride"))
+            .widgetURL(URL(string: "oos://home"))
             .keylineTint(tint(context))
         }
     }

@@ -9,7 +9,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         window = UIWindow(windowScene: windowScene)
         let controller = OOSBridgeViewController()
-        controller.openRideOnLoad = connectionOptions.urlContexts.contains { isRideURL($0.url) }
+        controller.openHomeOnLoad = connectionOptions.urlContexts.contains { isLiveTrackingURL($0.url) }
         window?.rootViewController = controller
         window?.makeKeyAndVisible()
 
@@ -18,8 +18,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)
-        if URLContexts.contains(where: { isRideURL($0.url) }) {
-            (window?.rootViewController as? OOSBridgeViewController)?.openRide()
+        if URLContexts.contains(where: { isLiveTrackingURL($0.url) }) {
+            (window?.rootViewController as? OOSBridgeViewController)?.openHome()
         }
     }
 
@@ -27,7 +27,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         SceneDelegateProxy.shared.scene(scene, continue: userActivity)
     }
 
-    private func isRideURL(_ url: URL) -> Bool {
-        url.scheme == "oos" && url.host == "ride"
+    private func isLiveTrackingURL(_ url: URL) -> Bool {
+        url.scheme == "oos" && (url.host == "home" || url.host == "ride")
     }
 }
