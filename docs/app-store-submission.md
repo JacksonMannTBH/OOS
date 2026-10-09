@@ -149,10 +149,11 @@ location behavior alone. Check the entire configured app and its partners.
   Both mobile projects now package screens and assets locally. Root/mobile type
   checks, both frontend builds, 108 tests, signed iPhone build/archive/export,
   installation, and production public-data API smoke checks passed. The launch
-  attempt was blocked by the locked phone; owner unlock/launch remains pending. Exported
+  attempt was initially blocked by the locked phone; the owner then opened OOS
+  and confirmed Home, Map, Ride, and offline Home/Help work. Exported
   app/widget profiles, signatures, versions, production APNs, and disabled
-  debugging were verified. Owner-led bundled-screen and offline device checks
-  remain pending, along with notification/Live Activity tests. No upload occurred.
+  debugging were verified. The requested bundled-screen and offline checks are confirmed by the owner;
+  notification/Live Activity tests remain pending. No upload occurred.
 - Spot reporting has been removed from the app, API, and admin navigation. The
   historical database migrations and seven-day cleanup remain intact for older
   records; no production database data was deleted. The removed live `/api/spot`

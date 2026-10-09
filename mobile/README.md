@@ -181,16 +181,17 @@ References: [ActivityKit](https://developer.apple.com/documentation/activitykit/
   UI URL is present. The server-module build guard and a local credential scan
   passed. All packaged assets matched the built iPhone application and exported
   distribution package.
-- The signed iPhone development build and installation passed. Process launch
-  was blocked because the connected phone was locked; owner unlock/launch and
-  bundled-screen verification remain pending. The signed Release archive and local App Store export passed for version
+- The signed iPhone development build and installation passed. Automated launch
+  was initially blocked by the locked phone. The owner then opened OOS and
+  confirmed Home, Map, and Ride load normally, with Home and Help available in
+  Airplane Mode. The signed Release archive and local App Store export passed for version
   **1.0/build 2**, replacing the earlier build-1 archive/export at the same local
   paths. App and widget signatures, team, matching versions, App Store profiles,
   production APNs, and disabled debugging were verified. No upload occurred.
 - Existing separate edits to `components/RadarMap.tsx` were preserved outside
   the packaging commit; the local native builds include the current working-tree
-  map. Rendered bundled-screen testing, offline phone behavior, notification
-  delivery, and Live Activity behavior still need owner-led device validation.
+  map. The owner confirmed the requested bundled-screen and offline checks.
+  Notification delivery and Live Activity behavior still need device validation.
 - Android sources/assets are synchronized as version code 5 / version 1.1.3.
   Native Android packaging was not run on this Mac: a Java runtime, Android SDK,
   and the existing Windows upload-key setup are not available here.
