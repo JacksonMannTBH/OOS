@@ -68,12 +68,14 @@ Its matching configuration is installed locally and ignored by Git. The live
 subscription endpoint reports FCM relay configuration present; this does not
 verify delivery by itself. On October 9 the owner uploaded the development
 APNs key and confirmed that **Send test notification** arrived on the iPhone.
+The owner also confirmed receipt while the iPhone was locked.
 Apple enrollment is active per the owner's October 9 update. Xcode is now signed
 in and an Apple Development signing identity is installed. Team `C6S63TAR8C` is configured for
 both targets in Debug and Release. The signed development build is installed
 and launched on the owner's iPhone; the owner confirmed Home loads normally.
 The local App Store export also passed signing verification. The development
-push delivery test passed; foreground/background/locked-device behavior,
+push delivery and locked-device receipt tests passed; foreground presentation
+and background behavior while using another app,
 notification taps, opt-out, and TestFlight production delivery still need testing.
 The matching website changes were published on October 9, 2026 and the installed
 app was relaunched. Actual automatic takeoff-alert triggering is not yet verified.
@@ -93,6 +95,7 @@ an intentionally invalid device token reaches FCM (`messaging/invalid-argument`)
 These diagnostic probes targeted no real device. After completing development
 APNs configuration, the owner confirmed successful test notification delivery
 on October 9. The relay logged HTTP 200 responses at 18:18–18:19 UTC.
+The owner subsequently confirmed successful receipt on the locked screen.
 
 An Apple APNs key named **OOS Push Notifications** was created on October 9 for
 team `C6S63TAR8C`: key ID `N9S6G4FN8F`, Team Scoped, **Sandbox & Production**.

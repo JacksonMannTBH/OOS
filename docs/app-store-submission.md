@@ -134,11 +134,13 @@ location behavior alone. Check the entire configured app and its partners.
   diagnostic tokens were used initially. After the development APNs upload,
   the owner confirmed that Send test notification arrived on the physical iPhone.
   The relay logged HTTP 200 responses at 18:18–18:19 UTC on October 9.
+  The owner also confirmed notification receipt while the iPhone was locked.
 - Apple APNs key `N9S6G4FN8F` (**OOS Push Notifications**) was created for team
   `C6S63TAR8C`, with Sandbox & Production access. Its private key is secured
   outside Git. The owner reported uploading the development credential in
   Safari, then confirmed delivery. Production upload has not been independently
-  verified; TestFlight delivery, background/locked-device behavior, notification
+  verified; TestFlight delivery, foreground presentation, background behavior
+  while using another app, notification
   taps, opt-out, and automatic takeoff-alert triggering still require checks.
 - The local Help page now has a support contact, separate native and browser
   notification instructions, and a location summary covering on-device use and map requests.
