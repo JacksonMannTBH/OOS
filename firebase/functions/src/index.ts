@@ -62,9 +62,9 @@ export const sendAircraftAlert = onRequest(
           priority: "high",
           ttl: 30 * 60 * 1_000,
           notification: {
-            channelId: "aircraft_alerts",
+            channelId: "aircraft_alerts_radar_v1",
             tag: parsed.payload.tag,
-            sound: "default",
+            sound: "oos_radar_ping",
           },
         },
         apns: {
@@ -73,7 +73,7 @@ export const sendAircraftAlert = onRequest(
             "apns-priority": "10",
             "apns-expiration": String(Math.floor(Date.now() / 1_000) + 30 * 60),
           },
-          payload: { aps: { sound: "default" } },
+          payload: { aps: { sound: "oos_radar_ping.wav" } },
         },
       });
       response.status(200).json({ ok: true, messageId });

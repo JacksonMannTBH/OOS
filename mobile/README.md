@@ -106,6 +106,22 @@ development upload in Safari and confirmed delivery. The same key supports
 production, but its production upload was not independently verified; test
 notification delivery again using a TestFlight build before release.
 
+**Radar ping notification sound — October 9:** iPhone build **1.0 (4)** bundles
+the selected original 1.25-second `oos_radar_ping.wav` as a main-app resource.
+The deployed Firebase relay selects that file for iOS alerts and tests, and
+`oos_radar_ping` / `aircraft_alerts_radar_v1` for Android. The Capacitor Android
+app packages the same WAV in `res/raw`; channel creation runs before both first
+enrollment and token refresh, including existing subscribers upgrading from the
+old channel. Existing channels are not deleted. Android source is versionCode
+7 / versionName 1.1.5; its native build remains unverified because Java is absent.
+Eleven notification checks, both TypeScript checks, the relay build, mobile
+interface build, signed device build/install/launch, and App Store archive/export
+passed. Exported sound bytes match the preview, and both targets have matching
+build 4, valid signatures/profiles, and disabled debugging; the app uses
+production APNs. The packaged interface excludes the owner's unrelated pending
+RadarMap edits. Actual playback of the custom tone awaits the owner's test.
+No TestFlight/App Store upload or website deployment was performed for this change.
+
 1. Add an **Apple/iOS app** to the existing Firebase project using
    `live.outofsight.app` (the Android registration is separate).
 2. Download its `GoogleService-Info.plist` and place it at

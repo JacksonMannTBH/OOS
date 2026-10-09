@@ -249,13 +249,6 @@ async function enableNativeAircraftAlerts(
   }
   if (permission.receive !== "granted") throw new Error("permission_denied");
 
-  if (Capacitor.getPlatform() === "android") await PushNotifications.createChannel({
-    id: "aircraft_alerts",
-    name: "Aircraft takeoffs",
-    description: "Confirmed takeoffs for the selected state",
-    importance: 4,
-    vibration: true,
-  });
   const token = await registerForNativePush();
   const stateCode = input.stateCode ?? getSelectedStateCode();
   await saveNativeSubscription(token, stateCode);
@@ -283,6 +276,18 @@ async function saveNativeSubscription(token: string, stateCode: StateCode): Prom
 }
 
 async function registerForNativePush(): Promise<string> {
+  if (Capacitor.getPlatform() === "android") {
+    // Android channel sounds cannot be changed after creation. A new ID also
+    // gives existing subscribers the bundled tone when their token refreshes.
+    await PushNotifications.createChannel({
+      id: "aircraft_alerts_radar_v1",
+      name: "Aircraft takeoffs",
+      description: "Confirmed takeoffs for the selected state",
+      sound: "oos_radar_ping.wav",
+      importance: 4,
+      vibration: true,
+    });
+  }
   let resolveToken!: (token: string) => void;
   let rejectToken!: (error: Error) => void;
   const tokenPromise = new Promise<string>((resolve, reject) => {

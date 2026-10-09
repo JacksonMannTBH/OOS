@@ -163,7 +163,16 @@ location behavior alone. Check the entire configured app and its partners.
   The Firebase relay update deployed successfully; its existing URL and Cloud
   Run URL reject unauthenticated requests. The physical-iPhone test notification
   passed; the remaining release checks are listed above.
-- Latest local package: **1.0 (3)**. Live tracking is controlled by the compact
+- Latest local package: **1.0 (4)**. The selected original 1.25-second Radar ping
+  is bundled in the iPhone app and selected by the deployed Firebase push relay
+  for tests and aircraft alerts. The signed build installed and launched on the
+  owner's iPhone. Eleven notification checks, type checks, mobile interface build,
+  relay build/deployment, and signed archive/export passed. Exported sound bytes,
+  app/widget versions, signatures/profiles, production APNs, and disabled debugging
+  were verified. Custom sound playback awaits the owner's test. Android source
+  includes the same sound and a new channel for upgrades; Java is unavailable,
+  so native Android sound playback is unverified. No App Store upload occurred.
+- The prior local package **1.0 (3)** added the compact
   Home Live button, persists after End Ride, and its activity tap opens Home.
   Ride display settings include a saved Show speedometer switch. Map styles are
   transformed dark before commitment to prevent the light startup frame.
