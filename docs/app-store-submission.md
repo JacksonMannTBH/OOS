@@ -155,7 +155,9 @@ location behavior alone. Check the entire configured app and its partners.
   builds, signed device build/install, and App Store archive/export passed.
   Exported app/widget signatures, profiles, production APNs, matching version,
   and disabled debugging were verified. The launch attempt was blocked by the
-  locked phone; owner visual/control checks remain pending. The source commit
+  locked phone; the owner subsequently confirmed the dark map startup, Home Live
+  start/stop, tracking persistence after End Ride, activity tap to Home, and saved
+  speedometer toggle all work on the physical iPhone. The source commit
   skips website deployment; publish the revised Help/privacy text to the live
   support website before public app release. No upload has occurred.
 - The bundled-interface build 1.0 (2) supersedes the earlier hosted build.

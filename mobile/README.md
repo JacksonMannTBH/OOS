@@ -190,7 +190,10 @@ type checks, the Next.js production build, the packaged mobile build, signed
 iPhone development build, installation, archive, and local App Store export
 passed. App/widget signatures, Team/version/build, App Store profiles, production
 APNs, disabled debugging, and packaged asset hashes were verified. The phone was
-locked during automated launch; owner-led visual/control checks are pending.
+locked during automated launch. The owner then confirmed all requested device
+checks passed: Map opens without the white flash, the Home Live button starts
+and stops tracking, End Ride leaves it active, activity taps open Home, and the
+speedometer switch hides/restores the MPH gauge and remembers the choice.
 Android interface assets are synchronized as version code 6 / version 1.1.4;
 its native release build still needs the Android tools and existing upload key.
 
