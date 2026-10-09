@@ -3,6 +3,13 @@ import SwiftUI
 import WidgetKit
 
 @main
+struct OOSWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        OOSHomeScreenWidget()
+        OOSLiveTrackingWidget()
+    }
+}
+
 struct OOSLiveTrackingWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RideTrackingAttributes.self) { context in

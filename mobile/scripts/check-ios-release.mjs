@@ -49,6 +49,15 @@ try {
   if (main.PRODUCT_BUNDLE_IDENTIFIER !== "live.outofsight.app" || widget.PRODUCT_BUNDLE_IDENTIFIER !== "live.outofsight.app.LiveTrackingWidget") errors.push("The app and widget must keep their OOS bundle identifiers.");
   if (String(main.MARKETING_VERSION) !== String(widget.MARKETING_VERSION) || String(main.CURRENT_PROJECT_VERSION) !== String(widget.CURRENT_PROJECT_VERSION)) errors.push("The app and widget version/build numbers must match before upload.");
   const entitlements = readPlist(path.join(mobile, "ios/App", main.CODE_SIGN_ENTITLEMENTS));
+  const widgetEntitlements = readPlist(path.join(mobile, "ios/App", widget.CODE_SIGN_ENTITLEMENTS));
+  const group = "group.live.outofsight.app";
+  if (!entitlements["com.apple.security.application-groups"]?.includes(group) ||
+      !widgetEntitlements["com.apple.security.application-groups"]?.includes(group)) {
+    errors.push("The app and Home Screen widget must share the OOS App Group.");
+  }
+  if (readPlist(path.join(mobile, "ios/App", widget.INFOPLIST_FILE)).NSWidgetWantsLocation !== true) {
+    errors.push("The Home Screen widget must declare its location use.");
+  }
   if (main.APS_ENVIRONMENT !== "production" || entitlements["aps-environment"] !== "$(APS_ENVIRONMENT)") errors.push("The Release app must use production APNs entitlements.");
   if (requireSigning) {
     const inherited = objects[objects[project.rootObject].buildConfigurationList].buildConfigurations

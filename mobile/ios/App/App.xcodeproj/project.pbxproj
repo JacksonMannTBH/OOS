@@ -28,6 +28,12 @@
 		A00600000000000000000017 /* LiveTrackingWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = A0060000000000000000000C /* LiveTrackingWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A00700000000000000000002 /* NotificationSetupPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00700000000000000000001 /* NotificationSetupPlugin.swift */; };
 		A00800000000000000000002 /* oos_radar_ping.wav in Resources */ = {isa = PBXBuildFile; fileRef = A00800000000000000000001 /* oos_radar_ping.wav */; };
+		A00900000000000000000002 /* HomeWidgetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000001 /* HomeWidgetStore.swift */; };
+		A00900000000000000000003 /* HomeWidgetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000001 /* HomeWidgetStore.swift */; };
+		A00900000000000000000005 /* HomeWidgetRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000004 /* HomeWidgetRefresh.swift */; };
+		A00900000000000000000006 /* HomeWidgetRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000004 /* HomeWidgetRefresh.swift */; };
+		A00900000000000000000008 /* HomeWidgetAppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000007 /* HomeWidgetAppUpdater.swift */; };
+		A0090000000000000000000A /* HomeScreenWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000009 /* HomeScreenWidget.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -77,6 +83,11 @@
 		A0060000000000000000000C /* LiveTrackingWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LiveTrackingWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00700000000000000000001 /* NotificationSetupPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationSetupPlugin.swift; sourceTree = "<group>"; };
 		A00800000000000000000001 /* oos_radar_ping.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = oos_radar_ping.wav; sourceTree = "<group>"; };
+		A00900000000000000000001 /* HomeWidgetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgetStore.swift; sourceTree = "<group>"; };
+		A00900000000000000000004 /* HomeWidgetRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgetRefresh.swift; sourceTree = "<group>"; };
+		A00900000000000000000007 /* HomeWidgetAppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgetAppUpdater.swift; sourceTree = "<group>"; };
+		A00900000000000000000009 /* HomeScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreenWidget.swift; sourceTree = "<group>"; };
+		A0090000000000000000000B /* Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widget.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -127,6 +138,7 @@
 				A00700000000000000000001 /* NotificationSetupPlugin.swift */,
 				A00800000000000000000001 /* oos_radar_ping.wav */,
 				A00600000000000000000001 /* LiveTrackingPlugin.swift */,
+				A00900000000000000000007 /* HomeWidgetAppUpdater.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -145,6 +157,8 @@
 			isa = PBXGroup;
 			children = (
 				A00600000000000000000009 /* LiveTrackingWidget.swift */,
+				A00900000000000000000009 /* HomeScreenWidget.swift */,
+				A0090000000000000000000B /* Widget.entitlements */,
 				A0060000000000000000000B /* Info.plist */,
 			);
 			path = LiveTrackingWidget;
@@ -154,6 +168,8 @@
 			isa = PBXGroup;
 			children = (
 				A00600000000000000000003 /* RideTrackingData.swift */,
+				A00900000000000000000001 /* HomeWidgetStore.swift */,
+				A00900000000000000000004 /* HomeWidgetRefresh.swift */,
 				A00600000000000000000006 /* RideTrackingAttributes.swift */,
 			);
 			path = Shared;
@@ -282,6 +298,9 @@
 				A00700000000000000000002 /* NotificationSetupPlugin.swift in Sources */,
 				A00600000000000000000002 /* LiveTrackingPlugin.swift in Sources */,
 				A00600000000000000000004 /* RideTrackingData.swift in Sources */,
+				A00900000000000000000002 /* HomeWidgetStore.swift in Sources */,
+				A00900000000000000000005 /* HomeWidgetRefresh.swift in Sources */,
+				A00900000000000000000008 /* HomeWidgetAppUpdater.swift in Sources */,
 				A00600000000000000000007 /* RideTrackingAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -292,6 +311,9 @@
 			files = (
 				A0060000000000000000000A /* LiveTrackingWidget.swift in Sources */,
 				A00600000000000000000005 /* RideTrackingData.swift in Sources */,
+				A00900000000000000000003 /* HomeWidgetStore.swift in Sources */,
+				A00900000000000000000006 /* HomeWidgetRefresh.swift in Sources */,
+				A0090000000000000000000A /* HomeScreenWidget.swift in Sources */,
 				A00600000000000000000008 /* RideTrackingAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -443,7 +465,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -468,7 +490,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -489,8 +511,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = LiveTrackingWidget/Widget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LiveTrackingWidget/Info.plist;
@@ -513,8 +536,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = LiveTrackingWidget/Widget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LiveTrackingWidget/Info.plist;

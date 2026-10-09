@@ -78,8 +78,18 @@ export default function LegalPage() {
           tracked aircraft, distance, and ride state and shows them in a Live
           Activity. Your coordinates are not sent with aircraft-data requests.
           Tap Live again on Home to end this session and background location access.
-          Ending Ride Mode does not stop Live tracking. If location or aircraft data expires, the activity shows that
-          updates are paused or unavailable.
+          Ending Ride Mode does not stop Live tracking. If location or aircraft data
+          expires, the activity keeps its last known state, aircraft, distance, and
+          original update time until fresh data becomes available.
+        </PrivacyRow>
+        <PrivacyRow title="Home Screen widget on iPhone">
+          With location permission, the widget calculates aircraft distances on
+          your device when iOS refreshes it. The app and widget share your selected
+          state, aircraft preferences, distance bands, and last calculated result
+          in private storage on your phone. Your coordinates stay in memory and
+          are not saved there or sent with aircraft-data requests. The widget
+          works independently of Live tracking and keeps its last known result
+          and update time when new data is unavailable.
         </PrivacyRow>
         <PrivacyRow title="Takeoff alerts">
           Enabling alerts stores a random device ID, selected state, aircraft

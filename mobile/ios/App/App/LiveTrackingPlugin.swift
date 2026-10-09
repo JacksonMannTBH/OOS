@@ -34,6 +34,7 @@ public class LiveTrackingPlugin: CAPPlugin, CAPBridgedPlugin {
             guard #available(iOS 16.2, *) else { call.reject("Live tracking requires iOS 16.2 or later."); return }
             do {
                 let config = try self.configuration(call)
+                HomeWidgetAppUpdater.shared.configure(config)
                 try LiveTrackingSession.shared.start(config)
                 call.resolve(LiveTrackingSession.shared.status)
             } catch { call.reject(error.localizedDescription) }
@@ -45,6 +46,7 @@ public class LiveTrackingPlugin: CAPPlugin, CAPBridgedPlugin {
             guard #available(iOS 16.2, *) else { call.resolve(); return }
             do {
                 let config = try self.configuration(call)
+                HomeWidgetAppUpdater.shared.configure(config)
                 LiveTrackingSession.shared.configure(config)
                 call.resolve()
             } catch { call.reject(error.localizedDescription) }
@@ -266,6 +268,7 @@ private final class LiveTrackingSession: NSObject, @preconcurrency CLLocationMan
             lat: position?.coordinate.latitude, lon: position?.coordinate.longitude,
             locationDate: position?.timestamp, configuration: config)
         candidate.stateName = config.stateName
+        HomeWidgetAppUpdater.shared.publish(candidate, configuration: config)
         let previous = lastScheduledContent ?? activity?.content.state
         guard let content = RideTrackingCalculator.displayedContent(candidate, previous: previous) else { return }
         if activity == nil {

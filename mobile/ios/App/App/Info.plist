@@ -44,7 +44,7 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>Out Of Sight uses your location during an active Live tracking session to update aircraft distances while you use other apps. Stop tracking to end background location access.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Out Of Sight uses your location for maps and aircraft distances. Turning on Live tracking also uses location while you use other apps, until you stop tracking.</string>
+	<string>Out Of Sight uses your location for maps, aircraft distances, and Home Screen widgets. Turning on Live tracking also uses location while you use other apps, until you stop tracking.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Out Of Sight uses your device heading to orient the Ride Mode display.</string>
 	<key>NSSupportsLiveActivities</key>

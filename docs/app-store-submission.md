@@ -163,7 +163,24 @@ location behavior alone. Check the entire configured app and its partners.
   The Firebase relay update deployed successfully; its existing URL and Cloud
   Run URL reject unauthenticated requests. The physical-iPhone test notification
   passed; the remaining release checks are listed above.
-- Latest local package: **1.0 (6)**. Live Activity aircraft labels include
+- Latest local package: **1.0 (7)**. Adds the selected small Status first
+  Home Screen widget, independent of Live Tracking. It shows the large colored
+  ride state, aircraft distance, Plane/Heli and tail, selected state code, and
+  original update time. App and widget share preferences and last results in
+  `group.live.outofsight.app`; no rider coordinates are stored there or sent
+  with aircraft requests. iOS schedules timeline refreshes; unavailable data
+  retains the last result. The bundled privacy text describes this feature.
+  Twenty tracking checks, seven widget-storage checks, mobile type check/build,
+  signed device build/install/launch, and App Store archive/export passed.
+  Both exported targets have matching build 7, verified signatures/profiles and
+  App Group, and debugging disabled. Production APNs and Radar sound were
+  verified. Shared preferences and a real aircraft result were verified on the
+  phone; the owner confirmed widget display and tapping it opens Home.
+  The pending Help contact edit remains untouched and excluded from this bundle.
+  Publish updated public privacy/support content before release. The earlier
+  reported unexpected Live Activity termination still needs diagnosis. No
+  website deployment or App Store upload occurred.
+- The prior package **1.0 (6)** added Live Activity aircraft labels that include
   `Plane` or `Heli` immediately before the tail number on the Lock Screen and
   expanded Dynamic Island. Nicknames, distance-band colors, and last-known
   state retention are preserved. Twenty native checks and the signed device

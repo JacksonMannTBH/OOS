@@ -167,6 +167,57 @@ the native behavior uses [UIApplication.isIdleTimerDisabled](https://developer.a
 Missing compass headings stay unavailable; they are never converted to a north
 reading. A valid GPS course remains the fallback when device heading is absent.
 
+### Home Screen widget on iPhone — Status first
+
+Build **1.0 (7)** includes the selected small **OOS Aircraft** Home Screen widget
+in the existing WidgetKit extension alongside the Live Activity. The large
+Stop/Warning/Watch/Clear label and dark background use red/amber/blue/green;
+distance, Plane/Heli and tail number, selected state code, and original update
+time appear below and around it. A healthy empty feed shows Clear with
+"No aircraft airborne" and no invented aircraft or distance. Before the first
+known result, it prompts the person to open OOS. `oos://home` opens Home.
+
+The widget works independently of the Home Live control. Native preference
+reconciliation saves the selected state, aircraft exclusions, and Ride bands
+even when Live is off. With existing When In Use permission, opening OOS
+requests a single current fix and aircraft snapshot. The widget declares
+`NSWidgetWantsLocation` and obtains its own single fix when WidgetKit requests
+a timeline. It requests another timeline after 15 minutes; iOS controls the
+actual schedule. Live Tracking can also publish current results, with widget
+reload requests limited to once a minute. No continuous background location
+session is started for the Home Screen widget.
+
+App and widget share `group.live.outofsight.app`. Their coordinated, atomically
+written `Library/Application Support/OOSWidgets/home-widget.json` contains
+preferences and the last known result, never rider coordinates. Coordinates
+remain in memory, distances are calculated on-device, and requests send only
+the selected state and cache timestamp. Missing/stale/failed data retains the
+complete last known result and its original update time. Changed region,
+exclusions, or bands invalidate results calculated with old preferences;
+late requests cannot overwrite new preferences or newer observations.
+
+To add it, open OOS once and allow location in Map if needed. Long-press an
+empty Home Screen area, choose Edit → Add Widget, find Out Of Sight/OOS, and
+add the small OOS Aircraft widget. Twenty tracking checks, seven widget-storage
+checks, the mobile type check/interface build, signed device build, and local
+App Store archive/export passed. Both exported targets have verified signatures,
+distribution profiles, shared App Group, matching build 7, and debugging disabled;
+production APNs and the bundled Radar sound were verified. On the physical
+iPhone, shared preferences and a real aircraft result were verified. The owner
+confirmed the state/distance/type/tail display and tapping the widget opens Home.
+The pending Help contact edit was excluded from the packaged interface and
+left untouched. No website deployment or App Store upload occurred.
+
+The owner's earlier report of unexpected Live Activity termination still needs
+diagnosis; that is separate from this independent Home Screen widget.
+
+Run widget-storage checks from `mobile/` with:
+
+```sh
+xcrun swiftc ios/App/Shared/RideTrackingData.swift ios/App/Shared/HomeWidgetStore.swift ios/Tests/HomeWidgetStoreTests.swift -o /tmp/oos-home-widget-tests
+/tmp/oos-home-widget-tests
+```
+
 ### Live tracking on iPhone
 
 Home includes a small top-left **Live** button on native iOS 16.2+.

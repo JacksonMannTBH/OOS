@@ -9,6 +9,8 @@ struct RideTrackingContent: Codable, Hashable {
     var updatedAt: Date
     var validUntil: Date
     var stateName: String = ""
+    var aircraftTail: String? = nil
+    var vehicleLabel: String? = nil
 
     var hasKnownRideState: Bool {
         ["Clear", "Watch", "Warning", "Stop"].contains(rideState)
@@ -20,7 +22,7 @@ struct RideTrackingContent: Codable, Hashable {
     }
 }
 
-struct RideTrackingConfiguration {
+struct RideTrackingConfiguration: Codable, Equatable {
     var stateCode: String
     var stateName: String
     var excludedTails: Set<String>
@@ -139,7 +141,8 @@ enum RideTrackingCalculator {
             return RideTrackingContent(aircraft: name, distanceNm: nearest.distance,
                                        rideState: configuration.label(distanceNm: nearest.distance),
                                        message: nearest.plane.model, updatedAt: min(feedDate, locationDate),
-                                       validUntil: expiry)
+                                       validUntil: expiry, aircraftTail: nearest.plane.tail,
+                                       vehicleLabel: nearest.plane.vehicleLabel)
         }
         return RideTrackingContent(aircraft: "No tracked aircraft airborne", distanceNm: nil,
                                    rideState: "Clear", message: configuration.stateName,
