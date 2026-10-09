@@ -81,6 +81,18 @@ Both its existing Cloud Functions URL and Cloud Run URL respond, reject GET
 with 405, and reject an unauthenticated POST with 401. These checks verify
 routing and access control, not actual delivery to an iPhone.
 
+October 9 notification-delivery repair: the Firebase relay secret contained a
+trailing line ending, causing authenticated requests to return 401. Secret
+version 2 stores the corrected value; the relay was redeployed with that version
+and Netlify's production Functions secret was saved with the matching value.
+The relay's runtime service account also lacked Firebase messaging permission;
+it now has `roles/firebasecloudmessaging.admin` on this project. An authenticated
+empty-body request now reaches validation (400), and a diagnostic request with
+an intentionally invalid device token reaches FCM (`messaging/invalid-argument`).
+These probes target no real device and do not verify iPhone delivery. The owner's
+test failed before the messaging-permission repair; a new physical-device test
+and confirmation of the Apple push configuration are still required.
+
 1. Add an **Apple/iOS app** to the existing Firebase project using
    `live.outofsight.app` (the Android registration is separate).
 2. Download its `GoogleService-Info.plist` and place it at

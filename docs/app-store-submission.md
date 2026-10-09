@@ -127,6 +127,12 @@ location behavior alone. Check the entire configured app and its partners.
   Firebase relay update was deployed on October 9. The APNs connection and
   actual push delivery remain pending.
   This setup is separate from the Live tracking location session.
+- October 9 notification repair: corrected the relay secret's trailing line
+  ending, deployed Firebase secret version 2, saved the matching Netlify
+  production Functions value, and granted the relay runtime account the Firebase
+  messaging role. Authenticated requests now reach validation and FCM. Invalid
+  diagnostic tokens were used; actual iPhone delivery and the Apple push
+  configuration remain unverified after this repair.
 - The local Help page now has a support contact, separate native and browser
   notification instructions, and a location summary covering on-device use and map requests.
   Both public Help and Legal URLs returned HTTP 200 on October 9, 2026. The
