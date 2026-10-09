@@ -15,7 +15,7 @@ takeoff notifications.
 - adsb.fi with OpenSky fallback for live aircraft observations
 - Web Push with VAPID for browsers and Firebase Cloud Messaging for the
   Capacitor Android app
-- Capacitor 8 Android shell in `mobile/`
+- Capacitor 8 Android and iPhone shells in `mobile/`
 
 ## Local setup
 
@@ -60,8 +60,8 @@ Worker-run logs remain available for seven days.
 See [supabase/README.md](supabase/README.md) for database details and state
 boundary import guidance.
 
-See [mobile/README.md](mobile/README.md) for the Capacitor Android and Firebase
-setup.
+See [mobile/README.md](mobile/README.md) for Android, Xcode/iPhone, and Firebase
+setup, including the remaining iOS signing and push requirements.
 
 ## Aircraft coverage
 

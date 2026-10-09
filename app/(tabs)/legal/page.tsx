@@ -59,7 +59,7 @@ export default function LegalPage() {
 
       <LegalSection id="privacy" title="What the app handles">
         <p>
-          <strong>Effective September 7, 2026.</strong> Out Of Sight is operated
+          <strong>Effective October 8, 2026.</strong> Out Of Sight is operated
           by Jackson Mann. For privacy questions or deletion requests, email{" "}
           <a href="mailto:jacksonmann253@gmail.com">
             jacksonmann253@gmail.com
@@ -68,22 +68,26 @@ export default function LegalPage() {
         </p>
         <PrivacyRow title="Live location">
           If you allow location access, your coordinates, speed, and heading are
-          used in your browser for map positioning, distance calculations, and
+          used on your device for map positioning, distance calculations, and
           Ride Mode. Simply opening those features does not cause Out Of Sight
           to store that location on its servers.
         </PrivacyRow>
-        <PrivacyRow title="Spot reports">
-          Tapping the spot-report control sends the reported coordinates,
-          timestamp, and nearby-aircraft details to Out Of Sight. Nothing is
-          submitted until you deliberately use that control. Reports are kept
-          for up to seven days and then scheduled for deletion.
+        <PrivacyRow title="Live tracking on iPhone">
+          Turning on Live tracking starts a location session that continues while
+          you use other apps or lock your phone. Your device calculates the nearest
+          tracked aircraft, distance, and ride state and shows them in a Live
+          Activity. Your coordinates are not sent with aircraft-data requests.
+          Stop live tracking or End Ride ends this session and background location
+          access. If location or aircraft data expires, the activity shows that
+          updates are paused or unavailable.
         </PrivacyRow>
         <PrivacyRow title="Takeoff alerts">
-          Enabling alerts stores a random device ID, selected state, browser push
-          endpoint, delivery keys, and browser identification needed to send the
-          alert while alerts remain enabled. It does not include your location
-          or speed. Turning alerts off unsubscribes the browser and deletes the
-          server subscription.
+          Enabling alerts stores a random device ID, selected state, aircraft
+          preferences, and either browser push details or a Firebase messaging
+          token for the mobile app. Google Firebase and, on iPhone, Apple Push
+          Notification service deliver mobile alerts. Alert subscriptions do not
+          include your location or speed. Turning alerts off stops registration
+          for notifications and deletes the server subscription.
         </PrivacyRow>
         <PrivacyRow title="Preferences">
           Local storage and first-party cookies remember choices such as state,
@@ -97,8 +101,9 @@ export default function LegalPage() {
           viewed. Those providers apply their own privacy terms.
         </PrivacyRow>
         <PrivacyRow title="Retention and deletion">
-          Spot reports are retained for up to seven days and then scheduled for
-          deletion. Turning off takeoff alerts deletes the associated push
+          Any location reports submitted before reporting was discontinued
+          remain subject to the seven-day retention and scheduled deletion
+          policy. Turning off takeoff alerts deletes the associated push
           subscription from Out Of Sight. Preferences stored on the device can
           be removed with “Reset preferences” in Display &amp; Time. To request
           deletion of other data that may be associated with you, email the

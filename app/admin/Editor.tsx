@@ -217,7 +217,7 @@ export function Editor({
 
 // â”€â”€â”€ shared admin nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function AdminNav({ active }: { active: "registry" | "flights" | "spots" }) {
+function AdminNav({ active }: { active: "registry" | "flights" }) {
   return (
     <header
       style={{
@@ -257,9 +257,6 @@ function AdminNav({ active }: { active: "registry" | "flights" | "spots" }) {
         </NavLink>
         <NavLink href="/admin/tracks" active={active === "flights"}>
           FLIGHTS
-        </NavLink>
-        <NavLink href="/admin/spots" active={active === "spots"}>
-          SPOTS
         </NavLink>
         <form action={logoutAction}>
           <button

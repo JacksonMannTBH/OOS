@@ -1,6 +1,6 @@
-# Out Of Sight for Android (Capacitor)
+# Out Of Sight mobile apps (Capacitor)
 
-This directory contains the Capacitor Android project. The existing Bubblewrap/TWA
+This directory contains the Capacitor Android and iPhone projects. The existing Bubblewrap/TWA
 project remains in `../android` as a recoverable fallback.
 
 ## Firebase setup required
@@ -33,3 +33,246 @@ plugins for Android permissions and Firebase notifications. After Firebase and
 the backend environment are configured, run `npm run build:bundle`; it prompts
 for the existing upload-key password without printing it and writes
 `mobile/android/out-of-sight-capacitor-release.aab`.
+
+## iPhone / Xcode
+
+The iPhone target is `ios/App/App.xcodeproj`, scheme **App**, display name
+**Out Of Sight**, bundle ID `live.outofsight.app`, version 1.0, build 1, iOS 15+.
+It uses Swift Package Manager, Capacitor 8.5.1, and Firebase Messaging 12.4.0.
+The first release targets iPhone; iPad-specific layouts have not been validated.
+
+From `mobile/`, with Node 22+ and Xcode installed:
+
+```sh
+npm ci
+npm run sync:ios
+npm run open:ios
+# Build without an Apple signing identity:
+npm run build:ios
+```
+
+Open Xcode, choose the **App** target, and select your Apple development team
+under **Signing & Capabilities** when your paid membership is active. Automatic
+signing and Push Notifications are already configured. Do not replace the
+bundle identifier unless it also changes in Capacitor, Firebase, and App Store
+Connect. Test with an iPhone simulator before selecting a physical device.
+
+### iOS notification setup
+
+Setup status updated October 9, 2026: **Out Of Sight iPhone** is registered in
+Firebase project `out-of-sight-d3216` with bundle ID `live.outofsight.app`.
+Its matching configuration is installed locally and ignored by Git. The live
+subscription endpoint reports FCM relay configuration present; this does not
+verify delivery. Firebase has neither a development nor a production APNs key
+or certificate for the iPhone app at the last console check on October 8.
+Apple enrollment is active per the owner's October 9 update. Xcode is now signed
+in and an Apple Development signing identity is installed. Team `C6S63TAR8C` is configured for
+both targets in Debug and Release. The signed development build is installed
+and launched on the owner's iPhone; the owner confirmed Home loads normally.
+The local App Store export also passed signing verification. The APNs connection,
+service deployment, and physical-iPhone delivery testing remain unfinished.
+
+1. Add an **Apple/iOS app** to the existing Firebase project using
+   `live.outofsight.app` (the Android registration is separate).
+2. Download its `GoogleService-Info.plist` and place it at
+   `mobile/ios/App/App/Configuration/GoogleService-Info.plist`. The Configuration
+   folder is already included in the Xcode target. This file is ignored by Git.
+3. After Apple membership activation, enable Push Notifications for the app ID
+   and add the Apple APNs authentication key, key ID, and team ID to Firebase
+   **Project settings → Cloud Messaging → Apple app configuration**. Keep the
+   `.p8` key outside the repository and never paste it into chat.
+4. Deploy the web changes and updated `sendAircraftAlert` Firebase function.
+   This work does not automatically deploy either service.
+5. Install on a physical iPhone, enable alerts in Settings, send a test, and
+   verify foreground, background, locked-device, and notification-tap behavior.
+   Turn alerts off and confirm delivery stops; re-enable and retest.
+
+The app builds and launches without the Firebase plist for UI development.
+Push delivery is unavailable until configuration/signing is complete.
+`OOSNotificationSetup.status()` checks that the running iPhone app has initialized
+Firebase with its own bundle ID before offering alerts. The web client combines
+this with server readiness before a permission prompt or token registration;
+older app builds lacking the check require an app update. Home does not display
+an unavailable alert promotion. Automatic alert promotions appear only when delivery is
+supported, configured, off, and not denied. The Home Screen install prompt is
+browser-only and is suppressed in every native Capacitor app.
+`AppDelegate.swift` explicitly maps APNs tokens to **FCM** tokens before passing
+registration to Capacitor. The backend continues to use the existing `fcm`
+transport. Messaging auto-initialization is disabled until registration is
+requested. Permission prompts occur when users enable alerts or use location.
+Map and Ride screen location watches stop when their owning screen unmounts.
+The separate opt-in Live tracking session uses background location until stopped.
+
+### Ride Mode on iPhone
+
+`OOSBridgeViewController` registers the local `OOSScreenAwake` plugin. It uses
+Apple's idle timer only while Ride Mode is foregrounded and the user has enabled
+Wake mode. Independent leases prevent an old screen's delayed cleanup from
+turning off a newer screen's lock. Leaving Ride Mode, loading a new document, or
+backgrounding restores normal screen sleep. Browsers and Android retain the Web
+Wake Lock fallback. No additional permission or paid Apple membership is needed
+for this feature. Registration follows [Capacitor's custom iOS plugin guide](https://capacitorjs.com/docs/ios/custom-code);
+the native behavior uses [UIApplication.isIdleTimerDisabled](https://developer.apple.com/documentation/uikit/uiapplication/isidletimerdisabled).
+
+Missing compass headings stay unavailable; they are never converted to a north
+reading. A valid GPS course remains the fallback when device heading is absent.
+
+### Live tracking on iPhone
+
+Ride Mode includes a **Turn on live tracking** button on native iOS 16.2+.
+`OOSLiveTracking` starts an ActivityKit session and a Core Location watch from
+the foreground. It uses When In Use authorization, background-location mode,
+and the system location indicator. It never requests Always authorization.
+The session survives navigating away from Ride or switching to another app;
+**Stop live tracking**, **End Ride**, or system activity dismissal stops location,
+polling, pending requests, and the Live Activity. Relaunching the app ends orphaned
+activities and does not silently restart tracking.
+
+The native session polls the existing HTTPS aircraft endpoint at most once per
+15 seconds while iOS supplies background runtime. It sends the selected state
+and a cache timestamp, with no rider coordinates. Distance and status are
+computed locally using the selected aircraft exclusions and Ride thresholds.
+The widget shows aircraft identification, nautical miles, and Stop/Warning/Watch/
+Clear in the Lock Screen and expanded Dynamic Island. The compact presentation
+shows state and distance; the minimal presentation uses the status color.
+`oos://ride` opens Ride Mode from the activity.
+
+Freshness limits: rider fix 30 seconds, feed 45 seconds, aircraft position 90
+seconds. Missing, stale, mock, or failed source data cannot claim Clear.
+ActivityKit's stale date changes the display to **Updates paused** if the app
+is suspended or terminated. Runtime, connectivity, and delivery are not
+guaranteed; Apple limits an activity to eight hours. Physical-device background,
+Lock Screen, dismissal, deep-link, and permission testing remains required.
+This local implementation does not need Firebase/APNs delivery credentials;
+it updates ActivityKit on the device during the location session.
+
+Run the shared native calculation checks with:
+
+```sh
+xcrun swiftc ios/App/Shared/RideTrackingData.swift ios/Tests/LiveTrackingCoreTests.swift -o /tmp/oos-live-tracking-tests
+/tmp/oos-live-tracking-tests
+```
+
+References: [ActivityKit](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities),
+[background location](https://developer.apple.com/documentation/corelocation/cllocationmanager/allowsbackgroundlocationupdates).
+
+### Post-enrollment validation — October 9, 2026
+
+- The unsigned Release iPhone build passed after Firebase configuration was added.
+  It includes the matching Firebase project/bundle configuration, the embedded
+  LiveTrackingWidget, matching version 1.0/build 1, and bundled SDK privacy manifests.
+- Both targets use the owner's supplied Team ID `C6S63TAR8C` in Debug and Release.
+- Archive preflight now checks matching target versions, production APNs
+  entitlements, Firebase project identity, automatic signing, and a shared Team ID.
+  Disposable fixture checks reject mismatched teams, build numbers, and development
+  APNs settings in Release; the real configuration passes.
+- Apple created the development certificate, and the owner's connected iPhone
+  now has Developer Mode enabled. The first device build registered the iPhone
+  and created a development provisioning profile for `live.outofsight.app`
+  with the development APNs entitlement. The signed Debug build passed,
+  installation and process launch succeeded, and the owner confirmed Home loads.
+- The signed Release archive and local App Store export passed. The exported
+  `ios/App/output/AppStore/App.ipa` passed strict signature verification for the
+  app and embedded widget: Team `C6S63TAR8C`, version 1.0/build 1, App Store
+  distribution profiles, debugging disabled, and production APNs entitlement
+  on the app. Output files are ignored by Git. No TestFlight/App Store upload
+  has occurred; push delivery and Live Activity behavior remain unverified.
+
+### Pre-enrollment validation — October 8, 2026
+
+- Automated checks: 103 tests passed, including native location cleanup,
+  notification subscription ordering, iPhone notification readiness and old-build
+  handling, alert promotion gating, compass validity, and screen-wake lifecycle.
+- Live tracking: 14 shared native calculation checks passed for distance bands,
+  nearest-aircraft selection, exclusions, source/position freshness, and app/widget
+  content serialization. The app and embedded widget Debug simulator and unsigned
+  Release iPhone builds passed; this does not verify signing or background behavior.
+- TypeScript checking, the production web build, and the updated native Debug simulator build passed.
+- An earlier simulator process launch was verified. The latest simulator install
+  stalled even after a device restart and was cancelled; latest launch and rendered
+  UI remain unverified. The device was not erased.
+- Visual inspection remains pending: Device Hub access was not approved and the
+  local browser-preview request was declined. Do not count these as passed tests.
+- These changes are local. The native shell still loads the existing live site.
+
+Manual acceptance checks once preview/device access is available:
+
+| Area | Expected behavior | Status |
+| --- | --- | --- |
+| Home and Settings | Content fits iPhone safe areas, large text remains usable, navigation works | Pending |
+| Map / location denied | Map remains usable and explains unavailable location | Pending |
+| Map / location allowed | Correct position; watch stops after leaving the screen | Pending |
+| Ride / heading unavailable | No fabricated north reading; GPS course used only when valid | Pending |
+| Ride / Wake mode off | Screen can sleep with Ride open | Pending |
+| Ride / Wake mode on | Screen stays awake in Ride and sleeps normally after End Ride | Pending |
+| Live tracking / start | One activity shows nearest aircraft, nm, selected state, and custom ride status | Pending on physical iPhone |
+| Live tracking / other app and locked phone | Location and aircraft data refresh; stale content changes to Updates paused | Pending on physical iPhone |
+| Live tracking / stop and End Ride | Activity disappears and background location/polling stops | Pending on physical iPhone |
+| Live tracking / system dismissal and relaunch | Background location stops; a killed session is not silently restarted | Pending on physical iPhone |
+| Live tracking / permission and tap | Denial is explained; activity tap reopens Ride Mode; settings changes reconcile | Pending on physical iPhone |
+| Background / return | Location and wake behavior resume correctly without duplicate subscriptions | Pending |
+| No connection / retry | Honest unavailable state, then recovery after connection returns | Pending |
+| State and aircraft selection | Choices survive closing and reopening | Pending |
+| Push alerts | Allow/deny, delivery, taps, token renewal, and opt-out | Requires Firebase/APNs setup |
+
+App Store materials can be prepared before enrollment: final description,
+support and privacy URLs, reviewer instructions, and screenshots from the tested
+build. Keep screenshot capture and privacy answers pending until verified against
+the configured app; the existing Android artwork is not an iPhone screenshot.
+The [App Store submission draft](../docs/app-store-submission.md) contains listing
+copy, reviewer notes, a screenshot plan, and the privacy questions still to resolve.
+
+### Hosted web app and local testing
+
+The iOS shell loads `https://outofsight.live`, matching the existing Android
+architecture. Building the native app does **not** deploy changes to that
+website. Until the web deployment, the installed shell sees the current live
+website, rather than the new local iOS permission/notification behavior.
+The bundled `offline.html` is displayed if the initial network load fails.
+It offers retry and does not represent unavailable aircraft data as current.
+
+For local integration testing, start the root web app with `npm run dev`, run
+`npm run sync:ios`, then temporarily set `server.url` to `http://localhost:3000`
+and `server.cleartext` to `true` in the **generated/ignored**
+`ios/App/App/capacitor.config.json`. Build directly in Xcode without another
+sync. A simulator can reach the Mac's localhost; a physical iPhone cannot.
+Run `npm run sync:ios` again afterward to restore production settings.
+Local live data requires the backend environment described in the root README.
+Never archive a build pointing at a local development server.
+
+### Before TestFlight
+
+```sh
+npm run sync:ios
+npm run check:ios:release
+npm run archive:ios
+# Prepare a local App Store package after the signed archive succeeds:
+npm run export:ios
+```
+
+The release check verifies the production URL, Firebase project and bundle ID,
+app/widget version and build consistency, and production APNs entitlements.
+The archive command additionally requires automatic signing and the same valid
+Apple Team ID on both targets; it lets Xcode update provisioning with the
+signed-in account. These checks do not verify APNs credentials or actual delivery.
+Neither command uploads. Export uses `ios/ExportOptions.plist` for team
+`C6S63TAR8C`, preserves the app/widget build number, and writes the distribution
+package under the ignored `ios/App/output/AppStore/` directory. If the Apple
+team changes, update both targets and this export configuration together.
+In Xcode Organizer, validate the archive before distributing to App Store
+Connect. Increment the build number for every subsequent upload and keep the
+App and LiveTrackingWidget target versions/build numbers identical. Both targets
+must use the same Apple development team for signing.
+
+Remaining release checks: physical-iPhone location permission allow/deny and
+recovery; maps and Ride Mode; Live tracking background, dismissal, and stale-data
+behavior; state/aircraft selection persistence; launch with
+no connection and retry; cold/warm notification taps and token renewal; support
+and privacy links; app privacy answers covering opt-in background location, device IDs,
+Firebase, hosting, and map providers; third-party data rights; screenshots and
+review notes. Review the SDK privacy reports from the final archive. The app's
+minimum-functionality review still needs to account for its hosted-web design.
+
+References: [Capacitor iOS](https://capacitorjs.com/docs/ios),
+[Capacitor push](https://capacitorjs.com/docs/apis/push-notifications),
+[Firebase Apple messaging](https://firebase.google.com/docs/cloud-messaging/ios/get-started).

@@ -67,6 +67,14 @@ export const sendAircraftAlert = onRequest(
             sound: "default",
           },
         },
+        apns: {
+          headers: {
+            "apns-push-type": "alert",
+            "apns-priority": "10",
+            "apns-expiration": String(Math.floor(Date.now() / 1_000) + 30 * 60),
+          },
+          payload: { aps: { sound: "default" } },
+        },
       });
       response.status(200).json({ ok: true, messageId });
     } catch (error) {

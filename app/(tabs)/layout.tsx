@@ -1,5 +1,4 @@
 import { SpeedWarning } from "@/components/SpeedWarning";
-import { ScreenAwake } from "@/components/ScreenAwake";
 import { AppBadge } from "@/components/AppBadge";
 import { SettingsHomeButton } from "@/components/SettingsHomeButton";
 import { getSpeedWarningEnabled } from "@/lib/flags";
@@ -19,7 +18,6 @@ export default function TabsLayout({
     <>
       <div id="main-content">{children}</div>
       <SettingsHomeButton />
-      <ScreenAwake />
       <AppBadge />
       <Suspense fallback={null}>
         <ConfiguredSpeedWarning />

@@ -2,18 +2,11 @@
 
 import { useCallback } from "react";
 import { useDeviceHeading } from "./useDeviceHeading";
+import { getCurrentDevicePosition } from "@/lib/device-location";
 
 function requestLocationOnce(): Promise<boolean> {
-  if (typeof navigator === "undefined" || !navigator.geolocation) {
-    return Promise.resolve(false);
-  }
-  return new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition(
-      () => resolve(true),
-      () => resolve(false),
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 },
-    );
-  });
+  return getCurrentDevicePosition({ enableHighAccuracy: true, maximumAge: 5000, timeout: 8000 })
+    .then(() => true, () => false);
 }
 
 export function useRideLaunchPreflight(): () => Promise<void> {

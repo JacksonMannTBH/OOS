@@ -6,22 +6,23 @@
 import { useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
+import { notificationPath } from "@/lib/notification-url";
 
 export function SwRegistrar() {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+    if (Capacitor.isNativePlatform()) {
       const listener = PushNotifications.addListener(
         "pushNotificationActionPerformed",
         ({ notification }) => {
-          const url = notification.data?.url;
-          if (typeof url === "string" && url.startsWith("/")) {
+          const url = notificationPath(notification.data?.url, window.location.origin);
+          if (url) {
             window.location.assign(url);
           }
         },
       );
       return () => {
-        void listener.then((handle) => handle.remove());
+        void listener.then((handle) => handle.remove()).catch(() => undefined);
       };
     }
     if (!("serviceWorker" in navigator)) return;

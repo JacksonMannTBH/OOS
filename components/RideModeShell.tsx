@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import nextDynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+import { ScreenAwake } from "./ScreenAwake";
+import { LiveTrackingButton } from "./LiveTrackingButton";
+import { stopLiveTracking } from "@/lib/live-tracking";
 import { useAircraft } from "@/lib/hooks/useAircraft";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
 import { useDeviceHeading } from "@/lib/hooks/useDeviceHeading";
@@ -25,16 +28,6 @@ const RideMap = nextDynamic(() => import("./RideMap"), { ssr: false });
 type Props = {
   initial: Snapshot;
   mockOn?: boolean;
-};
-
-type WakeLockSentinel = {
-  released: boolean;
-  release: () => Promise<void>;
-  addEventListener?: (type: string, listener: () => void) => void;
-};
-
-type WakeLockNavigator = Navigator & {
-  wakeLock?: { request: (type: "screen") => Promise<WakeLockSentinel> };
 };
 
 const STATUS_COLORS: Record<RideStatus, string> = {
@@ -62,9 +55,23 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
   const heading = useDeviceHeading(riderPos?.heading);
   const [now, setNow] = useState(initial.fetched_at);
   const rideThresholds = useRideStatusThresholds();
+  const [endingRide, setEndingRide] = useState(false);
+  const [endRideError, setEndRideError] = useState("");
+
+  async function endRide() {
+    if (endingRide) return;
+    setEndingRide(true);
+    setEndRideError("");
+    try {
+      await stopLiveTracking();
+      router.push("/");
+    } catch {
+      setEndRideError("Live tracking could not stop. Please try again.");
+      setEndingRide(false);
+    }
+  }
 
   useRideChrome();
-  useRideWakeLock();
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -131,6 +138,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
         overscrollBehavior: "contain",
       }}
     >
+      <ScreenAwake />
       <header
         style={{
           textAlign: "center",
@@ -279,9 +287,11 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
             <RideSummaryMetric label="GS" value={nearestSummary.groundSpeed} />
           </div>
         </div>
+        <LiveTrackingButton mockOn={mockOn} />
         <button
           type="button"
-          onClick={() => router.push("/")}
+          onClick={() => void endRide()}
+          disabled={endingRide}
           aria-label="End Ride and return to the main app"
           style={{
             width: "min(100%, 460px)",
@@ -298,8 +308,9 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          End Ride
+          {endingRide ? "Ending ride…" : "End Ride"}
         </button>
+        {endRideError && <p role="alert" style={{ color: "#f6c431", fontSize: 13 }}>{endRideError}</p>}
       </footer>
     </main>
   );
@@ -310,53 +321,6 @@ function useRideChrome() {
     document.body.dataset.rideMode = "true";
     return () => {
       delete document.body.dataset.rideMode;
-    };
-  }, []);
-}
-
-function useRideWakeLock() {
-  useEffect(() => {
-    let sentinel: WakeLockSentinel | null = null;
-    let cancelled = false;
-    const nav = navigator as WakeLockNavigator;
-
-    const release = async () => {
-      const current = sentinel;
-      sentinel = null;
-      if (current && !current.released) {
-        try {
-          await current.release();
-        } catch {
-          /* already released */
-        }
-      }
-    };
-
-    const acquire = async () => {
-      if (!nav.wakeLock || document.visibilityState !== "visible") return;
-      try {
-        sentinel = await nav.wakeLock.request("screen");
-        sentinel.addEventListener?.("release", () => {
-          sentinel = null;
-        });
-      } catch {
-        sentinel = null;
-      }
-    };
-
-    void acquire();
-    const onVisibility = () => {
-      if (document.visibilityState === "visible" && !sentinel && !cancelled) {
-        void acquire();
-      } else if (document.visibilityState === "hidden") {
-        void release();
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      cancelled = true;
-      document.removeEventListener("visibilitychange", onVisibility);
-      void release();
     };
   }, []);
 }

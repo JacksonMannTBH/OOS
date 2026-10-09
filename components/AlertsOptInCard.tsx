@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { Capacitor } from "@capacitor/core";
 import { SS_TOKENS } from "@/lib/tokens";
 import {
   enableAircraftAlerts,
   readAircraftAlertStatus,
 } from "@/lib/aircraft-alerts/client";
 import { getSelectedStateCode } from "@/lib/app-states";
+import { aircraftAlertErrorMessage, shouldPromoteAircraftAlerts, type NotificationPlatform } from "@/lib/aircraft-alerts/presentation";
 
 const DISMISS_KEY = "oos_alerts_promo_dismissed_at";
 const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
@@ -30,8 +32,8 @@ export function AlertsOptInCard() {
       return;
     }
     readAircraftAlertStatus()
-      .then((status) => setPhase(status.enabled ? "hidden" : "show"))
-      .catch(() => setPhase("show"));
+      .then((status) => setPhase(shouldPromoteAircraftAlerts(status) ? "show" : "hidden"))
+      .catch(() => setPhase("hidden"));
   }, []);
 
   const onDismiss = useCallback(() => {
@@ -50,7 +52,7 @@ export function AlertsOptInCard() {
       });
       setPhase("hidden");
     } catch (error) {
-      setMessage(messageForArmError(error));
+      setMessage(aircraftAlertErrorMessage(error, Capacitor.getPlatform() as NotificationPlatform));
     } finally {
       setBusy(false);
     }
@@ -186,12 +188,4 @@ export function AlertsOptInCard() {
     </div>,
     document.body,
   );
-}
-
-function messageForArmError(error: unknown): string {
-  const message = error instanceof Error ? error.message : "";
-  if (message === "permission_denied") return "Notification permission was not granted.";
-  if (message === "unsupported") return "This browser cannot receive web notifications.";
-  if (message === "not_configured") return "Notification keys are not configured yet.";
-  return "Could not arm alerts. Try again from Settings.";
 }

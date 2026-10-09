@@ -1,4 +1,5 @@
 "use client";
+import { watchDevicePosition } from "@/lib/device-location";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import nextDynamic from "next/dynamic";
@@ -160,11 +161,7 @@ export function RadarShell({
   // Geolocation only kicks in when this component mounts â€” i.e. when the user
   // actually visits /map. The home page never asks.
   useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      flashToast(setToast, "Location off · map still works");
-      return;
-    }
-    const watchId = navigator.geolocation.watchPosition(
+    return watchDevicePosition(
       (pos) => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
@@ -198,7 +195,6 @@ export function RadarShell({
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
     );
-    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
   return (
@@ -844,4 +840,3 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-

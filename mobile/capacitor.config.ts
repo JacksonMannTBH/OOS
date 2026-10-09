@@ -7,10 +7,16 @@ const config: CapacitorConfig = {
   server: {
     url: "https://outofsight.live",
     cleartext: false,
+    errorPath: "offline.html",
+  },
+  backgroundColor: "#050607",
+  ios: {
+    contentInset: "never",
+    backgroundColor: "#050607",
   },
   plugins: {
     PushNotifications: {
-      presentationOptions: ["badge", "sound", "alert"],
+      presentationOptions: ["badge", "sound", "alert", "banner", "list"],
     },
   },
 };

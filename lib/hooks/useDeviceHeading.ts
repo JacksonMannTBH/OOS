@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { normalizeDeg } from "@/lib/ride-mode";
+import { finiteHeading, headingFromOrientationEvent } from "@/lib/device-heading";
 
 export type HeadingSource = "device" | "geolocation" | "none";
 export type HeadingPermissionState =
@@ -25,27 +25,6 @@ export type DeviceHeadingState = {
   permissionState: HeadingPermissionState;
   requestPermission: () => Promise<boolean>;
 };
-
-function finiteHeading(value: unknown): number | null {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return null;
-  return normalizeDeg(n);
-}
-
-function headingFromOrientationEvent(
-  event: CompassOrientationEvent,
-): number | null {
-  const webkitHeading = finiteHeading(event.webkitCompassHeading);
-  if (webkitHeading != null) return webkitHeading;
-
-  const alpha = finiteHeading(event.alpha);
-  if (alpha == null) return null;
-
-  // On browsers that report absolute orientation, alpha rotates clockwise
-  // from the device frame; invert it into a north-clockwise compass heading.
-  if (event.absolute === true) return normalizeDeg(360 - alpha);
-  return null;
-}
 
 export function useDeviceHeading(
   geolocationHeadingDeg: number | null | undefined = null,

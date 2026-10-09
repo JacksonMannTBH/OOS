@@ -1,10 +1,14 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import { SS_TOKENS } from "@/lib/tokens";
 import {
   enableAircraftAlerts,
+  readAircraftAlertStatus,
 } from "@/lib/aircraft-alerts/client";
+import type { AircraftAlertStatus } from "@/lib/aircraft-alerts/types";
+import { aircraftAlertAvailabilityMessage, aircraftAlertErrorMessage, canArmAircraftAlerts, type NotificationPlatform } from "@/lib/aircraft-alerts/presentation";
 import { getSelectedStateCode } from "@/lib/app-states";
 
 const DISMISS_KEY = "oos_arm_alerts_dismissed_at";
@@ -12,38 +16,47 @@ const DISMISS_DAYS = 14;
 const DISMISS_MS = DISMISS_DAYS * 24 * 60 * 60 * 1000;
 
 export function ArmAlertsCallout() {
-  const [dismissed, setDismissed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const dismissedAt = Number(window.localStorage.getItem(DISMISS_KEY) ?? "0");
-    return Number.isFinite(dismissedAt) && Date.now() - dismissedAt < DISMISS_MS;
-  });
+  const [dismissed, setDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("State takeoff alerts work while the app is closed.");
+  const [status, setStatus] = useState<AircraftAlertStatus | null>(null);
+  const [message, setMessage] = useState("");
+  const platform = Capacitor.getPlatform() as NotificationPlatform;
+
+  useEffect(() => {
+    let mounted = true;
+    try {
+      const dismissedAt = Number(window.localStorage.getItem(DISMISS_KEY) ?? "0");
+      setDismissed(Number.isFinite(dismissedAt) && Date.now() - dismissedAt < DISMISS_MS);
+    } catch { /* Storage can be unavailable; keep the session's dismiss button usable. */ }
+    void readAircraftAlertStatus().then((next) => {
+      if (!mounted) return;
+      setStatus(next);
+      setMessage(aircraftAlertAvailabilityMessage(next, platform));
+    }).catch(() => {
+      if (mounted) setMessage("Notification status is unavailable. Open Settings to retry.");
+    });
+    return () => { mounted = false; };
+  }, [platform]);
 
   const onArm = useCallback(async () => {
+    if (busy || !canArmAircraftAlerts(status)) return;
     setBusy(true);
     try {
-      await enableAircraftAlerts({
+      const next = await enableAircraftAlerts({
         stateCode: getSelectedStateCode(),
       });
+      setStatus(next);
       setMessage("Alerts armed.");
     } catch (error) {
-      const text = error instanceof Error ? error.message : "";
-      setMessage(
-        text === "permission_denied"
-          ? "Notification permission was not granted."
-          : text === "unsupported"
-            ? "This browser cannot receive web notifications."
-            : text === "not_configured"
-              ? "Notification keys are not configured yet."
-              : "Could not arm alerts. Try Settings.",
-      );
+      setMessage(aircraftAlertErrorMessage(error, platform));
+      setStatus(await readAircraftAlertStatus().catch(() => null));
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [busy, platform, status]);
 
-  if (dismissed) return null;
+  if (dismissed || !canArmAircraftAlerts(status)) return null;
+  const actionDisabled = busy;
 
   return (
     <div
@@ -78,7 +91,7 @@ export function ArmAlertsCallout() {
         <button
           type="button"
           onClick={onArm}
-          disabled={busy}
+          disabled={actionDisabled}
           style={{
             background: SS_TOKENS.alert,
             color: "#fffdf8",
@@ -88,8 +101,8 @@ export function ArmAlertsCallout() {
             fontSize: 13,
             fontWeight: 600,
             whiteSpace: "nowrap",
-            cursor: busy ? "default" : "pointer",
-            opacity: busy ? 0.72 : 1,
+            cursor: actionDisabled ? "default" : "pointer",
+            opacity: actionDisabled ? 0.5 : 1,
           }}
         >
           {busy ? "Arming" : "Arm alerts"}
@@ -97,7 +110,7 @@ export function ArmAlertsCallout() {
         <button
           type="button"
           onClick={() => {
-            window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
+            try { window.localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* Dismiss for this session. */ }
             setDismissed(true);
           }}
           aria-label="Dismiss for 14 days"

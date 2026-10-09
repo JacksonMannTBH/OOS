@@ -16,6 +16,10 @@ dist
 *.keystore
 mobile/android/app/google-services.json
 mobile/node_modules/
+mobile/ios/App/App/Configuration/GoogleService-Info.plist
+*.p8
+*.p12
+*.mobileprovision
 mobile/android/.gradle/
 mobile/android/build/
 mobile/android/app/build/

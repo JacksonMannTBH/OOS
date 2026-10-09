@@ -12,7 +12,7 @@ type SettingsLink = {
   href: string;
   title: string;
   body: string;
-  icon: "bell" | "ride" | "aircraft" | "about" | "legal" | "store";
+  icon: "bell" | "ride" | "aircraft" | "about" | "help" | "legal" | "store";
   accent: string;
 };
 
@@ -22,6 +22,7 @@ const PRIMARY_LINKS: SettingsLink[] = [
 ];
 
 const MORE_LINKS: SettingsLink[] = [
+  { href: "/help", title: "Help & support", body: "Using the app and getting in touch", icon: "help", accent: "#f6c431" },
   { href: "/aircraft", title: "Tracked Aircrafts", body: "Tracked fleet and operators", icon: "aircraft", accent: "#f6c431" },
   { href: "/about", title: "About", body: "Project background and mission", icon: "about", accent: "#f6c431" },
   { href: "/legal", title: "Legal & privacy", body: "Safety, privacy, and data use", icon: "legal", accent: "#f6c431" },
@@ -65,6 +66,7 @@ function SettingsGroup({ label, links, featured = false }: { label: string; link
 
 function SettingsIcon({ name }: { name: SettingsLink["icon"] }) {
   const paths: Record<SettingsLink["icon"], ReactNode> = {
+    help: <path fillRule="evenodd" d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M6.496 6.033a1.504 1.504 0 0 1 3.008 0c0 .567-.262.822-.864 1.252-.661.472-1.64 1.17-1.64 2.465a.75.75 0 0 0 1.5 0c0-.488.314-.797 1.012-1.295.713-.51 1.492-1.146 1.492-2.422a3.004 3.004 0 0 0-6.008 0 .75.75 0 0 0 1.5 0M8 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />,
     bell: <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2m.995-14.901a1 1 0 1 0-1.99 0A5 5 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901" />,
     ride: <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6" />,
     aircraft: <path d="M6.428 1.151C6.708.591 7.213 0 8 0s1.292.592 1.572 1.151C9.861 1.73 10 2.431 10 3v3.691l5.17 2.585a1.5 1.5 0 0 1 .83 1.342V12a.5.5 0 0 1-.582.493l-5.507-.918-.375 2.253 1.318 1.318A.5.5 0 0 1 10.5 16h-5a.5.5 0 0 1-.354-.854l1.319-1.318-.376-2.253-5.507.918A.5.5 0 0 1 0 12v-1.382a1.5 1.5 0 0 1 .83-1.342L6 6.691V3c0-.568.14-1.271.428-1.849" />,

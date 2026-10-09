@@ -9,12 +9,16 @@ import type {
   AircraftAlertPushSubscription,
   AircraftAlertStatus,
 } from "./types";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { readAircraftTrackingPreferences } from "@/lib/aircraft-tracking";
 
 const DEVICE_ID_KEY = "oos_aircraft_alert_device_id";
 export const AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT = "oos-aircraft-alert-preference-sync";
+
+const NotificationSetup = registerPlugin<{
+  status(): Promise<{ configured: boolean }>;
+}>("OOSNotificationSetup");
 
 type StateInput = {
   stateCode?: StateCode;
@@ -33,7 +37,7 @@ export function getAircraftAlertUserId(): string {
 }
 
 export async function readAircraftAlertStatus(): Promise<AircraftAlertStatus> {
-  if (isNativeAndroid()) return readNativeAircraftAlertStatus();
+  if (isNativeMobile()) return readNativeAircraftAlertStatus();
   if (!browserSupportsAircraftAlerts()) {
     return {
       supported: false,
@@ -62,10 +66,23 @@ export async function readAircraftAlertStatus(): Promise<AircraftAlertStatus> {
   };
 }
 
-export async function enableAircraftAlerts(
+// Serialize enable, disable, and foreground preference/token refreshes so a
+// slow registration cannot recreate a subscription after the user disables it.
+let alertMutation: Promise<unknown> = Promise.resolve();
+function queueAlertMutation<T>(work: () => Promise<T>): Promise<T> {
+  const next = alertMutation.catch(() => undefined).then(work);
+  alertMutation = next;
+  return next;
+}
+
+export function enableAircraftAlerts(input: StateInput = {}): Promise<AircraftAlertStatus> {
+  return queueAlertMutation(() => enableAlerts(input));
+}
+
+async function enableAlerts(
   input: StateInput = {},
 ): Promise<AircraftAlertStatus> {
-  if (isNativeAndroid()) return enableNativeAircraftAlerts(input);
+  if (isNativeMobile()) return enableNativeAircraftAlerts(input);
   if (!browserSupportsAircraftAlerts()) throw new Error("unsupported");
   const status = await readAircraftAlertStatus();
   const publicKey = status.publicKey ?? "";
@@ -105,34 +122,35 @@ export async function enableAircraftAlerts(
   };
 }
 
-export async function disableAircraftAlerts(): Promise<AircraftAlertStatus> {
+export function disableAircraftAlerts(): Promise<AircraftAlertStatus> {
+  return queueAlertMutation(disableAlerts);
+}
+
+async function disableAlerts(): Promise<AircraftAlertStatus> {
   const userId = getAircraftAlertUserId();
-  if (isNativeAndroid()) {
-    await PushNotifications.unregister().catch(() => undefined);
-  }
-  if (browserSupportsAircraftAlerts()) {
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      await subscription?.unsubscribe();
-    } catch {
-      // The server record is still removed below.
-    }
-  }
-  await fetch("/api/aircraft-alerts/subscription", {
+  const response = await fetch("/api/aircraft-alerts/subscription", {
     method: "DELETE",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ userId }),
   });
+  if (!response.ok) throw new Error("unsubscribe_failed");
+  if (isNativeMobile()) {
+    await PushNotifications.unregister().catch(() => undefined);
+  }
+  if (browserSupportsAircraftAlerts()) {
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      const subscription = await registration?.pushManager.getSubscription();
+      await subscription?.unsubscribe();
+    } catch {
+      // The server record has already been removed.
+    }
+  }
   return { ...(await readAircraftAlertStatus()), enabled: false };
 }
 
-let preferenceSync: Promise<AircraftAlertStatus | null> = Promise.resolve(null);
-
 export function syncAircraftAlertPreferences(input: StateInput): Promise<AircraftAlertStatus | null> {
-  // Serialize state/toggle writes; each queued update uses the latest exclusions.
-  preferenceSync = preferenceSync.catch(() => null).then(() => syncPreferences(input));
-  return preferenceSync;
+  return queueAlertMutation(() => syncPreferences(input));
 }
 
 async function syncPreferences(
@@ -141,6 +159,13 @@ async function syncPreferences(
   const current = await readAircraftAlertStatus();
   if (!current.enabled) return current;
   const stateCode = input.stateCode ?? getSelectedStateCode();
+  if (isNativeMobile() && current.permission === "granted" && current.configured) {
+    // Called on launch/foreground as well as preference changes. Refreshing the
+    // FCM token here recovers from token rotation without requesting permission.
+    const token = await registerForNativePush();
+    await saveNativeSubscription(token, stateCode);
+    return readNativeAircraftAlertStatus();
+  }
   const res = await fetch("/api/aircraft-alerts/subscription", {
     method: "PATCH",
     headers: { "content-type": "application/json" },
@@ -168,18 +193,19 @@ export async function sendAircraftAlertTest(): Promise<void> {
 
 function browserSupportsAircraftAlerts(): boolean {
   return Boolean(
-    typeof window !== "undefined" &&
+    !Capacitor.isNativePlatform() && typeof window !== "undefined" &&
       "Notification" in window &&
       "serviceWorker" in navigator &&
       "PushManager" in window,
   );
 }
 
-function isNativeAndroid(): boolean {
-  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+function isNativeMobile(): boolean {
+  return Capacitor.isNativePlatform() && ["android", "ios"].includes(Capacitor.getPlatform());
 }
 
 async function readNativeAircraftAlertStatus(): Promise<AircraftAlertStatus> {
+  const setup = await readNativeNotificationSetup();
   const permission = await PushNotifications.checkPermissions();
   const userId = getAircraftAlertUserId();
   const res = await fetch(
@@ -190,27 +216,40 @@ async function readNativeAircraftAlertStatus(): Promise<AircraftAlertStatus> {
   const server = (await res.json().catch(() => ({}))) as Partial<AircraftAlertStatus>;
   return {
     supported: true,
-    configured: Boolean(server.configured),
+    configured: setup.configured && Boolean(server.configured),
     enabled: Boolean(server.enabled),
     permission: nativePermission(permission.receive),
     stateCode: server.stateCode,
     stateId: server.stateCode ? stateIdForCode(server.stateCode) : undefined,
-    message: server.message,
+    message: !setup.configured ? setup.message : server.message,
   };
+}
+
+async function readNativeNotificationSetup(): Promise<{ configured: boolean; message?: string }> {
+  if (Capacitor.getPlatform() !== "ios") return { configured: true };
+  if (!Capacitor.isPluginAvailable("OOSNotificationSetup")) {
+    return { configured: false, message: "native_update_required" };
+  }
+  try {
+    const status = await NotificationSetup.status();
+    return status.configured ? { configured: true } : { configured: false, message: "native_not_configured" };
+  } catch {
+    return { configured: false, message: "native_not_configured" };
+  }
 }
 
 async function enableNativeAircraftAlerts(
   input: StateInput,
 ): Promise<AircraftAlertStatus> {
   const status = await readNativeAircraftAlertStatus();
-  if (!status.configured) throw new Error("not_configured");
+  if (!status.configured) throw new Error(status.message?.startsWith("native_") ? status.message : "not_configured");
   let permission = await PushNotifications.checkPermissions();
   if (permission.receive === "prompt" || permission.receive === "prompt-with-rationale") {
     permission = await PushNotifications.requestPermissions();
   }
   if (permission.receive !== "granted") throw new Error("permission_denied");
 
-  await PushNotifications.createChannel({
+  if (Capacitor.getPlatform() === "android") await PushNotifications.createChannel({
     id: "aircraft_alerts",
     name: "Aircraft takeoffs",
     description: "Confirmed takeoffs for the selected state",
@@ -219,6 +258,17 @@ async function enableNativeAircraftAlerts(
   });
   const token = await registerForNativePush();
   const stateCode = input.stateCode ?? getSelectedStateCode();
+  await saveNativeSubscription(token, stateCode);
+  return {
+    ...(await readNativeAircraftAlertStatus()),
+    enabled: true,
+    permission: "granted",
+    stateCode,
+    stateId: stateIdForCode(stateCode),
+  };
+}
+
+async function saveNativeSubscription(token: string, stateCode: StateCode): Promise<void> {
   const res = await fetch("/api/aircraft-alerts/subscription", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -230,13 +280,6 @@ async function enableNativeAircraftAlerts(
     }),
   });
   if (!res.ok) throw new Error("subscribe_failed");
-  return {
-    ...(await readNativeAircraftAlertStatus()),
-    enabled: true,
-    permission: "granted",
-    stateCode,
-    stateId: stateIdForCode(stateCode),
-  };
 }
 
 async function registerForNativePush(): Promise<string> {

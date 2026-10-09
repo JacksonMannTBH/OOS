@@ -20,7 +20,7 @@ coordinates are cleared from the active view.
 The [Aircraft](/aircraft) page lists every tracked aircraft by home state,
 including its tail, operator, model, and estimated endurance. Open an aircraft
 profile for its role, base, current status, latest track, and retained flight
-details. Catalog records and changes are stored in Supabase.
+details.
 
 ## Notifications
 
@@ -28,8 +28,43 @@ Enable alerts in [Settings → Alerts](/settings/alerts). The subscription follo
 the state selected on that screen. When a tracked aircraft in that state has a
 confirmed takeoff, the notification worker queues one delivery for the device.
 
-On iOS, Web Push requires installing the site to the home screen and opening it
-from there before granting permission.
+In the iPhone app, enable notifications from that screen and accept the iPhone
+permission prompt. If permission was denied, open iPhone Settings → Notifications
+→ Out Of Sight, allow notifications, then return to the app and try again.
+
+If you use the website in Safari instead, Web Push requires installing the site
+to the Home Screen and opening it from there before granting permission.
+
+## Ride Mode and location
+
+Location places you on the map and supplies distances and speed in Ride Mode.
+If you decline location access, your position and location-based distances are
+unavailable. You can still browse aircraft information and choose a state.
+
+Use [Settings → Ride mode & display](/settings/display) to change distance bands
+or turn “Keep the screen awake” on or off. Wake mode applies while Ride Mode is
+open. End Ride restores normal screen sleep. Screen-wake support varies by
+browser and device.
+
+## Live tracking on iPhone
+
+In Ride Mode, tap **Turn on live tracking** to show the nearest tracked airborne
+aircraft, distance in nautical miles, and ride state on the Lock Screen and in
+the Dynamic Island on supported iPhones. It uses your selected state's aircraft
+and the Stop, Warning, Watch, and Clear distance settings from Ride Mode.
+
+Location access continues during this session while you use other apps or lock
+the phone. Distances are calculated on your device; aircraft-data requests do
+not include your coordinates. Tap **Stop live tracking** or **End Ride** to stop
+the session. Tap the Live Activity to reopen Ride Mode.
+
+Live tracking requires iOS 16.2 or later, location permission, and Live Activities
+enabled for OOS in iPhone Settings. If data becomes outdated, the display shows
+**Updates paused** or an unavailable-data message instead of a current ride
+state. Connectivity, location availability, and iOS background limits affect
+updates. Force-quitting OOS stops updating; reopen it to start a new session.
+Apple ends a Live Activity after at most eight hours. This feature is separate
+from takeoff notifications.
 
 ## Flight time and fuel
 
@@ -48,8 +83,19 @@ fuel, fuel quantity, reserve planning, or telemetry from the aircraft.
 
 The server stores aircraft observations, catalog data, state-level push
 subscriptions, and notification delivery history. It does not store a rider's
-live location. Browser location used for ride tools stays on the device.
+continuous live location. Location used for map positioning and Ride Mode is
+processed on the device. Map providers receive requests for the area you view.
+Read [Legal & privacy](/legal#privacy) for details about alerts, provider requests,
+retention, and deletion.
 
 ADS-B reception can be delayed, incomplete, blocked, or absent. Do not use the
 site for navigation, collision avoidance, emergency response, or evading law
 enforcement.
+
+## Contact support
+
+For help, bug reports, or feature requests, email
+[jacksonmann253@gmail.com](mailto:jacksonmann253@gmail.com).
+Include your device model, app version if available, and the steps that led to
+the issue. For privacy or deletion requests, use the same address and see
+[Legal & privacy](/legal#privacy).

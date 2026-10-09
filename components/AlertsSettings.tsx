@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import {
   STATE_CHANGE_EVENT,
   getSelectedStateCode,
@@ -14,6 +15,7 @@ import {
   AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT,
 } from "@/lib/aircraft-alerts/client";
 import type { AircraftAlertStatus } from "@/lib/aircraft-alerts/types";
+import { aircraftAlertAvailabilityMessage, aircraftAlertErrorMessage, type NotificationPlatform } from "@/lib/aircraft-alerts/presentation";
 import { SS_TOKENS } from "@/lib/tokens";
 import { SettingsCard } from "./SettingsCard";
 import { StateSelector } from "./StateSelector";
@@ -30,6 +32,7 @@ export function AlertsSettings() {
   const [deliveryState, setDeliveryState] =
     useState<DeliveryState>("checking");
   const [busy, setBusy] = useState(false);
+  const [deliveryConfigured, setDeliveryConfigured] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [stateCode, setStateCode] = useState<StateCode>(
     () => getSelectedStateCode(),
@@ -37,10 +40,14 @@ export function AlertsSettings() {
 
   useEffect(() => {
     readAircraftAlertStatus()
-      .then((status) => setDeliveryState(deliveryStateFromStatus(status)))
+      .then((status) => {
+        setDeliveryState(deliveryStateFromStatus(status));
+        setDeliveryConfigured(status.configured);
+        if (!status.configured) setMessage(aircraftAlertAvailabilityMessage(status, Capacitor.getPlatform() as NotificationPlatform));
+      })
       .catch(() => {
-        setDeliveryState("off");
-        setMessage("Could not check notification status.");
+        setDeliveryState("not_configured");
+        setMessage("Could not check notification status. Reopen this screen to try again.");
       });
 
     const onStateChange = () => {
@@ -55,8 +62,13 @@ export function AlertsSettings() {
       if (detail.error) {
         setMessage("Selections are saved on this device, but takeoff notifications could not be updated. We’ll retry when the app reconnects.");
       } else {
-        if (detail.status) setDeliveryState(deliveryStateFromStatus(detail.status));
-        setMessage(null);
+        if (detail.status) {
+          setDeliveryState(deliveryStateFromStatus(detail.status));
+          setDeliveryConfigured(detail.status.configured);
+        }
+        setMessage(detail.status && !detail.status.configured
+          ? aircraftAlertAvailabilityMessage(detail.status, Capacitor.getPlatform() as NotificationPlatform)
+          : null);
       }
     };
     window.addEventListener(AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, onPreferenceSync);
@@ -72,11 +84,12 @@ export function AlertsSettings() {
     try {
       const status = await enableAircraftAlerts({ stateCode });
       setDeliveryState(deliveryStateFromStatus(status));
+      setDeliveryConfigured(status.configured);
       setMessage(`Takeoff notifications are on for ${stateCode}.`);
     } catch (error) {
       const next = deliveryStateFromError(error);
       setDeliveryState(next);
-      setMessage(messageForDeliveryState(next));
+      setMessage(aircraftAlertErrorMessage(error, Capacitor.getPlatform() as NotificationPlatform));
     } finally {
       setBusy(false);
     }
@@ -86,9 +99,11 @@ export function AlertsSettings() {
     setBusy(true);
     setMessage(null);
     try {
-      await disableAircraftAlerts();
-      setDeliveryState("off");
-      setMessage("Takeoff notifications are off.");
+      const status = await disableAircraftAlerts();
+      setDeliveryState(deliveryStateFromStatus(status));
+      setDeliveryConfigured(status.configured);
+      setMessage(status.configured ? "Takeoff notifications are off."
+        : aircraftAlertAvailabilityMessage(status, Capacitor.getPlatform() as NotificationPlatform));
     } catch {
       setMessage("Could not turn off notifications. Try again.");
     } finally {
@@ -200,7 +215,7 @@ export function AlertsSettings() {
         {message ?? deliveryDescription(deliveryState)}
       </p>
 
-      {deliveryState === "on" && (
+      {deliveryState === "on" && deliveryConfigured && (
         <button
           type="button"
           onClick={() => {
@@ -235,45 +250,42 @@ function deliveryStateFromStatus(
   status: AircraftAlertStatus,
 ): DeliveryState {
   if (!status.supported) return "unsupported";
+  if (status.enabled) return "on";
   if (!status.configured) return "not_configured";
   if (status.permission === "denied") return "denied";
-  return status.enabled ? "on" : "off";
+  return "off";
 }
 
 function deliveryStateFromError(error: unknown): DeliveryState {
   const message = error instanceof Error ? error.message : "";
   if (message === "unsupported") return "unsupported";
-  if (message === "not_configured") return "not_configured";
+  if (message === "not_configured" || message.startsWith("native_")) return "not_configured";
   if (message === "permission_denied") return "denied";
   return "off";
-}
-
-function messageForDeliveryState(state: DeliveryState): string {
-  if (state === "unsupported") {
-    return "This browser cannot receive web push notifications.";
-  }
-  if (state === "not_configured") {
-    return "Takeoff notifications are not available right now.";
-  }
-  if (state === "denied") {
-    return "Notifications are blocked in this browser’s settings.";
-  }
-  return "Could not turn on notifications. Try again.";
 }
 
 function deliveryDescription(state: DeliveryState): string {
   if (state === "checking") return "Checking notification support on this device.";
   if (state === "unsupported") {
-    return "This browser cannot receive web push notifications.";
+    return aircraftAlertErrorMessage(new Error("unsupported"), Capacitor.getPlatform() as NotificationPlatform);
   }
   if (state === "not_configured") {
     return "Takeoff notifications are not available right now.";
   }
   if (state === "denied") {
-    return "Allow notifications in your browser settings, then try again.";
+    return notificationPermissionHelp();
   }
   if (state === "on") return "This device will receive confirmed takeoff notifications.";
   return "Notifications are off on this device.";
+}
+
+function notificationPermissionHelp(): string {
+  if (Capacitor.isNativePlatform()) {
+    return Capacitor.getPlatform() === "ios"
+      ? "Open iPhone Settings → Notifications → Out Of Sight and allow notifications, then return here and try again."
+      : "Allow notifications for Out Of Sight in your device settings, then return here and try again.";
+  }
+  return "Allow notifications in your browser settings, then try again.";
 }
 
 function deliveryLabel(state: DeliveryState): string {

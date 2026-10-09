@@ -1,41 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  readStoredWakeLockEnabled,
-  WAKE_LOCK_CHANGE_EVENT,
-  WAKE_LOCK_STORAGE_KEY,
-} from "@/lib/wake-lock";
+import { useEffect, useState } from "react";
+import { readStoredWakeLockEnabled, WAKE_LOCK_CHANGE_EVENT, WAKE_LOCK_STORAGE_KEY } from "@/lib/wake-lock";
+import { createScreenWakeSession } from "@/lib/screen-wake-session";
+import { requestScreenWake } from "@/lib/device-screen-wake";
 
-type WakeLockSentinel = {
-  released: boolean;
-  release: () => Promise<void>;
-  addEventListener?: (type: string, listener: () => void) => void;
-};
-
-type WakeLockNavigator = Navigator & {
-  wakeLock?: { request: (type: "screen") => Promise<WakeLockSentinel> };
-};
-
+// Mounted only by Ride Mode. Read the preference before acquiring anything.
 export function ScreenAwake() {
-  const [supported, setSupported] = useState(false);
-  const [enabled, setEnabled] = useState(true);
-  const sentinelRef = useRef<WakeLockSentinel | null>(null);
-
+  const [enabled, setEnabled] = useState(readStoredWakeLockEnabled);
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const nav = navigator as WakeLockNavigator;
-    if (!nav.wakeLock) {
-      setSupported(false);
-      return;
-    }
-
-    setSupported(true);
-    setEnabled(readStoredWakeLockEnabled());
-
     const sync = () => setEnabled(readStoredWakeLockEnabled());
+    sync();
     const onStorage = (event: StorageEvent) => {
-      if (event.key === WAKE_LOCK_STORAGE_KEY) sync();
+      if (event.key === WAKE_LOCK_STORAGE_KEY || event.key === null) sync();
     };
     window.addEventListener(WAKE_LOCK_CHANGE_EVENT, sync);
     window.addEventListener("storage", onStorage);
@@ -45,51 +22,23 @@ export function ScreenAwake() {
     };
   }, []);
 
-  const release = useCallback(async () => {
-    const current = sentinelRef.current;
-    sentinelRef.current = null;
-    if (!current || current.released) return;
-    try {
-      await current.release();
-    } catch {
-      /* already released */
-    }
-  }, []);
-
-  const acquire = useCallback(async () => {
-    if (typeof navigator === "undefined") return;
-    const nav = navigator as WakeLockNavigator;
-    if (!nav.wakeLock || document.visibilityState !== "visible") return;
-    try {
-      const sentinel = await nav.wakeLock.request("screen");
-      sentinelRef.current = sentinel;
-      sentinel.addEventListener?.("release", () => {
-        if (sentinelRef.current === sentinel) sentinelRef.current = null;
-      });
-    } catch {
-      sentinelRef.current = null;
-    }
-  }, []);
-
   useEffect(() => {
-    if (!supported) return;
-    if (!enabled) {
-      void release();
-      return;
-    }
-
-    void acquire();
-    const onVisibility = () => {
-      if (document.visibilityState === "visible" && !sentinelRef.current) {
-        void acquire();
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
+    if (!enabled) return;
+    let pageActive = true;
+    const session = createScreenWakeSession(requestScreenWake, () => pageActive && document.visibilityState === "visible");
+    const sync = () => { void session.sync(); };
+    const onHide = () => { pageActive = false; sync(); };
+    const onShow = () => { pageActive = true; sync(); };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("pagehide", onHide);
+    window.addEventListener("pageshow", onShow);
     return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-      void release();
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pageshow", onShow);
+      session.stop();
     };
-  }, [supported, enabled, acquire, release]);
-
+  }, [enabled]);
   return null;
 }

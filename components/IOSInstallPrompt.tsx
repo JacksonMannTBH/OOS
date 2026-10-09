@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { SS_TOKENS } from "@/lib/tokens";
+import { Capacitor } from "@capacitor/core";
 
 const STORAGE_KEY = "ss_install_dismissed";
 const DISMISS_DAYS = 30;
@@ -48,6 +49,7 @@ export function IOSInstallPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    if (Capacitor.isNativePlatform()) return;
     if (!isIOSSafari()) return;
     if (isStandalone()) return;
     if (!isDismissed()) setVisible(true);
