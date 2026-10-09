@@ -120,8 +120,9 @@ location behavior alone. Check the entire configured app and its partners.
   suppresses the Home Screen install banner inside iOS. Alert controls check
   iPhone build readiness as well as server
   readiness, and automatic promotions are suppressed when alerts cannot be
-  enabled. The signed app includes the notification-readiness plugin; the APNs
-  connection, Firebase relay deployment, and actual push delivery remain pending.
+  enabled. The signed app includes the notification-readiness plugin, and the
+  Firebase relay update was deployed on October 9. The APNs connection and
+  actual push delivery remain pending.
   This setup is separate from the Live tracking location session.
 - The local Help page now has a support contact, separate native and browser
   notification instructions, and a location summary covering on-device use and map requests.
@@ -140,7 +141,9 @@ location behavior alone. Check the entire configured app and its partners.
   archive and local App Store export passed. Both exported targets have verified
   signatures and App Store profiles, matching Team/version/build, and debugging
   disabled; the app has the production APNs entitlement. No upload has occurred.
-  Firebase relay deployment and physical-iPhone delivery testing remain unfinished.
+  The Firebase relay update deployed successfully; its existing URL and Cloud
+  Run URL reject unauthenticated requests. Physical-iPhone delivery testing
+  remains unfinished.
 - Spot reporting has been removed from the app, API, and admin navigation. The
   historical database migrations and seven-day cleanup remain intact for older
   records; no production database data was deleted. The removed live `/api/spot`

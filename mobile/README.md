@@ -70,9 +70,13 @@ in and an Apple Development signing identity is installed. Team `C6S63TAR8C` is 
 both targets in Debug and Release. The signed development build is installed
 and launched on the owner's iPhone; the owner confirmed Home loads normally.
 The local App Store export also passed signing verification. The APNs connection,
-Firebase relay deployment and physical-iPhone delivery testing remain unfinished.
+physical-iPhone delivery testing remain unfinished.
 The matching website changes were published on October 9, 2026 and the installed
 app was relaunched. APNs configuration remains required for takeoff notifications.
+The `sendAircraftAlert` Firebase function update was deployed on October 9, 2026.
+Both its existing Cloud Functions URL and Cloud Run URL respond, reject GET
+with 405, and reject an unauthenticated POST with 401. These checks verify
+routing and access control, not actual delivery to an iPhone.
 
 1. Add an **Apple/iOS app** to the existing Firebase project using
    `live.outofsight.app` (the Android registration is separate).
@@ -186,6 +190,9 @@ References: [ActivityKit](https://developer.apple.com/documentation/activitykit/
   returned 404. The published Ride client contains the Live Tracking button
   and native plugin integration. These checks do not verify rendered phone UI
   or Live Activity behavior. The app was relaunched for owner-led testing.
+- The Firebase `sendAircraftAlert` update deployed successfully on October 9.
+  The TypeScript predeploy build passed. APNs configuration and foreground,
+  background, locked-phone, tap, and opt-out delivery tests remain pending.
 
 ### Pre-enrollment validation — October 8, 2026
 
