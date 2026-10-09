@@ -198,7 +198,9 @@ Updating, or Updates paused. A new session waits for its first known result
 before creating the activity; the Home Live control can stop it while waiting.
 The Lock Screen background uses the distance-band color: green Clear, blue
 Watch, amber Warning, and red Stop. Dynamic Island status, distance, icon, and
-keyline use the same band color. Fresh recovery replaces the retained result;
+keyline use the same band color. The signed build installed and launched on the
+owner's iPhone; color and stale-state display checks await the owner's test.
+Fresh recovery replaces the retained result;
 holding a result does not extend its freshness deadline. Runtime, connectivity, and delivery are not
 guaranteed; Apple limits an activity to eight hours. Physical-device background,
 Lock Screen, dismissal, deep-link, and permission testing remains required.

@@ -171,8 +171,8 @@ location behavior alone. Check the entire configured app and its partners.
   after a known result, while the Home Live control can stop pending tracking.
   Nineteen native calculation/retention checks, the signed device build, and
   archive/export passed. App/widget build 5, signatures/profiles, production
-  APNs, and disabled debugging were verified. Installation was blocked by an unavailable trusted iPhone connection;
-  the owner was asked to reconnect and unlock it. Physical display testing
+  APNs, and disabled debugging were verified. The signed development build
+  installed and launched on the owner's iPhone after reconnecting. Physical display testing
   remains pending. The bundled Help explains retained state; publish the updated
   support content before release. No App Store upload occurred.
 - The prior package **1.0 (4)** bundles the selected original 1.25-second Radar ping
