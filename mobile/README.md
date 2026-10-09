@@ -28,7 +28,7 @@ npm run sync
 npm run open
 ```
 
-The app packages its own screens, Help, styles, fonts, and images. Only data and
+The app packages its own screens, Help, styles, and images. Only data and
 notification requests use the production HTTPS backend. Native Capacitor plugins
 handle Android permissions and Firebase notifications. Install root dependencies
 with `npm ci` before installing dependencies here; the mobile build reuses shared
@@ -164,6 +164,36 @@ xcrun swiftc ios/App/Shared/RideTrackingData.swift ios/Tests/LiveTrackingCoreTes
 
 References: [ActivityKit](https://developer.apple.com/documentation/activitykit/displaying-live-data-with-live-activities),
 [background location](https://developer.apple.com/documentation/corelocation/cllocationmanager/allowsbackgroundlocationupdates).
+
+### Bundled-interface validation — October 9, 2026
+
+- Root and mobile TypeScript checks, the Next.js production build, the Vite
+  interface build, and all 108 automated tests passed. Coverage includes local
+  iOS/Android API URL mapping, alert POST preservation, notification tap safety,
+  canonical sharing, and the new public-data query validation.
+- The read-only data API shipped in commit
+  `b90cb2e224bb1722ea8f0a678dc5f23b71a139b3`, Netlify deploy
+  `6ac913425490440008952ef5`. Production smoke checks verified the catalog,
+  forecasts/learning state, speed-warning setting, recent/specific-flight reads,
+  rejected invalid requests, and missing-tail handling. The existing FCM backend
+  reports configured; this does not verify APNs credentials or delivery.
+- Both Capacitor projects were synchronized with the local interface. No hosted
+  UI URL is present. The server-module build guard and a local credential scan
+  passed. All packaged assets matched the built iPhone application and exported
+  distribution package.
+- The signed iPhone development build and installation passed. Process launch
+  was blocked because the connected phone was locked; owner unlock/launch and
+  bundled-screen verification remain pending. The signed Release archive and local App Store export passed for version
+  **1.0/build 2**, replacing the earlier build-1 archive/export at the same local
+  paths. App and widget signatures, team, matching versions, App Store profiles,
+  production APNs, and disabled debugging were verified. No upload occurred.
+- Existing separate edits to `components/RadarMap.tsx` were preserved outside
+  the packaging commit; the local native builds include the current working-tree
+  map. Rendered bundled-screen testing, offline phone behavior, notification
+  delivery, and Live Activity behavior still need owner-led device validation.
+- Android sources/assets are synchronized as version code 5 / version 1.1.3.
+  Native Android packaging was not run on this Mac: a Java runtime, Android SDK,
+  and the existing Windows upload-key setup are not available here.
 
 ### Post-enrollment validation — October 9, 2026
 
