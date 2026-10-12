@@ -89,6 +89,8 @@ The server stores aircraft observations, catalog data, state-level push
 subscriptions, and notification delivery history. It does not store a rider's
 continuous live location. Location used for map positioning and Ride Mode is
 processed on the device. Map providers receive requests for the area you view.
+If no state has been selected, the map sends one location fix through our server
+to the U.S. Census geocoder to identify the state.
 Read [Legal & privacy](/legal#privacy) for details about alerts, provider requests,
 retention, and deletion.
 
@@ -99,7 +101,7 @@ enforcement.
 ## Contact support
 
 For help, bug reports, or feature requests, email
-[jacksonmann253@gmail.com](mailto:jacksonmann253@gmail.com).
+[localbusinessforms@outlook.com](mailto:localbusinessforms@outlook.com).
 Include your device model, app version if available, and the steps that led to
 the issue. For privacy or deletion requests, use the same address and see
 [Legal & privacy](/legal#privacy).
