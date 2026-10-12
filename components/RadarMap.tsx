@@ -1216,7 +1216,7 @@ export default function RadarMap({
       );
       newTo.set(
         a.tail,
-        isFresh
+        isFresh && a.airborne
           ? projectedPosition(
               a.lon,
               a.lat,
@@ -1344,7 +1344,7 @@ export default function RadarMap({
     <div
       ref={containerRef}
       role="region"
-      aria-label={`Live aircraft map, showing ${aircraft.length} airborne tail${aircraft.length === 1 ? "" : "s"}`}
+      aria-label={`Live aircraft map, showing ${aircraft.filter((a) => a.lat != null && a.lon != null).length} tracked aircraft`}
       style={{
         position: "absolute",
         inset: 0,

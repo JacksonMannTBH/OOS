@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { filterTrackedAircraft } from "../aircraft-tracking";
+import { filterTrackedAircraft, filterNationwideTrackedAircraft } from "../aircraft-tracking";
 import { useAircraftTracking } from "./useAircraftTracking";
 import { useSelectedStateId } from "./useSelectedStateId";
 import {
@@ -33,7 +33,7 @@ const streams = new Map<string, AircraftStream>();
 const activeStreams = new Set<AircraftStream>();
 let globalListenersAttached = false;
 
-function aircraftUrl(mockOn: boolean, stateCode: StateCode): string {
+function aircraftUrl(mockOn: boolean, stateCode: StateCode | "all"): string {
   const base = `/api/aircraft?state=${encodeURIComponent(stateCode)}`;
   if (!mockOn) return base;
   const mock = new URLSearchParams(window.location.search).get("mock");
@@ -173,19 +173,31 @@ function snapshotMatchesState(
   );
 }
 
-export function useAircraft(initial: Snapshot, mockOn = false): Snapshot {
+export function useAircraft(initial: Snapshot, mockOn = false, allStates = false): Snapshot {
   const preferences = useAircraftTracking();
-  const [snapshot, setSnapshot] = useState(initial);
   const stateCode = stateCodeForId(useSelectedStateId());
+  const scope = allStates ? "all" : stateCode;
+  const [result, setResult] = useState<{ scope: string; snapshot: Snapshot }>({
+    scope: stateCode,
+    snapshot: initial,
+  });
 
   useEffect(() => {
-    const requestPath = aircraftUrl(mockOn, stateCode);
-    const seed = snapshotMatchesState(initial, stateCode) ? initial : null;
-    return subscribeToAircraft(requestPath, setSnapshot, seed);
-  }, [initial, mockOn, stateCode]);
+    const requestPath = aircraftUrl(mockOn, scope);
+    const seed = scope !== "all" && snapshotMatchesState(initial, scope) ? initial : null;
+    return subscribeToAircraft(requestPath, (snapshot) => setResult({ scope, snapshot }), seed);
+  }, [initial, mockOn, scope]);
 
-  return useMemo(() => snapshotMatchesState(snapshot, stateCode) ? {
-    ...snapshot,
-    aircraft: filterTrackedAircraft(snapshot.aircraft, preferences, stateCode),
-  } : EMPTY_AIRCRAFT_SNAPSHOT, [snapshot, preferences, stateCode]);
+  return useMemo(() => {
+    if (result.scope !== scope) return EMPTY_AIRCRAFT_SNAPSHOT;
+    const snapshot = result.snapshot;
+    if (scope === "all") return {
+      ...snapshot,
+      aircraft: filterNationwideTrackedAircraft(snapshot.aircraft, preferences),
+    };
+    return snapshotMatchesState(snapshot, scope) ? {
+      ...snapshot,
+      aircraft: filterTrackedAircraft(snapshot.aircraft, preferences, scope),
+    } : EMPTY_AIRCRAFT_SNAPSHOT;
+  }, [result, preferences, scope]);
 }
