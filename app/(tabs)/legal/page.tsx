@@ -15,14 +15,9 @@ const PROVIDERS = [
     href: "https://www.faa.gov/licenses_certificates/aircraft_certification/aircraft_registry/releasable_aircraft_download",
   },
   {
-    name: "adsb.fi",
-    detail: "Primary aircraft observations",
-    href: "https://github.com/adsbfi/opendata/blob/main/README.md#terms",
-  },
-  {
-    name: "OpenSky Network",
-    detail: "Fallback aircraft observations",
-    href: "https://opensky-network.org/about/terms-of-use",
+    name: "ADSB.lol",
+    detail: "Aircraft observations · ODbL 1.0",
+    href: "https://www.adsb.lol/docs/open-data/",
   },
   {
     name: "OpenFreeMap",
@@ -147,8 +142,8 @@ export default function LegalPage() {
 
       <LegalSection id="sources" title="Aircraft data & maps">
         <p>
-          Aircraft observations come primarily from adsb.fi, with OpenSky
-          Network used as a fallback. Aircraft registration and ownership
+          Aircraft observations come from ADSB.lol under the Open Database
+          License (ODbL) 1.0. Aircraft registration and ownership
           details are derived primarily from the FAA Releasable Aircraft
           Database. Supplemental public agency records may help resolve
           ambiguous registrations. Out Of Sight has no access to private agency
