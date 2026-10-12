@@ -251,20 +251,20 @@ export async function saveCatalog(
 }
 
 export async function getDatabaseSnapshot(
-  stateCode: StateCode | null = DEFAULT_STATE_CODE,
+  stateCode: StateCode = DEFAULT_STATE_CODE,
 ): Promise<Snapshot> {
   if (!isSupabaseConfigured()) {
     return {
       fetched_at: Date.now(),
       source: "mock",
-      aircraft: filterSeedByState(FLEET, stateCode ?? undefined).map((entry) => ({
+      aircraft: filterSeedByState(FLEET, stateCode).map((entry) => ({
         ...entry,
         tail: entry.tail,
         icao24: fleetHex(entry),
         observed: false,
         airborne: false,
         observation_status: "unknown",
-        home_state_code: fleetEntryStateCode(entry),
+        home_state_code: stateCode,
         last_seen_min: null,
       })),
       live_seen_count: 0,
@@ -272,12 +272,12 @@ export async function getDatabaseSnapshot(
   }
 
   const db = getSupabaseAdmin();
-  const [data, ingestionResult] = await Promise.all([
-    readAllCatalogPages((from, to) => {
-      let query = db.from("aircraft_live_public").select("*");
-      if (stateCode) query = query.eq("home_state_code", stateCode);
-      return query.order("tail").range(from, to);
-    }, "Live aircraft read failed"),
+  const [liveResult, ingestionResult] = await Promise.all([
+    db
+      .from("aircraft_live_public")
+      .select("*")
+      .eq("home_state_code", stateCode)
+      .order("tail"),
     db
       .from("ingestion_runs")
       .select("finished_at")
@@ -287,6 +287,10 @@ export async function getDatabaseSnapshot(
       .limit(1)
       .maybeSingle(),
   ]);
+  if (liveResult.error) {
+    throw new Error(`Live aircraft read failed: ${liveResult.error.message}`);
+  }
+  const data = liveResult.data;
 
   const snapshotReadAt = Date.now();
   let fetchedAt = parseTime(ingestionResult.data?.finished_at) ?? 0;
