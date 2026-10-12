@@ -54,7 +54,7 @@ export default function LegalPage() {
 
       <LegalSection id="privacy" title="What the app handles">
         <p>
-          <strong>Effective October 8, 2026.</strong> Out Of Sight is operated
+          <strong>Effective October 12, 2026.</strong> Out Of Sight is operated
           by Jackson Mann. For privacy questions or deletion requests, email{" "}
           <a href="mailto:jacksonmann253@gmail.com">
             jacksonmann253@gmail.com
@@ -65,7 +65,11 @@ export default function LegalPage() {
           If you allow location access, your coordinates, speed, and heading are
           used on your device for map positioning, distance calculations, and
           Ride Mode. Simply opening those features does not cause Out Of Sight
-          to store that location on its servers.
+          to store that location on its servers. If you have not chosen a state,
+          the map sends one location fix through our server to the U.S. Census
+          geocoder to identify your state. Map tile requests also reveal the
+          area being viewed to the map provider. These services may retain
+          request logs under their own privacy policies.
         </PrivacyRow>
         <PrivacyRow title="Live tracking on iPhone">
           Turning on Live tracking starts a location session that continues while
@@ -73,8 +77,18 @@ export default function LegalPage() {
           tracked aircraft, distance, and ride state and shows them in a Live
           Activity. Your coordinates are not sent with aircraft-data requests.
           Tap Live again on Home to end this session and background location access.
-          Ending Ride Mode does not stop Live tracking. If location or aircraft data expires, the activity shows that
-          updates are paused or unavailable.
+          Ending Ride Mode does not stop Live tracking. If location or aircraft data
+          expires, the activity keeps its last known state, aircraft, distance, and
+          original update time until fresh data becomes available.
+        </PrivacyRow>
+        <PrivacyRow title="Home Screen widget on iPhone">
+          With location permission, the widget calculates aircraft distances on
+          your device when iOS refreshes it. The app and widget share your selected
+          state, aircraft preferences, distance bands, and last calculated result
+          in private storage on your phone. Your coordinates stay in memory and
+          are not saved there or sent with aircraft-data requests. The widget
+          works independently of Live tracking and keeps its last known result
+          and update time when new data is unavailable.
         </PrivacyRow>
         <PrivacyRow title="Takeoff alerts">
           Enabling alerts stores a random device ID, selected state, aircraft
@@ -93,7 +107,11 @@ export default function LegalPage() {
           Hosting, database, push, and map providers receive the technical data
           normally sent with web requests, such as IP address, browser details,
           time, and requested resource. Map requests can reveal the area being
-          viewed. Those providers apply their own privacy terms.
+          viewed. Those providers apply their own privacy terms. Firebase also collects
+          SDK diagnostic and technical metadata to operate and improve its
+          services. Notification delivery records are associated with your
+          device subscription. We do not use this data for advertising or
+          cross-app advertising tracking.
         </PrivacyRow>
         <PrivacyRow title="Retention and deletion">
           Any location reports submitted before reporting was discontinued
