@@ -273,16 +273,11 @@ export async function getDatabaseSnapshot(
 
   const db = getSupabaseAdmin();
   const [data, ingestionResult] = await Promise.all([
-    stateCode
-      ? db.from("aircraft_live_public").select("*")
-          .eq("home_state_code", stateCode).order("tail")
-          .then(({ data, error }) => {
-            if (error) throw new Error(`Live aircraft read failed: ${error.message}`);
-            return data ?? [];
-          })
-      : readAllCatalogPages((from, to) =>
-          db.from("aircraft_live_public").select("*").order("tail").range(from, to),
-        "Live aircraft read failed"),
+    readAllCatalogPages((from, to) => {
+      let query = db.from("aircraft_live_public").select("*");
+      if (stateCode) query = query.eq("home_state_code", stateCode);
+      return query.order("tail").range(from, to);
+    }, "Live aircraft read failed"),
     db
       .from("ingestion_runs")
       .select("finished_at")

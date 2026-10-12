@@ -36,7 +36,7 @@ test("nationwide snapshots read past database row caps while state snapshots sta
     const selected = state ? rows.filter((row) => row.home_state_code === state) : rows;
     const offset = Number(url.searchParams.get("offset") ?? 0);
     // Simulate a project with a lower cap than the requested page size.
-    return Response.json(state ? selected : selected.slice(offset, offset + 200));
+    return Response.json(selected.slice(offset, offset + 200));
   });
   const nationwide = await getDatabaseSnapshot(null);
   assert.equal(nationwide.aircraft.length, 1101);
