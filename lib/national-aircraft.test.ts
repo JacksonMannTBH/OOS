@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import sources from "../data/national-aircraft-sources.json";
-import { APP_STATES, getAppState, isStateCode, stateCodeForId } from "./app-states";
+import { ALL_STATES, getAppState, isStateCode, stateCodeForId } from "./app-states";
 import { AIRCRAFT_DURATION_MINUTES, OPS_AIRCRAFT, stateIdForOpsAircraftTail } from "./aircraft-directory";
 import { aircraftVehicleType } from "./aircraft-type";
 import { NATIONAL_AIRCRAFT_ROWS } from "./national-aircraft-data";
@@ -12,9 +12,9 @@ import { STATE_AIRCRAFT_COVERAGE_NOTES } from "./state-aircraft-coverage";
 
 test("all 50 states have unique IDs, valid centers and state-code lookups", () => {
   const codes = "AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split(" ");
-  assert.deepEqual(new Set(APP_STATES.map((state) => state.code)), new Set(codes));
-  assert.equal(new Set(APP_STATES.map((state) => state.id)).size, 50);
-  for (const state of APP_STATES) {
+  assert.deepEqual(new Set(ALL_STATES.map((state) => state.code)), new Set(codes));
+  assert.equal(new Set(ALL_STATES.map((state) => state.id)).size, 50);
+  for (const state of ALL_STATES) {
     assert.equal(isStateCode(state.code.toLowerCase()), true);
     assert.equal(getAppState(state.id).code, state.code);
     assert.ok(state.centerLat > 18 && state.centerLat < 72);
@@ -50,16 +50,16 @@ test("unsupported performance stays unknown and every state has aircraft or an e
       assert.equal(getAircraftFuelProfile(row.tail), null);
     }
   }
-  for (const state of APP_STATES) {
+  for (const state of ALL_STATES) {
     assert.ok(OPS_AIRCRAFT.some((row) => row.stateId === state.id) || STATE_AIRCRAFT_COVERAGE_NOTES[state.code], state.label);
   }
 });
 
-test("seed-backed catalog and snapshots return new states without leaking Washington aircraft", async () => {
+test("seed-backed catalog and snapshots exclude states outside the current rollout", async () => {
   // These unit tests run with no configured remote database, as the existing suite does.
   if (process.env.SUPABASE_URL || process.env.SUPABASE_SERVICE_ROLE_KEY) return;
   for (const code of ["AK", "NY", "UT", "WI", "RI", "VT"] as const) {
-    const expected = NATIONAL_AIRCRAFT_ROWS.filter((row) => stateCodeForId(row[0]) === code);
+    const expected: unknown[] = [];
     const catalog = await getCatalog(code);
     const snapshot = await getDatabaseSnapshot(code);
     assert.equal(catalog.length, expected.length, code);

@@ -1,4 +1,4 @@
-import { isStateCode, type StateCode } from "@/lib/app-states";
+import { isSupportedStateCode, type StateCode } from "@/lib/app-states";
 
 type CensusState = { STUSAB?: unknown };
 type CensusGeocoderResponse = {
@@ -24,7 +24,7 @@ export function stateCodeFromCensusResponse(
   payload: CensusGeocoderResponse,
 ): StateCode | null {
   const candidate = payload.result?.geographies?.States?.[0]?.STUSAB;
-  return isStateCode(candidate)
+  return isSupportedStateCode(candidate)
     ? candidate.toUpperCase() as StateCode
     : null;
 }

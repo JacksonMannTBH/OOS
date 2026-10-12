@@ -3,6 +3,7 @@ import {
   APP_STATES,
   DEFAULT_STATE_CODE,
   getAppState,
+  isSupportedStateCode,
   stateCodeForId,
   type StateCode,
 } from "./app-states";
@@ -120,7 +121,7 @@ export async function ensureCatalogSeeded(): Promise<void> {
   const existingTails = new Set(
     (existingRows ?? []).map((row) => String(row.tail).trim().toUpperCase()),
   );
-  const missing = FLEET.filter(
+  const missing = supportedFleet().filter(
     (entry) => !existingTails.has(entry.tail.trim().toUpperCase()),
   );
   if (missing.length === 0) return;
@@ -153,7 +154,7 @@ export async function getCatalog(
   stateCode?: StateCode,
 ): Promise<FleetEntry[]> {
   if (!isSupabaseConfigured()) {
-    return filterSeedByState(FLEET, stateCode);
+    return filterSeedByState(supportedFleet(), stateCode);
   }
 
   const data = await readAllCatalogPages((from, to) => {
@@ -280,7 +281,7 @@ export async function getDatabaseSnapshot(
       .order("tail"),
     db
       .from("ingestion_runs")
-      .select("finished_at")
+      .select("finished_at,source")
       .in("status", ["succeeded", "partial"])
       .not("finished_at", "is", null)
       .order("started_at", { ascending: false })
@@ -378,7 +379,7 @@ export async function getDatabaseSnapshot(
 
   return {
     fetched_at: fetchedAt || snapshotReadAt,
-    source: inferSnapshotSource(data),
+    source: inferSnapshotSource(data, ingestionResult.data?.source),
     aircraft,
     live_seen_count: aircraft.filter((row) => row.observed).length,
   };
@@ -910,12 +911,18 @@ function filterSeedByState(
   entries: FleetEntry[],
   stateCode?: StateCode,
 ): FleetEntry[] {
-  if (!stateCode) return entries;
-  return entries.filter((entry) => fleetEntryStateCode(entry) === stateCode);
+  return entries.filter((entry) => {
+    const code = fleetEntryStateCode(entry);
+    return isSupportedStateCode(code) && (!stateCode || code === stateCode);
+  });
+}
+
+function supportedFleet(): FleetEntry[] {
+  return FLEET.filter((entry) => isSupportedStateCode(fleetEntryStateCode(entry)));
 }
 
 function seedCatalogEntries(): AircraftCatalogEntry[] {
-  return FLEET.map((aircraft) => ({
+  return supportedFleet().map((aircraft) => ({
     aircraft,
     homeStateCode: fleetEntryStateCode(aircraft),
     nominalEnduranceMin: AIRCRAFT_DURATION_MINUTES[aircraft.tail] ?? null,
@@ -941,7 +948,7 @@ export function mergeSeedCatalogEntries(
     const key = seedEntry.aircraft.tail.trim().toUpperCase();
     if (!byTail.has(key)) byTail.set(key, seedEntry);
   }
-  return [...byTail.values()].sort((a, b) =>
+  return [...byTail.values()].filter((entry) => isSupportedStateCode(entry.homeStateCode)).sort((a, b) =>
     a.aircraft.tail.localeCompare(b.aircraft.tail),
   );
 }
@@ -950,7 +957,7 @@ function mergeSeedFleetEntries(entries: FleetEntry[]): FleetEntry[] {
   const byTail = new Map(
     entries.map((entry) => [entry.tail.trim().toUpperCase(), entry]),
   );
-  for (const seedEntry of FLEET) {
+  for (const seedEntry of supportedFleet()) {
     const key = seedEntry.tail.trim().toUpperCase();
     if (!byTail.has(key)) byTail.set(key, seedEntry);
   }
@@ -1267,7 +1274,7 @@ async function shouldSuppressTakeoffNotification(
   );
 }
 
-function inferSnapshotSource(rows: Record<string, unknown>[] | null): SnapshotSource {
-  const source = rows?.find((row) => row.source)?.source;
-  return source === "opensky" ? "opensky" : "adsbfi";
+function inferSnapshotSource(rows: Record<string, unknown>[] | null, lastSource?: unknown): SnapshotSource {
+  const source = rows?.find((row) => row.source)?.source ?? lastSource;
+  return source === "adsblol" ? "adsblol" : source === "opensky" ? "opensky" : "adsbfi";
 }

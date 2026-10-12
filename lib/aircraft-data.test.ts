@@ -2,6 +2,7 @@ import assert from "node:assert";
 import { test } from "node:test";
 import {
   aircraftObservationGroundState,
+  fleetEntryStateCode,
   estimateLandingTransitionAt,
   interpolateFlightTransition,
   isStaleAirborneCandidate,
@@ -16,6 +17,7 @@ import {
   type AircraftCatalogEntry,
 } from "./aircraft-data";
 import { FLEET } from "./seed";
+import { isSupportedStateCode } from "./app-states";
 
 test("takeoff interpolation requires contiguous ground and airborne samples", () => {
   assert.equal(
@@ -261,9 +263,12 @@ test("public catalog fills in tracked seed aircraft missing from the database", 
   const merged = mergeSeedCatalogEntries([databaseEntry]);
   const tails = new Set(merged.map((entry) => entry.aircraft.tail));
 
-  assert.equal(merged.length, FLEET.length);
-  assert.equal(tails.size, FLEET.length);
-  for (const entry of FLEET) assert.equal(tails.has(entry.tail), true);
+  const supported = FLEET.filter((entry) => isSupportedStateCode(fleetEntryStateCode(entry)));
+  assert.equal(merged.length, supported.length);
+  assert.equal(tails.size, supported.length);
+  for (const entry of FLEET) {
+    assert.equal(tails.has(entry.tail), isSupportedStateCode(fleetEntryStateCode(entry)));
+  }
   assert.equal(
     merged.find((entry) => entry.aircraft.tail === FLEET[0]!.tail)
       ?.nominalEnduranceMin,

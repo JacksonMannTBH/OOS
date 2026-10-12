@@ -1,4 +1,4 @@
-export const APP_STATES = [
+export const ALL_STATES = [
   { id: "alabama", code: "AL", label: "Alabama", centerLat: 32.8, centerLon: -86.8 },
   { id: "alaska", code: "AK", label: "Alaska", centerLat: 64.2, centerLon: -152.0 },
   { id: "arizona", code: "AZ", label: "Arizona", centerLat: 34.3, centerLon: -111.7 },
@@ -51,7 +51,10 @@ export const APP_STATES = [
   { id: "wyoming", code: "WY", label: "Wyoming", centerLat: 43.0, centerLon: -107.6 },
 ] as const;
 
-export type AppState = (typeof APP_STATES)[number];
+// Keep national catalog metadata separate from the states currently offered in the app.
+export const APP_STATES = ALL_STATES.filter((state) => state.code === "WA" || state.code === "CA");
+
+export type AppState = (typeof ALL_STATES)[number];
 export type AppStateId = AppState["id"];
 export type StateCode = AppState["code"];
 
@@ -65,25 +68,29 @@ export type StateSelectionSource = "automatic" | "manual";
 export function isStateCode(value: unknown): value is StateCode {
   return (
     typeof value === "string" &&
-    APP_STATES.some((state) => state.code === value.toUpperCase())
+    ALL_STATES.some((state) => state.code === value.toUpperCase())
   );
+}
+
+export function isSupportedStateCode(value: unknown): value is StateCode {
+  return typeof value === "string" && APP_STATES.some((state) => state.code === value.toUpperCase());
 }
 
 export function isAppStateId(value: unknown): value is AppStateId {
   return (
     typeof value === "string" &&
-    APP_STATES.some((state) => state.id === value)
+    ALL_STATES.some((state) => state.id === value)
   );
 }
 
 export function getAppState(value: string | null | undefined): AppState {
   const normalized = value?.trim();
   return (
-    APP_STATES.find(
+    ALL_STATES.find(
       (state) =>
         state.id === normalized || state.code === normalized?.toUpperCase(),
     ) ??
-    APP_STATES.find((state) => state.code === DEFAULT_STATE_CODE)!
+    ALL_STATES.find((state) => state.code === DEFAULT_STATE_CODE)!
   );
 }
 
@@ -98,7 +105,7 @@ export function stateIdForCode(code: StateCode): AppStateId {
 export function getSelectedStateCode(): StateCode {
   if (typeof window === "undefined") return DEFAULT_STATE_CODE;
   const stored = window.localStorage.getItem(STATE_PREFERENCE_KEY);
-  return isStateCode(stored) ? stored.toUpperCase() as StateCode : DEFAULT_STATE_CODE;
+  return isSupportedStateCode(stored) ? stored.toUpperCase() as StateCode : DEFAULT_STATE_CODE;
 }
 
 export function shouldAutoDetectStateSelection(
@@ -123,15 +130,16 @@ export function setSelectedStateCode(
   source: StateSelectionSource = "manual",
 ): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STATE_PREFERENCE_KEY, code);
+  const selectedCode = isSupportedStateCode(code) ? code.toUpperCase() as StateCode : DEFAULT_STATE_CODE;
+  window.localStorage.setItem(STATE_PREFERENCE_KEY, selectedCode);
   window.localStorage.setItem(STATE_SELECTION_SOURCE_KEY, source);
   window.dispatchEvent(
-    new CustomEvent(STATE_CHANGE_EVENT, { detail: { code } }),
+    new CustomEvent(STATE_CHANGE_EVENT, { detail: { code: selectedCode } }),
   );
 }
 
 export function setAutomaticallyDetectedStateCode(code: StateCode): boolean {
-  if (!shouldAutomaticallyDetectState()) return false;
+  if (!isSupportedStateCode(code) || !shouldAutomaticallyDetectState()) return false;
   setSelectedStateCode(code, "automatic");
   return true;
 }
