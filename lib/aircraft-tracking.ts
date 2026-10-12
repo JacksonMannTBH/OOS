@@ -41,6 +41,11 @@ export function filterTrackedAircraft<T extends { tail: string }>(aircraft: T[],
   return aircraft.filter((plane) => isAircraftTracked(preferences, state, plane.tail));
 }
 
+export function filterNationwideTrackedAircraft<T extends { tail: string; home_state_code?: string }>(aircraft: T[], preferences: AircraftTrackingPreferences): T[] {
+  return aircraft.filter((plane) => !isStateCode(plane.home_state_code) ||
+    isAircraftTracked(preferences, plane.home_state_code.toUpperCase() as StateCode, plane.tail));
+}
+
 export function readAircraftTrackingPreferences(): AircraftTrackingPreferences {
   if (typeof window === "undefined") return {};
   try {

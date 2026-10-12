@@ -71,7 +71,8 @@ export function RadarShell({
 }: Props) {
   const router = useRouter();
   const runRideLaunchPreflight = useRideLaunchPreflight();
-  const snap = useAircraft(initial, mockOn);
+  const [showAllAircraft, setShowAllAircraft] = useState(false);
+  const snap = useAircraft(initial, mockOn, showAllAircraft);
   const rideThresholds = useRideStatusThresholds();
   const fleetMap = useMemo(
     () => new Map<string, FleetEntry>(snap.aircraft.map((a) => [a.tail, a])),
@@ -220,6 +221,8 @@ export function RadarShell({
       />
       {!map && <DataLoadingScreen asOverlay />}
       <RadarLayerControls
+        allAircraftVisible={showAllAircraft}
+        onToggleAllAircraft={() => setShowAllAircraft((visible) => !visible)}
         ringsActive={showRings}
         onToggleRings={() => setShowRings((v) => !v)}
         ringsDisabled={!rider}

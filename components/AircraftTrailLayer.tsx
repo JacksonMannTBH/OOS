@@ -399,21 +399,22 @@ export function AircraftTrailLayer({
     const fetchOnce = async () => {
       console.debug("[trail] fetchOnce start", { tailsKey });
       try {
-        const r = await fetch(`/api/trails?tails=${tailsKey}`, {
-          cache: "no-store",
-        });
-        if (!r.ok) {
-          console.warn("[trail] fetchOnce: bad response", r.status);
-          return;
+        // The trail endpoint accepts up to 32 tails per request.
+        const tails = tailsKey.split(",");
+        const trails: TrailsResponse["trails"] = {};
+        for (let offset = 0; offset < tails.length; offset += 32) {
+          const batch = tails.slice(offset, offset + 32).join(",");
+          const r = await fetch(`/api/trails?tails=${batch}`, { cache: "no-store" });
+          if (!r.ok) return;
+          if (cancelled) return;
+          const d = (await r.json()) as TrailsResponse;
+          Object.assign(trails, d.trails ?? {});
         }
-        if (cancelled) return;
-        const d = (await r.json()) as TrailsResponse;
         if (cancelled) return;
         if (tailsKeyRef.current !== tailsKey) {
           console.debug("[trail] fetchOnce: stale tailsKey, bailing");
           return;
         }
-        const trails = d.trails ?? {};
         const totalPoints = Object.values(trails).reduce(
           (acc, pts) => acc + pts.length,
           0,
