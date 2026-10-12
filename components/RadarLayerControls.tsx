@@ -3,15 +3,12 @@
 import Link from "next/link";
 import { SS_TOKENS } from "@/lib/tokens";
 import { Tooltip } from "./Tooltip";
-import { PlaneIcon } from "./PlaneIcon";
 
 const PATH_ICON = "/icons/radar-path.svg";
 const RINGS_ICON = "/icons/radar-rings.svg";
 const LOCATION_ICON = "/icons/radar-location.svg";
 
 type Props = {
-  allAircraftVisible: boolean;
-  onToggleAllAircraft: () => void;
   /** Extra px above the lower map controls; pass when the airborne carousel is on. */
   bottomBoost?: number;
   ringsActive: boolean;
@@ -24,8 +21,6 @@ type Props = {
 };
 
 export function RadarLayerControls({
-  allAircraftVisible,
-  onToggleAllAircraft,
   bottomBoost = 0,
   ringsActive,
   onToggleRings,
@@ -61,23 +56,6 @@ export function RadarLayerControls({
       >
         <HomeIcon />
       </Link>
-      <Tooltip
-        side="right"
-        align="start"
-        content={allAircraftVisible
-          ? "Show aircraft from the selected state only"
-          : "Show tracked aircraft from every state"}
-      >
-        <button
-          type="button"
-          onClick={onToggleAllAircraft}
-          aria-label="Show aircraft from all states"
-          aria-pressed={allAircraftVisible}
-          style={iconButtonStyle(allAircraftVisible)}
-        >
-          <PlaneIcon size={26} />
-        </button>
-      </Tooltip>
       <Tooltip
         side="right"
         align="start"
