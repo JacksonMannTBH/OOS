@@ -40,6 +40,11 @@ export default async function aircraftIngestBackground(
 
   const db = getSupabaseAdmin();
   const workerId = crypto.randomUUID();
+  // Supabase owns aircraft polling; keep authenticated notification delivery alive.
+  if (Netlify.env.get("AIRCRAFT_INGESTION_MODE") === "supabase-cron") {
+    await runNotificationWorker(workerId);
+    return;
+  }
   // A final slow batch may cross the minute boundary. Give the previous
   // worker time to publish and release its lease instead of losing this
   // entire minute's invocation. The database still permits just one owner.
