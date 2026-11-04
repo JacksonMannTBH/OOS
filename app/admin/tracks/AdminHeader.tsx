@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SS_TOKENS } from "@/lib/tokens";
 import { logoutAction } from "../actions";
 
-type Active = "registry" | "flights" | "health";
+type Active = "registry" | "flights" | "health" | "requests";
 
 export function AdminHeader({
   active,
@@ -47,6 +47,9 @@ export function AdminHeader({
         </NavLink>
         <NavLink href="/admin/fleet-health" active={active === "health"}>
           HEALTH
+        </NavLink>
+        <NavLink href="/admin/requests" active={active === "requests"}>
+          REQUESTS
         </NavLink>
         <form action={logoutAction}>
           <button

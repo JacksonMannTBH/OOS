@@ -47,6 +47,7 @@ function requireAdmin() {
 }
 
 const VALID_NEXT_TARGETS: Record<string, string> = {
+  requests: "/admin/requests",
   tracks: "/admin/tracks",
   qa: "/qa-dashboard",
 };

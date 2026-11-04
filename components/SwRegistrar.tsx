@@ -26,7 +26,10 @@ export function SwRegistrar() {
       };
     }
     if (!("serviceWorker" in navigator)) return;
-    navigator.serviceWorker.register("/sw.js").catch(() => {
+    const worker = window.location.pathname.startsWith("/admin/")
+      ? "/admin/sw.js"
+      : "/sw.js";
+    navigator.serviceWorker.register(worker).catch(() => {
       /* silent: PWA registration should fail gracefully */
     });
   }, []);
