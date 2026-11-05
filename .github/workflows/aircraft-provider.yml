@@ -1,0 +1,26 @@
+name: Aircraft provider and tracking
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  aircraft-provider:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/check-aircraft-provider.mjs
+      - run: node --test supabase/functions/adsbfi.test.mjs
+      - name: Validate deployable entrypoints
+        run: |
+          node --check supabase/functions/oos-ingest/index.js
+          node --check supabase/functions/oos-app/index.js
+          node --check supabase/functions/oos-api/index.js

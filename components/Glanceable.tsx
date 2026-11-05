@@ -190,21 +190,21 @@ function Footer() {
     >
       Aircraft data from{" "}
       <a
-        href="https://www.adsb.lol"
+        href="https://adsb.fi/"
         target="_blank"
         rel="noopener noreferrer"
         style={FOOTER_LINK}
       >
-        ADSB.lol
+        adsb.fi
       </a>{" "}
       ·{" "}
       <a
-        href="https://opendatacommons.org/licenses/odbl/1-0/"
+        href="https://github.com/adsbfi/opendata#terms"
         target="_blank"
         rel="noopener noreferrer"
         style={FOOTER_LINK}
       >
-        ODbL 1.0
+        Data terms
       </a>
       <br />
       <Link href="/about" style={FOOTER_LINK}>

@@ -16,7 +16,7 @@ export default async function RequestsPage({ searchParams }: {
   if (!isAdminPasscodeConfigured()) return <main className={styles.page}>Configure ADMIN_PASSCODE to view API requests.</main>;
   if (!isAdminAuthed()) return <LoginForm error={searchParams.error} next="requests" />;
 
-  const source = ["adsblol", "adsbfi", "all"].includes(searchParams.source ?? "") ? searchParams.source! : "adsblol";
+  const source = ["adsbfi", "all"].includes(searchParams.source ?? "") ? searchParams.source! : "adsbfi";
   const hours = ["1", "24", "168"].includes(searchParams.hours ?? "") ? Number(searchParams.hours) : 24;
   const since = new Date(Date.now() - hours * 3_600_000).toISOString();
   const query = () => {
@@ -47,10 +47,10 @@ export default async function RequestsPage({ searchParams }: {
   const completed = succeeded + failed + partial;
   const rate = completed ? `${(succeeded / completed * 100).toFixed(1)}%` : "—";
   return <main className={styles.page}>
-    <header className={styles.header}><div><Link href="/admin" className={styles.back}>← Out Of Sight</Link><h1>API requests<span> / {source === "all" ? "all sources" : source === "adsblol" ? "adsb.lol" : "adsb.fi"}</span></h1></div><Link className={styles.refresh} href={`/admin/requests?source=${source}&hours=${hours}`}>Refresh ↻</Link></header>
+    <header className={styles.header}><div><Link href="/admin" className={styles.back}>← Out Of Sight</Link><h1>API requests<span> / {source === "all" ? "all sources" : "adsb.fi"}</span></h1></div><Link className={styles.refresh} href={`/admin/requests?source=${source}&hours=${hours}`}>Refresh ↻</Link></header>
     <InstallApp />
     <form className={styles.filters}>
-      <label>Source <select name="source" defaultValue={source}><option value="adsblol">adsb.lol</option><option value="adsbfi">adsb.fi</option><option value="all">All sources</option></select></label>
+      <label>Source <select name="source" defaultValue={source}><option value="adsbfi">adsb.fi</option><option value="all">All sources</option></select></label>
       <label>Period <select name="hours" defaultValue={hours}><option value="1">Last hour</option><option value="24">Last 24 hours</option><option value="168">Last 7 days</option></select></label>
       <button type="submit">Apply</button>
     </form>

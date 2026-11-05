@@ -1276,5 +1276,5 @@ async function shouldSuppressTakeoffNotification(
 
 function inferSnapshotSource(rows: Record<string, unknown>[] | null, lastSource?: unknown): SnapshotSource {
   const source = rows?.find((row) => row.source)?.source ?? lastSource;
-  return source === "adsblol" ? "adsblol" : source === "opensky" ? "opensky" : "adsbfi";
+  return source === "opensky" ? "opensky" : "adsbfi";
 }

@@ -78,7 +78,7 @@ export type AircraftLive = {
 
 export type Aircraft = FleetEntry & AircraftLive;
 
-export type SnapshotSource = "adsbfi" | "adsblol" | "opensky" | "mock";
+export type SnapshotSource = "adsbfi" | "opensky" | "mock";
 
 /** Explicit provider-backed ground classification for a single observation. */
 export type AircraftGroundState = "grounded" | "airborne" | "unknown";
