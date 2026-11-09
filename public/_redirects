@@ -1,0 +1,14 @@
+# Public website visitors get the store download page.
+# Keep /home available for older Android builds, and retain Help, Legal, and APIs.
+/                /download/index.html  200!
+/map             /download/index.html  200!
+/radar           /download/index.html  200!
+/ride            /download/index.html  200!
+/aircraft        /download/index.html  200!
+/about           /download/index.html  200!
+/forecast        /download/index.html  200!
+/store           /download/index.html  200!
+/plane/*         /download/index.html  200!
+/flight/*        /download/index.html  200!
+/settings        /download/index.html  200!
+/settings/*      /download/index.html  200!
