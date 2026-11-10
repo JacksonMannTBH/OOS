@@ -34,11 +34,7 @@ export function RideCompass({
   const arrowColor = highlightTrackingArrow ? "#ff1f2d" : "#050505";
   const hasMarker = contact != null && displayBearingDeg != null;
   const marker = hasMarker ? markerPosition(displayBearingDeg) : null;
-  const name = contact
-    ? contact.plane.nickname
-      ? `${contact.plane.tail} - ${contact.plane.nickname}`
-      : contact.plane.tail
-    : null;
+  const name = contact?.plane.tail ?? null;
   const ariaLabel = contact
     ? `Compass. ${name} is ${contact.cardinal}, ${contact.distanceNm.toFixed(1)} nautical miles away.`
     : `Compass. No tracked aircraft within ${formatNm(clearDistanceNm)} nautical miles.`;

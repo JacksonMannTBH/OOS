@@ -474,7 +474,7 @@ export const ADDITIONAL_FLEET: FleetEntry[] = [
       hex: null,
       operator,
       model: row.model,
-      nickname: callSignFromUnit(row.unit),
+      nickname: null,
       roleDescription: "Traffic enforcement",
       base: row.unit,
       role,
@@ -554,11 +554,6 @@ function operatorForState(stateId: OpsAircraft["stateId"]): string | null {
   }
 }
 
-function callSignFromUnit(unit: string): string | null {
-  if (!unit.includes("/")) return null;
-  const first = unit.split("/")[0]?.trim();
-  return first || null;
-}
 
 function roleForModel(model: string): FleetRole {
   return /\b(airbus|eurocopter|as350|h125|h145|ec120|ec135|ec145|bk117|bell|mcdonnell douglas|md helicopters|md 369|369e|369ff|hughes|robinson|r66|uh-1|oh-58|helicopter)\b/i.test(

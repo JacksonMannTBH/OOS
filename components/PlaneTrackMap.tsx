@@ -6,13 +6,16 @@
 // the user can dig into the route on the plane detail page.
 //
 // When the most-recent session is still in progress (the tail is
-// currently airborne), the map polls /api/trails every 10 s for the
-// freshest 30 min of points and re-fits its viewport. Without that
+// currently airborne), the map receives its full current-flight trail
+// from the backend and re-fits its viewport. Without that
 // the page would show only the SSR-time snapshot of the flight, which
 // can be 0–2 points old enough to render as a blank map for a tail
 // that just lifted off.
 
 import { useEffect, useId, useRef, useState } from "react";
+import { subscribeLiveState } from "@/lib/live-data-client";
+import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
+import { stateCodeForId } from "@/lib/app-states";
 import maplibregl, {
   Map as MaplibreMap,
   GeoJSONSource,
@@ -28,7 +31,6 @@ import type { TrackPoint } from "@/lib/tracks";
 const PUGET_SOUND: [number, number] = [-122.3, 47.6];
 const FALLBACK_ZOOM = 9;
 const SHORT_TRACK_ZOOM = 11;
-const POLL_MS = 10_000;
 
 type Coord = [number, number];
 
@@ -37,7 +39,7 @@ type TrailsResponse = { trails: Record<string, LiveTrail[]> };
 
 type Props = {
   /** Tail this map is for — required when `inProgress` so the map can
-   *  poll /api/trails for the live extension. */
+   *  receive its live extension. */
   tail: string;
   /** Polyline samples, oldest → newest. May be 0/1/2+. */
   points: TrackPoint[];
@@ -203,35 +205,15 @@ export default function PlaneTrackMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Poll /api/trails every 10 s while the tail is airborne. Replaces
-  // the SSR-rendered coords with the freshest 30 min of points so the
-  // map extends as new positions arrive.
+  const stateCode = stateCodeForId(useSelectedStateId());
+  // Receive the current flight extension on the shared live connection.
   useEffect(() => {
     if (!inProgress || !tail) return;
-    let cancelled = false;
-    const fetchOnce = async () => {
-      try {
-        const r = await fetch(
-          `/api/trails?tails=${encodeURIComponent(tail)}`,
-          { cache: "no-store" },
-        );
-        if (!r.ok || cancelled) return;
-        const d = (await r.json()) as TrailsResponse;
-        if (cancelled) return;
-        const trail = d.trails?.[tail] ?? [];
-        if (trail.length === 0) return;
-        setCoords(liveToCoords(trail));
-      } catch {
-        // transient — next tick will retry
-      }
-    };
-    void fetchOnce();
-    const id = window.setInterval(fetchOnce, POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [tail, inProgress]);
+    return subscribeLiveState(stateCode, update => {
+      const trail = update.trails[tail] ?? [];
+      if (trail.length) setCoords(liveToCoords(trail));
+    });
+  }, [tail, inProgress, stateCode]);
 
   // Push fresh coords into the map source whenever they change. Re-fits
   // bounds only when the new track meaningfully extends beyond the

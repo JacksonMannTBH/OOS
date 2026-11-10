@@ -13,7 +13,6 @@ export const ROUTES: Route[] = [
   { name: "home-mock-up", path: "/?mock=up", settleMs: 1500, riderFacing: true, a11y: true },
   { name: "home-mock-down", path: "/?mock=down", settleMs: 1500, riderFacing: true, a11y: true },
   { name: "map", path: "/map", settleMs: 3500, riderFacing: true, a11y: true, testsTz: true },
-  { name: "forecast", path: "/forecast", settleMs: 1500, riderFacing: true, a11y: true, testsTz: true },
   { name: "settings", path: "/settings", settleMs: 500, riderFacing: true, a11y: true },
   { name: "settings-alerts", path: "/settings/alerts", settleMs: 1000, riderFacing: true, a11y: true },
   { name: "settings-ride", path: "/settings/ride", settleMs: 500, riderFacing: true, a11y: true },

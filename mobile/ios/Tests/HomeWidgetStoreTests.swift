@@ -40,6 +40,16 @@ enum HomeWidgetStoreTests {
             require(!store.publish(result("Stop"), for: configuration), "Reject older completion")
             require(store.read().content == newer, "Newest result retained")
         }
+        check("Live Tracking can restart from disk without losing its last measured result") {
+            let restored = HomeWidgetStore(directory: directory).read()
+            require(restored.liveContent(for: configuration) == restored.content, "Restart restores the whole result")
+            var otherState = configuration
+            otherState.stateCode = "CA"; otherState.stateName = "California"
+            let initial = restored.liveContent(for: otherState)
+            require(!initial.hasKnownRideState && initial.rideState.isEmpty && initial.message.isEmpty,
+                    "No wrong-region status or starting text")
+            require(initial.stateName == "California", "Selected region is retained")
+        }
         check("same preferences retain content; region changes invalidate it and reject in-flight old results") {
             let original = store.read().content
             require(!store.configure(configuration), "Identical config does not clear")

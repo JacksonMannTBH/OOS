@@ -20,17 +20,15 @@ struct OOSLiveTrackingWidget: Widget {
                     Spacer()
                     Text(label(context)).font(.headline).foregroundStyle(tint(context))
                 }
-                HStack(spacing: 4) {
-                    Text("Updated")
-                    Text(context.state.updatedAt, style: .time)
-                }
-                .font(.caption2).foregroundStyle(Color.white.opacity(0.65))
-                HStack(alignment: .firstTextBaseline) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(context.state.aircraft).font(.headline).lineLimit(1)
-                        Text(context.state.message)
-                            .font(.caption).foregroundStyle(Color.white.opacity(0.65)).lineLimit(1)
+                if context.state.hasKnownRideState {
+                    HStack(spacing: 4) {
+                        Text("Updated")
+                        Text(context.state.updatedAt, style: .time)
                     }
+                    .font(.caption2).foregroundStyle(Color.white.opacity(0.65))
+                }
+                HStack(alignment: .firstTextBaseline) {
+                    Text(context.state.aircraft).font(.headline).lineLimit(1)
                     Spacer(minLength: 12)
                     Text(distance(context)).font(.title2.weight(.bold)).monospacedDigit().foregroundStyle(tint(context))
                 }
@@ -51,11 +49,7 @@ struct OOSLiveTrackingWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(context.state.aircraft).font(.headline).lineLimit(1)
-                            Text(context.state.message)
-                                .font(.caption).foregroundStyle(Color.white.opacity(0.65)).lineLimit(1)
-                        }
+                        Text(context.state.aircraft).font(.headline).lineLimit(1)
                         Spacer()
                         Text(distance(context)).font(.title3.weight(.bold)).monospacedDigit().foregroundStyle(tint(context))
                     }
@@ -78,7 +72,7 @@ struct OOSLiveTrackingWidget: Widget {
     }
 
     private func label(_ context: ActivityViewContext<RideTrackingAttributes>) -> String {
-        context.state.rideState.uppercased()
+        context.state.hasKnownRideState ? context.state.rideState.uppercased() : ""
     }
     private func distance(_ context: ActivityViewContext<RideTrackingAttributes>) -> String {
         guard let distance = context.state.distanceNm else { return "— nm" }

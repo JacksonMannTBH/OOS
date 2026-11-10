@@ -32,8 +32,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        sans: ["Math Bold", "Cambria Math", "STIX Two Math", "Noto Sans Math", "Times New Roman", "serif"],
-        mono: ["Math Bold", "Cambria Math", "STIX Two Math", "Noto Sans Math", "Times New Roman", "serif"],
+        sans: ["var(--font-ui)"],
+        mono: ["var(--font-mono)"],
       },
     },
   },

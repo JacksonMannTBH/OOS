@@ -27,6 +27,7 @@ export async function sendAircraftAlertFcm(
       },
       body: JSON.stringify({ token, payload }),
       cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
     });
     if (response.ok) return { ok: true };
     if (response.status === 404 || response.status === 410) {

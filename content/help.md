@@ -47,16 +47,50 @@ open. Use **Show speedometer** in these settings to show or hide your MPH
 speedometer in Ride Mode. End Ride restores normal screen sleep. Screen-wake
 support varies by browser and device.
 
+On iPhone, **Start Ride** records top speed, estimated distance in miles, and
+duration after you confirm recording and allow Precise Location. Recording
+continues while the screen is locked or you use another app. **Resume Ride**
+returns to the same active ride. **End Ride** saves it and opens its summary.
+Your three latest completed rides appear on Home; tap a row to review
+it. Older summaries are replaced when you complete another ride.
+
+Ride summaries and route points stay on this phone and are excluded from iCloud
+backup. The summary map shows the recorded route, start, and finish. Route history
+is not uploaded. GPS spikes and poor readings are filtered, so top
+recorded speed and distance are estimates. If GPS is lost, missing distance is
+not filled in. Force-quitting or restarting the app preserves the last saved
+portion as an interrupted ride; it does not silently start recording again.
+Ride recording works independently of aircraft Live Tracking. Stop each session
+to end its background location use. Ride recording does not require internet;
+aircraft data and map tiles still do.
+
+## Police sightings
+
+The police button in Ride Mode lets you report police you see on the road. The
+first tap explains the feature; **Got it** closes that explanation without
+submitting a report. Tap again when you want to report.
+
+Within a quarter mile of an existing sighting, the button asks **Are police
+still here?** Choose **Still Here** or **Not Seen**, or close it without voting.
+Each phone counts once per sighting. The original report counts as Still Here;
+twice as many Not Seen votes remove the sighting. A new Still Here confirmation
+refreshes its 30-minute expiry. Not Seen does not extend it.
+
+Maps show active sightings in your selected state. In Ride Mode, **POLICE
+NEARBY** appears within one mile. Tap a police icon on the main map for its
+report count and age. Checking or reporting requires internet and a precise
+location; no route history is uploaded.
+
 ## Live tracking on iPhone
 
-On Home, tap the small **Live** button in the top-left corner to show the nearest
+On Home, tap the small **Start Live Tracking** button in the top-left corner to show the nearest
 tracked airborne aircraft, distance in nautical miles, and ride state on the Lock Screen and in
 the Dynamic Island on supported iPhones. It uses your selected state's aircraft
 and the Stop, Warning, Watch, and Clear distance settings from Ride Mode.
 
 Location access continues during this session while you use other apps or lock
 the phone. Distances are calculated on your device; aircraft-data requests do
-not include your coordinates. Tap **Live** again on Home to stop the session.
+not include your coordinates. Tap **Stop Live Tracking** on Home to stop the session.
 Live tracking continues when you leave or end Ride Mode. Tap the Live Activity
 to reopen Home.
 
@@ -89,6 +123,8 @@ The server stores aircraft observations, catalog data, state-level push
 subscriptions, and notification delivery history. It does not store a rider's
 continuous live location. Location used for map positioning and Ride Mode is
 processed on the device. Map providers receive requests for the area you view.
+If no state has been selected, the map sends one location fix through our server
+to the U.S. Census geocoder to identify the state.
 Read [Legal & privacy](/legal#privacy) for details about alerts, provider requests,
 retention, and deletion.
 
@@ -99,7 +135,7 @@ enforcement.
 ## Contact support
 
 For help, bug reports, or feature requests, email
-[jacksonmann253@gmail.com](mailto:jacksonmann253@gmail.com).
+[localbusinessforms@outlook.com](mailto:localbusinessforms@outlook.com).
 Include your device model, app version if available, and the steps that led to
 the issue. For privacy or deletion requests, use the same address and see
 [Legal & privacy](/legal#privacy).

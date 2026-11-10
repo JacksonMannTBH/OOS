@@ -6,6 +6,14 @@ import { fileURLToPath } from "node:url";
 const mobile = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const app = path.join(mobile, "ios/App/App");
 const errors = [];
+const backend = JSON.parse(fs.readFileSync(path.join(mobile, "backend.json"), "utf8"));
+try {
+  execFileSync(process.execPath, [path.join(mobile, "scripts/generate-backend-config.mjs"), "--check"]);
+  const packaged = JSON.parse(fs.readFileSync(path.join(app, "public/bundle-info.json"), "utf8"));
+  if (packaged.backend !== backend.url) errors.push("The bundled app must use the same Supabase endpoint as the native widget. Run npm run sync:ios.");
+} catch {
+  errors.push("Generate and sync the Supabase app/widget configuration before release.");
+}
 const requireSigning = process.argv.includes("--require-signing");
 const readPlist = (file) => JSON.parse(execFileSync("/usr/bin/plutil", ["-convert", "json", "-o", "-", file], { encoding: "utf8" }));
 const configPath = path.join(app, "capacitor.config.json");
@@ -55,8 +63,8 @@ try {
       !widgetEntitlements["com.apple.security.application-groups"]?.includes(group)) {
     errors.push("The app and Home Screen widget must share the OOS App Group.");
   }
-  if (readPlist(path.join(mobile, "ios/App", widget.INFOPLIST_FILE)).NSWidgetWantsLocation !== true) {
-    errors.push("The Home Screen widget must declare its location use.");
+  if (readPlist(path.join(mobile, "ios/App", widget.INFOPLIST_FILE)).NSWidgetWantsLocation === true) {
+    errors.push("The static Ride launcher widget must not request location updates.");
   }
   if (main.APS_ENVIRONMENT !== "production" || entitlements["aps-environment"] !== "$(APS_ENVIRONMENT)") errors.push("The Release app must use production APNs entitlements.");
   if (requireSigning) {

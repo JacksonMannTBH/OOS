@@ -79,6 +79,7 @@ AUDIT-2026-05-07.md
 .env.production
 
 # Local agent previews, diagnostics, and temporary working files
+.local/
 .codex-local/
 tmp/
 firebase-debug.log

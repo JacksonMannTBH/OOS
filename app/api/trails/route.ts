@@ -7,7 +7,6 @@
 //     and dropping fields keeps the payload small.
 //   - Sorted ascending by ts so a polyline reads from oldest → newest.
 
-import { NextResponse } from "next/server";
 import { liveDataHeaders } from "@/lib/http-cache";
 import { getCurrentFlightTrack } from "@/lib/tracks";
 
@@ -39,7 +38,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const tails = parseTails(url.searchParams.get("tails"));
   if (tails.length === 0) {
-    return NextResponse.json({ trails: {} });
+    return Response.json({ trails: {} });
   }
 
   const nowMs = Date.now();
@@ -52,7 +51,7 @@ export async function GET(req: Request) {
   for (const [tail, points] of entries) {
     if (points.length > 0) trails[tail] = points;
   }
-  return NextResponse.json(
+  return Response.json(
     { trails },
     {
       headers: liveDataHeaders("query=tails"),

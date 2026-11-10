@@ -1,0 +1,7 @@
+{
+  "source": "U.S. Census Bureau TIGERweb Counties",
+  "vintage": "January 1, 2026",
+  "url": "https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/State_County/MapServer/1",
+  "query": { "where": "STATE = '06'", "outFields": "GEOID,NAME", "returnGeometry": true, "outSR": 4326, "geometryPrecision": 5, "maxAllowableOffset": 0.001, "f": "geojson" },
+  "purpose": "On-device initial California region selection, without sending coordinates to a server. Southern counties: Imperial, Kern, Los Angeles, Orange, Riverside, San Bernardino, San Diego, Santa Barbara, Ventura. All other California counties are north."
+}

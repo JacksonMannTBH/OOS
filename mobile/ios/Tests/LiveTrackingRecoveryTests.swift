@@ -31,8 +31,9 @@ enum LiveTrackingRecoveryTests {
         check("missing activities do not silently start a new session") {
             require(LiveTrackingRecovery.activityID(session: saved, activities: []) == nil, "No new activity after system removal")
         }
-        check("only a user stop requests immediate removal, respecting system-ended retention") {
+        check("user stops and app closure request removal, respecting system-ended retention") {
             require(LiveTrackingStopReason.userStop.shouldRemoveActivity, "Explicit Stop removes")
+            require(LiveTrackingStopReason.appClosed.shouldRemoveActivity, "App closure removes")
             require(!LiveTrackingStopReason.systemEnded.shouldRemoveActivity, "System end retains OS-managed display")
             require(!LiveTrackingStopReason.systemDismissed.shouldRemoveActivity, "System dismissal is not recreated or ended again")
         }
@@ -48,6 +49,13 @@ enum LiveTrackingRecoveryTests {
             require(!json.contains("latitude") && !json.contains("longitude") && !json.contains("\"lat\"") && !json.contains("\"lon\""), "No rider coordinates")
             store.save(.init(enabled: false))
             require(store.load()?.enabled == false && store.load()?.activityID == nil, "Persist explicit stop across relaunch")
+        }
+        check("an app-close stop survives relaunch and cannot recover a leftover activity") {
+            store.save(.init(enabled: false, stopReason: LiveTrackingStopReason.appClosed.rawValue))
+            let stopped = LiveTrackingPersistence(directory: store.directory).load()
+            require(stopped?.stopReason == "appClosed", "Keep the reason for interrupted dismissal")
+            require(LiveTrackingRecovery.activityID(session: stopped, activities: [existing]) == nil,
+                    "An app-close stop cannot restart the leftover activity")
         }
         try check("diagnostics keep only recent reason codes and bounded details") {
             for index in 0..<180 { store.record("event_\(index)", detail: String(repeating: "a", count: 250), now: now) }

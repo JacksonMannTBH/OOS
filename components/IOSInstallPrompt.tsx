@@ -12,7 +12,7 @@ const TABBAR_HEIGHT = 66;
 function isTabbedPath(pathname: string | null): boolean {
   if (!pathname) return false;
   if (pathname === "/") return true;
-  return /^\/(map|forecast|about|legal|plane|settings)(\/|$)/.test(
+  return /^\/(map|about|legal|plane|settings)(\/|$)/.test(
     pathname,
   );
 }

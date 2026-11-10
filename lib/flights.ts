@@ -90,8 +90,7 @@ export async function getMostRecentFlightForTail(
     ...data,
     aircraft: {
       tail: String(aircraft.tail),
-      nickname:
-        typeof aircraft.nickname === "string" ? aircraft.nickname : nickname,
+      nickname: null,
     },
   };
   const [session, points] = await Promise.all([
@@ -140,8 +139,7 @@ export async function getFlightById(
     ...data,
     aircraft: {
       tail: String(aircraft.tail),
-      nickname:
-        typeof aircraft.nickname === "string" ? aircraft.nickname : nickname,
+      nickname: null,
     },
   };
   const [session, points] = await Promise.all([
@@ -168,7 +166,7 @@ async function sessionFromDatabase(row: SessionRow): Promise<FlightSession> {
 
   return {
     tail: row.aircraft?.tail ?? "UNKNOWN",
-    nickname: row.aircraft?.nickname ?? null,
+    nickname: null,
     date: utcDateKey(new Date(startTs)),
     start_ts: startTs,
     end_ts: endTs,

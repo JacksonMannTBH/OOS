@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const SETTINGS_DESTINATIONS = new Set([
+  "/help",
   "/aircraft",
   "/about",
   "/legal",

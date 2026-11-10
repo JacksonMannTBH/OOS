@@ -116,38 +116,6 @@ export function formatTsBare(
   return formatTs(tsMs, style, opts).replace(/\s+PT$/, "");
 }
 
-/**
- * Pacific-anchored "now" hour-of-week. Used by the forecast grid to
- * highlight the current cell.
- */
-export function pacificNow(): { dow: number; hour: number } {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: PT_TZ,
-    hour: "numeric",
-    hour12: false,
-    weekday: "short",
-  });
-  const parts = fmt.formatToParts(new Date());
-  let hourStr: string | null = null;
-  let weekdayStr: string | null = null;
-  for (const p of parts) {
-    if (p.type === "hour") hourStr = p.value;
-    if (p.type === "weekday") weekdayStr = p.value;
-  }
-  const hour = Number(hourStr ?? 0) % 24;
-  const dowMap: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
-  };
-  const dow = weekdayStr ? (dowMap[weekdayStr] ?? 0) : 0;
-  return { dow, hour };
-}
-
 /** "Just now" / "Xm ago" / "Xh ago" / "Xd ago" — tz-agnostic. */
 export function fmtAgo(min: number | null | undefined): string {
   if (min == null || Number.isNaN(min) || min <= 0) return "a while";

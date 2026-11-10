@@ -39,8 +39,15 @@ for the existing upload-key password without printing it and writes
 
 ## iPhone / Xcode
 
+Release status (October 12, 2026): build **1.0 (11)** was uploaded, processed, and submitted
+to Apple App Review. Its status is **Waiting for Review**. It packages the Washington/California scope, current
+Settings, and updated privacy/support content. It uses `outofsight.live` data
+services backed by the new OOS Supabase project. See
+[`docs/app-store-submission.md`](../docs/app-store-submission.md) for the current
+submission state, listing, published privacy answers, and validation limits.
+
 The iPhone target is `ios/App/App.xcodeproj`, scheme **App**, display name
-**Out Of Sight**, bundle ID `live.outofsight.app`, version 1.0, build 3, iOS 15+.
+**Out Of Sight**, bundle ID `live.outofsight.app`, version 1.0, build 11, iOS 15+.
 It uses Swift Package Manager, Capacitor 8.5.1, and Firebase Messaging 12.4.0.
 The first release targets iPhone; iPad-specific layouts have not been validated.
 
@@ -167,50 +174,27 @@ the native behavior uses [UIApplication.isIdleTimerDisabled](https://developer.a
 Missing compass headings stay unavailable; they are never converted to a north
 reading. A valid GPS course remains the fallback when device heading is absent.
 
-### Home Screen widget on iPhone — Status first
+### Home Screen widget on iPhone — Start Ride
 
-Build **1.0 (7)** includes the selected small **OOS Aircraft** Home Screen widget
-in the existing WidgetKit extension alongside the Live Activity. The large
-Stop/Warning/Watch/Clear label and dark background use red/amber/blue/green;
-distance, Plane/Heli and tail number, selected state code, and original update
-time appear below and around it. A healthy empty feed shows Clear with
-"No aircraft airborne" and no invented aircraft or distance. Before the first
-known result, it prompts the person to open OOS. `oos://home` opens Home.
+The small **OOS Ride** Home Screen widget displays the OOS eye logo at top left
+and a yellow arrow at top right, above large, centered **Start Ride?** text in
+the OOS dark-and-yellow style. Tapping anywhere opens
+`oos://ride` directly in the packaged Ride Mode, both on a cold launch and when
+OOS is already running. It opens the existing Ride screen; it does not enable
+Live Tracking or bypass the screen's normal location setup.
 
-The widget works independently of the Home Live control. Native preference
-reconciliation saves the selected state, aircraft exclusions, and Ride bands
-even when Live is off. With existing When In Use permission, opening OOS
-requests a single current fix and aircraft snapshot. The widget declares
-`NSWidgetWantsLocation` and obtains its own single fix when WidgetKit requests
-a timeline. It requests another timeline after 15 minutes; iOS controls the
-actual schedule. Live Tracking can also publish current results, with widget
-reload requests limited to once a minute. No continuous background location
-session is started for the Home Screen widget.
+The widget is a static launcher with no aircraft readings, location request,
+network fetch, or periodic timeline refresh. It uses the existing widget kind
+so existing placements receive the new design. OOS requests one timeline reload
+per app launch to replace any cached aircraft-widget presentation. The widget
+gallery name is now OOS Ride. Long-press an empty Home Screen area, choose
+Edit → Add Widget, find OOS, and add the small OOS Ride widget.
 
-App and widget share `group.live.outofsight.app`. Their coordinated, atomically
-written `Library/Application Support/OOSWidgets/home-widget.json` contains
-preferences and the last known result, never rider coordinates. Coordinates
-remain in memory, distances are calculated on-device, and requests send only
-the selected state and cache timestamp. Missing/stale/failed data retains the
-complete last known result and its original update time. Changed region,
-exclusions, or bands invalidate results calculated with old preferences;
-late requests cannot overwrite new preferences or newer observations.
-
-To add it, open OOS once and allow location in Map if needed. Long-press an
-empty Home Screen area, choose Edit → Add Widget, find Out Of Sight/OOS, and
-add the small OOS Aircraft widget. Twenty tracking checks, seven widget-storage
-checks, the mobile type check/interface build, signed device build, and local
-App Store archive/export passed. Both exported targets have verified signatures,
-distribution profiles, shared App Group, matching build 7, and debugging disabled;
-production APNs and the bundled Radar sound were verified. On the physical
-iPhone, shared preferences and a real aircraft result were verified. The owner
-confirmed the state/distance/type/tail display and tapping the widget opens Home.
-The pending Help contact edit was excluded from the packaged interface and
-left untouched. No website deployment or App Store upload occurred.
-
-The owner subsequently reported unexpected Live Activity termination while the
-phone was locked. Build 8 addresses session recovery and background location;
-the owner reports that it remains working with the phone locked (see below).
+Shared preferences remain available for recovery of older Live Activities;
+the launcher does not read or display the stored aircraft snapshot. Native
+preference reconciliation no longer performs a widget location/network refresh,
+and Live Tracking no longer requests widget reloads for aircraft updates.
+The separate Lock Screen/Dynamic Island Live Activity retains its tracking behavior.
 
 Run widget-storage checks from `mobile/` with:
 
@@ -233,14 +217,23 @@ under iOS's retention policy. Relaunch recovers an existing active or stale
 activity using saved settings; it never recreates an ended, dismissed, or
 explicitly stopped activity.
 
+Live startup now creates the activity synchronously while OOS is foregrounded,
+before waiting for location or aircraft data. The initial **Starting…** display
+has no aircraft distance or Updated timestamp. The Home Live control reports
+active only after activity creation succeeds; creation failures are returned to
+the control so the user can retry. The first valid result replaces Starting.
+Later missing, stale, or failed updates retain the last known result and its
+original timestamp and never switch it back to Starting. Relaunch also retains
+an existing result rather than replacing it with the startup display.
+
 Build **1.0 (8)** addresses the owner's report of Live Activities disappearing
 while the phone is locked. Launch previously ended every activity that did not
 belong to the new in-memory session. The app now restores an ongoing activity
 early in launch, including its preferences and last result. On iOS 17+ it holds a
 `CLBackgroundActivitySession`, resuming it immediately after launch to retain
 When In Use background eligibility. Location denial/restriction pauses updates
-and retains the activity; a temporary activity-creation error keeps the pending
-user-started session and retries in the foreground after 30 seconds.
+and retains the activity. Build 8 originally retried activity creation in the
+foreground after 30 seconds; the immediate startup flow above replaces that behavior.
 
 A bounded local diagnostic log records lifecycle events, background session
 eligibility, activity state changes, and stop reasons. It contains no rider
@@ -274,8 +267,8 @@ computed locally using the selected aircraft exclusions and Ride thresholds.
 The widget shows aircraft identification, nautical miles, and Stop/Warning/Watch/
 Clear in the Lock Screen and expanded Dynamic Island. The compact presentation
 shows state and distance; the minimal presentation uses the status color.
-`oos://home` opens Home from the activity. Legacy `oos://ride` links also open
-Home. State, aircraft exclusions, and distance-band settings are reconciled
+`oos://home` opens Home from the activity. `oos://ride` opens Ride Mode
+from the Home Screen launcher. State, aircraft exclusions, and distance-band settings are reconciled
 across all screens while a session is active.
 
 Freshness limits: rider fix 30 seconds, feed 45 seconds, aircraft position 90
@@ -283,8 +276,9 @@ seconds. Missing, stale, mock, or failed source data cannot produce a new state.
 Build **1.0 (5)** keeps the entire last known result when updates are unavailable:
 Clear, Watch, Warning, or Stop, aircraft, distance, and the original Updated time.
 ActivityKit's stale date no longer replaces that display with gray, Searching,
-Updating, or Updates paused. A new session waits for its first known result
-before creating the activity; the Home Live control can stop it while waiting.
+Updating, or Updates paused. Build 5 originally waited for the first known result
+before creating the activity; the startup flow above now creates Starting immediately.
+The Home Live control can stop it while waiting.
 The Lock Screen background uses the distance-band color: green Clear, blue
 Watch, amber Warning, and red Stop. Dynamic Island status, distance, icon, and
 keyline use the same band color. The signed build installed and launched on the
@@ -496,6 +490,25 @@ and build the relevant native target. Rebuild and sync after interface changes.
 Keep the production API origin for device integration testing; never add a
 remote UI URL to the release configuration.
 
+### Durable aircraft and alert settings
+
+Aircraft exclusions, selected state, notification identity, and alert opt-in use
+`@capacitor/preferences` (UserDefaults on iOS, SharedPreferences on Android).
+Startup restores them before mounting screens or syncing notification preferences.
+The first launch migrates existing settings from the current origin's localStorage;
+subsequent launches use the native snapshot even if the WebView store is cleared.
+The previous hosted-origin migration limitation above still applies: already-lost
+settings cannot be reconstructed from an empty local store.
+
+Writes finish before the UI reports success. Failed reads block startup with a
+retry screen instead of uploading default selections. Explicit preference resets
+clear the native snapshot's entries as well as the web copy. Alert opt-in is
+separate from an expired push registration; opted-in devices refresh it on launch
+or foreground without another permission prompt. Explicit opt-out stays off.
+
+This change requires a new native build (including the Preferences plugin and iOS
+privacy manifest); deploying the website alone does not update TestFlight.
+
 ### Before TestFlight
 
 ```sh
@@ -532,3 +545,200 @@ minimum-functionality review still needs to account for its hosted-web design.
 References: [Capacitor iOS](https://capacitorjs.com/docs/ios),
 [Capacitor push](https://capacitorjs.com/docs/apis/push-notifications),
 [Firebase Apple messaging](https://firebase.google.com/docs/cloud-messaging/ios/get-started).
+
+
+## TestFlight 1.0 (12) — October 18, 2026
+
+Build 12 packages Texas and native persistence for aircraft selections, state,
+and alert preferences, plus automatic recovery of opted-in alert registration.
+The signed archive and upload succeeded, and Apple approved the TestFlight build.
+The four existing testers are assigned; notification permission is pending.
+All 141 automated tests passed, as did the native release check, iOS archive,
+and Netlify production build. The matching live website API returns 343 aircraft
+(WA 29, CA 230, TX 84). No public App Store submission or release was made.
+
+Update through TestFlight without uninstalling so existing settings can migrate.
+The daily-reset fix still needs overnight confirmation on a physical iPhone.
+Release records are in `.local/release-1.0-12/` (ignored by Git).
+
+
+## Retain the display quietly — October 19, 2026 (local changes)
+
+Removed the delayed/stale-data banners and Ride Mode update-age warning.
+Home and map retain the last known flight state; failed responses keep the prior
+snapshot. Ride Mode keeps its previous contacts during a feed outage, scoped
+to the selected state and aircraft, and uses retained positions when opened
+during an outage. Successful responses replace the display, including landings.
+Live-warning eligibility remains separate from these display-only contacts.
+
+Validation: 26 focused status, tracking, ride, and freshness tests passed,
+root/mobile type checks passed, and the mobile interface production build passed.
+These changes have not been uploaded to TestFlight or deployed to the website.
+Build 1.0 (12) and its pending tester notifications remain unchanged.
+
+
+## Direct Supabase connection — next build (October 19, 2026)
+
+The bundled interface, native Ride Mode, and Home Screen widget now call
+Supabase directly through `oos-app`; Netlify is removed from their database
+request path. All app routes are supported, including catalog/settings, aircraft,
+flight paths/history, state lookup, and alert registration/preferences.
+The existing random device ID and saved aircraft choices remain in use.
+
+`backend.json` contains only the public endpoint and publishable key. The build
+creates `Shared/AppBackend.swift` for both native targets, and release checks
+reject mismatched configuration. Service-role and push-delivery secrets stay
+server-side. The endpoint does not proxy requests through Netlify. The website
+and older installed versions still use the existing website API. Automatic alert
+delivery has also moved to Supabase; the next
+build's data and alerts no longer require Netlify.
+
+Validation: 145 automated tests, root/mobile type checks, mobile web build, and
+generic iOS Simulator app + widget compilation passed. Supabase security advisors
+reported no findings. Live read routes returned all 343 aircraft across WA/CA/TX.
+The release backend check also requires Supabase native push credentials.
+No new TestFlight upload or public App Store submission is part of this change.
+
+Release gate: `archive:ios` runs the live read-only Supabase backend check before
+archiving. Push credentials must be configured before it can pass.
+
+Completed setup on October 19: Supabase and Firebase CLI sign-ins were renewed,
+and the existing FCM relay URL/secret were copied securely into Supabase Edge
+Function secrets. The relay accepted the credential and rejected an empty body
+with HTTP 400 (no notification). `oos-app` now reports native alerts configured,
+and the full live backend release check passes, including WA/CA/TX data, catalog,
+history, forecasts, subscription status, unauthorized rejection, and CORS.
+Actual delivery to a device was not exercised; no test notifications were sent.
+
+The October 19 worker handoff preserves all existing native and browser push
+subscriptions, including selected/excluded aircraft. Supabase now dispatches the
+notification queue every minute, while aircraft collection stays at 30 seconds.
+The live worker passed authenticated dry-run checks (including browser push
+cryptography) and completed scheduled runs. Netlify's old schedules were removed.
+The updated worker suite passes 148 tests. No additional native upload or tester
+notification was made; see `../cloud-backend/README.md` for deployment details.
+
+## Forecast removal — October 19, 2026
+
+At the owner’s request, the forecast page, next-sweep prediction card,
+probability grid, supporting calculations, mock forecast data, and mobile data
+requests were removed. Supabase’s prediction worker, scheduler, and derived cache
+were removed as well. The live API rejects both former prediction endpoints.
+The app assets were rebuilt and synced to iOS; this change will be included in
+the next TestFlight build. No new build has been uploaded or published.
+
+## TestFlight 1.0 (13) — October 19, 2026
+
+The signed release archive uploaded successfully and Apple shows build 13 as
+**Testing**, assigned to all four existing testers. Automatically notify testers
+was selected when submitting this build, as explicitly requested by the owner.
+The update notes ask testers to update through TestFlight without uninstalling.
+This build includes direct Supabase app/widget requests, retained last-known
+aircraft displays, one-minute widget refresh requests (subject to iOS scheduling),
+and complete forecast removal. Texas and durable aircraft/alert preferences
+remain included. Release checks and the live backend checks passed; both app
+and widget report version 1.0, build 13. No public App Store submission or release
+was performed. Records and the confirmation screenshot are in
+`.local/release-1.0-13/`.
+
+## TestFlight 1.0 (14) — October 23, 2026
+
+Build 14 uploaded successfully at 11:29 AM Pacific, completed processing,
+and was last verified as Ready to Submit in App Store Connect. It includes the static Start Ride Home Screen widget with the
+logo and arrow above the large title, a direct link into Ride Mode, and an
+immediate Live Activity starting state that is not reused for stale data.
+The root suite passed 140 tests; native tracking and recovery suites passed
+22 and 9 tests respectively. Type checks, release checks, backend checks, and
+the signed archive succeeded. Upload access was restored after the owner
+accepted the membership assignment agreement for QWIKWRK LLC. TestFlight
+notes are saved. Tester assignment is not yet confirmed because browser control
+stopped responding during selection, before submission. No tester notifications
+were sent. The existing public App Store submission remains version 1.0,
+build 11, In Review; it was not changed. Release records are in
+`.local/release-1.0-14/`.
+
+
+## Live aircraft delivery — November 4, 2026
+
+Build 35 uses a shared Supabase Realtime connection for live aircraft snapshots,
+current-flight trails, and provider-health updates. The initial snapshot loads
+once after joining, and reconnects recover current state. Healthy connections
+no longer poll aircraft or trail endpoints. Notification permissions and the
+existing takeoff notification system are unchanged. The website was not deployed.
+See `../cloud-backend/README.md` for channel authorization and validation.
+
+Signed build 35 uploaded successfully at 3:41 PM Pacific on November 4.
+Apple processing was confirmed; tester availability has not yet been verified.
+The archived interface matches the tested packaged assets. A browser offline/online
+check verified that a reconnection reloads state and resumes pushed updates.
+No public App Store submission was performed. Release records are in
+`.local/release-1.0-35/`.
+
+
+## Home loading during a feed outage — November 4, 2026
+
+Home previously kept its loading screen visible when a completed aircraft
+snapshot was stale and no fresh airborne aircraft remained. Home now opens
+as soon as a snapshot is available, showing “Live data unavailable” instead
+of “No Eyes” when its state cannot be resolved. If no snapshot arrives at all,
+the initial loading screen ends after ten seconds, leaving settings, map,
+and ride controls usable. Live updates continue to recover automatically.
+
+Stale/fresh/blocked-connection browser checks passed, along with 13 targeted
+freshness/cache/realtime checks and the mobile type check. The tested assets
+match signed development build 59. The phone's previous build 58 and ride
+history were backed up before the in-place installation. The website was
+not deployed. Records are in `.local/loading-fix-59/`.
+
+
+## Most recent state display — November 4, 2026
+
+At the owner's request, build 60 removes the unavailable Home state and the
+five-minute display expiry. Home, map markers, ride contacts, and active-session
+trails keep the latest reported aircraft state until replaced. The read backend
+returns saved observations regardless of age, so a restart uses the same latest
+state. Internal provider health timestamps remain available to the workers;
+source health no longer gates Home or discards a newer saved landing report.
+A failed empty response preserves the previous result, and an older response
+cannot replace a newer snapshot. The persistent cache stores the retained result.
+
+The Supabase app API and ingestion broadcasts were updated; the website was not
+deployed. Browser checks passed for an older airborne report, a newer landing
+while the feed is unavailable, and reopening with no live connection. Unit checks
+cover the matching retention/read/trail behavior. The tested packaged interface
+is included in signed development build 60. Records are in `.local/latest-state-60/`.
+
+
+## Four-minute no-report landing rule — November 4, 2026
+
+The owner revised the display rule: four minutes without an aircraft's own
+report displays that aircraft as landed. A newer fleet snapshot or reports from
+other aircraft do not reset this deadline. Home remains usable; map/ride/Home
+contacts clear the timed-out aircraft, and a new airborne report restores it.
+The client applies the rule to cached snapshots as well as live updates.
+Provider confirmation records are not fabricated by this display rule.
+
+Build 61 includes this change. The targeted freshness/cache/ride/realtime suite
+passes 25 checks; the mobile type check and packaged build passed. No backend,
+supplier, schedule, or website deployment was made. Records are in
+`.local/four-minute-61/`.
+
+
+## Retain the displayed map while reconnecting — November 4, 2026
+
+Build 62 holds the last rendered aircraft and eye state while the app is paused
+and until a complete network update arrives after resuming. A separate per-state
+display cache restores that exact rendered result when a screen is remounted;
+a cache replay does not count as a completed refresh. Aircraft already shown as
+landed before pausing stay landed. Original report times are preserved. Once a
+network refresh finishes, the four-minute no-report rule applies normally.
+
+The app listens to native pause/resume as well as document visibility changes.
+It recreates a suspended transport on return and ignores callbacks from old
+connections. Delivery remains shared by state; healthy connections do not poll.
+
+Nineteen targeted display/cache/freshness/realtime checks, root/mobile type
+checks, and browser pause/resume/delayed-refresh/remount checks passed. Signed
+development build 62 includes the tested assets. No supplier, collection schedule,
+backend deployment, or website changes were made for this update. Records are in
+`.local/resume-display-62/`.

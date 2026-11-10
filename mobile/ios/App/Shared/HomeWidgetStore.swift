@@ -5,6 +5,11 @@ import Foundation
 struct HomeWidgetState: Codable {
     var configuration: RideTrackingConfiguration?
     var content: RideTrackingContent?
+
+    func liveContent(for configuration: RideTrackingConfiguration) -> RideTrackingContent {
+        RideTrackingContent.initial(stateName: configuration.stateName,
+            previous: self.configuration == configuration ? content : nil)
+    }
 }
 
 struct HomeWidgetStore {

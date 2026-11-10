@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { SS_TOKENS } from "@/lib/tokens";
 import {
+  AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT,
   enableAircraftAlerts,
   readAircraftAlertStatus,
 } from "@/lib/aircraft-alerts/client";
@@ -24,18 +25,24 @@ export function ArmAlertsCallout() {
 
   useEffect(() => {
     let mounted = true;
+    let receivedStatus = false;
     try {
       const dismissedAt = Number(window.localStorage.getItem(DISMISS_KEY) ?? "0");
       setDismissed(Number.isFinite(dismissedAt) && Date.now() - dismissedAt < DISMISS_MS);
     } catch { /* Storage can be unavailable; keep the session's dismiss button usable. */ }
     void readAircraftAlertStatus().then((next) => {
-      if (!mounted) return;
+      if (!mounted || receivedStatus) return;
       setStatus(next);
       setMessage(aircraftAlertAvailabilityMessage(next, platform));
     }).catch(() => {
       if (mounted) setMessage("Notification status is unavailable. Open Settings to retry.");
     });
-    return () => { mounted = false; };
+    const onStatus = (event: Event) => {
+      const next = (event as CustomEvent<{ status?: AircraftAlertStatus }>).detail?.status;
+      if (next) { receivedStatus = true; setStatus(next); setMessage(aircraftAlertAvailabilityMessage(next, platform)); }
+    };
+    window.addEventListener(AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, onStatus);
+    return () => { mounted = false; window.removeEventListener(AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, onStatus); };
   }, [platform]);
 
   const onArm = useCallback(async () => {

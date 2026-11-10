@@ -8,6 +8,11 @@ test("Android subscribers receive the sound channel before token enrollment and 
     localStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value) },
   } });
   const { registerPlugin } = await import("@capacitor/core");
+  const nativePreferences = new Map<string, string>();
+  registerPlugin("Preferences", { android: {
+    get: async ({ key }: { key: string }) => ({ value: nativePreferences.get(key) ?? null }),
+    set: async ({ key, value }: { key: string; value: string }) => { nativePreferences.set(key, value); },
+  } });
   const listeners = new Map<string, (event: { value: string }) => void>();
   const sequence: string[] = [];
   let failChannel = false;

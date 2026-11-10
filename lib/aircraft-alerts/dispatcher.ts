@@ -15,7 +15,8 @@ export type NotificationDispatchSummary = {
   skipped: number;
 };
 
-export async function dispatchPendingTakeoffNotifications(): Promise<NotificationDispatchSummary> {
+export async function dispatchPendingTakeoffNotifications(options: { maxDurationMs?: number } = {}): Promise<NotificationDispatchSummary> {
+  const deadline = Date.now() + (options.maxDurationMs ?? Number.POSITIVE_INFINITY);
   const db = getSupabaseAdmin();
   const now = new Date().toISOString();
   const { data: deliveries, error } = await db
@@ -30,7 +31,7 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
   if (error) throw new Error(`Notification queue read failed: ${error.message}`);
 
   const summary: NotificationDispatchSummary = {
-    claimed: deliveries?.length ?? 0,
+    claimed: 0,
     sent: 0,
     failed: 0,
     expired: 0,
@@ -38,6 +39,8 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
   };
 
   for (const delivery of deliveries ?? []) {
+    // Leave unclaimed rows for the next tick before the Edge Function deadline.
+    if (Date.now() >= deadline) break;
     const claimToken = crypto.randomUUID();
     const { data: claimed } = await db
       .from("notification_deliveries")
@@ -53,6 +56,7 @@ export async function dispatchPendingTakeoffNotifications(): Promise<Notificatio
       .select("id")
       .maybeSingle();
     if (!claimed) continue;
+    summary.claimed += 1;
 
     const event = Array.isArray(delivery.notification_events)
       ? delivery.notification_events[0]

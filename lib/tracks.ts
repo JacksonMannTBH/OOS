@@ -11,7 +11,7 @@ export type TrackPoint = {
   ts: number;
 };
 
-export const CURRENT_FLIGHT_GAP_SECONDS = 2 * 60;
+export const CURRENT_FLIGHT_GAP_SECONDS = 5 * 60;
 
 export type CurrentFlightDuration = {
   elapsedMinutes: number;
@@ -117,9 +117,7 @@ export async function getCurrentFlightTrack(
     nowMs,
     Number.MAX_SAFE_INTEGER,
   );
-  if (!track || nowMs - track.lastSampleMs > CURRENT_FLIGHT_GAP_SECONDS * 1_000) {
-    return null;
-  }
+  // Keep the latest recorded path until the flight session is replaced/closed.
   return track;
 }
 

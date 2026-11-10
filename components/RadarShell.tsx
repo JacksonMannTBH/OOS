@@ -1,13 +1,15 @@
 "use client";
 import { watchDevicePosition } from "@/lib/device-location";
+import { setAutomaticallyDetectedCaliforniaRegion } from "@/lib/california-regions";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import nextDynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { Map as MaplibreMap } from "maplibre-gl";
 import { useAircraft } from "@/lib/hooks/useAircraft";
-import { useRideLaunchPreflight } from "@/lib/hooks/useRideLaunchPreflight";
+import { usePoliceSightings } from "@/lib/hooks/usePoliceSightings";
+import { PoliceSightingLayer } from "./PoliceSightingLayer";
+import { TakeOffButton } from "./TakeOffButton";
 import { useRideStatusThresholds } from "@/lib/hooks/useRideStatusThresholds";
 import { SS_TOKENS } from "@/lib/tokens";
 import {
@@ -15,7 +17,8 @@ import {
   THEME_STORAGE_KEY,
   readStoredDarkTheme,
 } from "@/lib/theme";
-import { computeStatus } from "@/lib/status";
+import { isVisibleFlight } from "@/lib/aircraft-freshness";
+import { computeStatus, type StatusKind } from "@/lib/status";
 import { RadarLayerControls } from "./RadarLayerControls";
 import { AircraftTrailLayer } from "./AircraftTrailLayer";
 import {
@@ -69,9 +72,8 @@ export function RadarShell({
   mockOn = false,
   initialFocusTail,
 }: Props) {
-  const router = useRouter();
-  const runRideLaunchPreflight = useRideLaunchPreflight();
   const snap = useAircraft(initial, mockOn);
+  const policeSightings = usePoliceSightings(!mockOn);
   const rideThresholds = useRideStatusThresholds();
   const fleetMap = useMemo(
     () => new Map<string, FleetEntry>(snap.aircraft.map((a) => [a.tail, a])),
@@ -83,12 +85,13 @@ export function RadarShell({
     [snap.aircraft],
   );
 
+  const visibleFlights = useMemo(() => snap.aircraft.filter(isVisibleFlight), [snap.aircraft]);
+
   const [rider, setRider] = useState<RiderPos | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [map, setMap] = useState<MaplibreMap | null>(null);
   const [showRings, setShowRings] = useState(false);
   const [showFlightPaths, setShowFlightPaths] = useState(false);
-  const [rideLaunching, setRideLaunching] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [stateCode, setStateCode] = useState<StateCode>(
     () => getSelectedStateCode(),
@@ -104,13 +107,6 @@ export function RadarShell({
   const [riderFocusRequest, setRiderFocusRequest] = useState(0);
   const focusSeqRef = useRef(initialFocusTail ? 1 : 0);
   const automaticStateLookupAttemptedRef = useRef(false);
-  const startRide = async () => {
-    if (rideLaunching) return;
-    setRideLaunching(true);
-    await runRideLaunchPreflight();
-    const mock = new URLSearchParams(window.location.search).get("mock");
-    router.push(mock ? `/ride?mock=${encodeURIComponent(mock)}` : "/ride");
-  };
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.dataset.radarMode = "true";
@@ -166,6 +162,8 @@ export function RadarShell({
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
         setRider({ lat, lon });
+        void setAutomaticallyDetectedCaliforniaRegion(lat, lon)
+          .catch(() => { /* Retry on the next location fix. */ });
         if (
           !automaticStateLookupAttemptedRef.current &&
           shouldAutomaticallyDetectState()
@@ -180,9 +178,10 @@ export function RadarShell({
               if (!response.ok) return null;
               return response.json() as Promise<{ stateCode?: StateCode }>;
             })
-            .then((result) => {
+            .then(async (result) => {
               if (result?.stateCode) {
-                setAutomaticallyDetectedStateCode(result.stateCode);
+                await setAutomaticallyDetectedStateCode(result.stateCode);
+                await setAutomaticallyDetectedCaliforniaRegion(lat, lon);
               }
             })
             .catch(() => {
@@ -207,7 +206,7 @@ export function RadarShell({
       }}
     >
       <RadarMap
-        aircraft={airborne}
+        aircraft={visibleFlights}
         rider={rider}
         showDistanceRings={showRings}
         distanceRingThresholds={rideThresholds}
@@ -219,6 +218,7 @@ export function RadarShell({
         onMapReady={setMap}
       />
       {!map && <DataLoadingScreen asOverlay />}
+      <PoliceSightingLayer map={map} sightings={policeSightings} interactive />
       <RadarLayerControls
         ringsActive={showRings}
         onToggleRings={() => setShowRings((v) => !v)}
@@ -240,11 +240,8 @@ export function RadarShell({
         onReturnToLocation={() => setRiderFocusRequest((seq) => seq + 1)}
         locationDisabled={!rider || !map}
       />
-      <button
-        type="button"
-        onClick={startRide}
-        disabled={rideLaunching}
-        aria-label={rideLaunching ? "Starting Ride" : "Start Ride"}
+      <TakeOffButton
+        variant="map"
         style={{
           position: "absolute",
           right: "max(14px, env(safe-area-inset-right, 0px))",
@@ -263,8 +260,6 @@ export function RadarShell({
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          cursor: rideLaunching ? "wait" : "pointer",
-          opacity: rideLaunching ? 0.72 : 1,
           touchAction: "manipulation",
           WebkitTapHighlightColor: "transparent",
         }}
@@ -280,15 +275,15 @@ export function RadarShell({
         >
           <MapRideIcon />
         </span>
-      </button>
+      </TakeOffButton>
       <AircraftTrailLayer
         map={map}
-        airborne={airborne}
+        airborne={visibleFlights}
         enabled={showFlightPaths}
       />
 
       <MapHeader
-        airborne={airborne}
+        airborne={visibleFlights}
         kind={status.kind}
         onSelect={(tail) => {
           focusSeqRef.current += 1;
@@ -330,7 +325,7 @@ function MapHeader({
   onSelect,
 }: {
   airborne: Aircraft[];
-  kind: "alert" | "clear";
+  kind: StatusKind;
   onSelect: (tail: string) => void;
 }) {
   const isAlert = kind === "alert";
@@ -342,8 +337,8 @@ function MapHeader({
       aria-live="polite"
       aria-label={
         airborne.length === 0
-          ? "No active flights"
-          : `${airborne.length} active flight${airborne.length === 1 ? "" : "s"}`
+          ? "Aircraft map"
+          : `${airborne.length} aircraft on the map`
       }
       style={{
         position: "absolute",
@@ -395,7 +390,7 @@ function MapHeader({
         </Link>
         {visibleAircraft.length > 0 && (
           <nav
-            aria-label="Active aircraft"
+            aria-label="Aircraft"
             className="ss-scroll"
             style={{
               minHeight: 42,
@@ -430,7 +425,7 @@ function MapHeaderAircraftButton({
 }) {
   const color = aircraftColorForTail(aircraft.tail);
   const isHelicopter = aircraft.role === "patrol" || aircraft.role === "sar";
-  const displayName = aircraft.nickname ?? aircraft.tail;
+  const displayName = aircraft.tail;
   const ariaLabel = `Center ${displayName} on the map`;
 
   return (
@@ -553,12 +548,12 @@ function AirborneBubbles({
           <Tooltip
             key={p.tail}
             side="right"
-            content={`Center ${p.nickname ?? p.tail} on the map`}
+            content={`Center ${p.tail} on the map`}
           >
             <button
               type="button"
               onClick={() => onSelect(p.tail)}
-              aria-label={`Center ${p.nickname ?? p.tail} on the map`}
+              aria-label={`Center ${p.tail} on the map`}
               className="ss-mono"
               style={{
                 flex: "0 0 auto",
@@ -782,11 +777,6 @@ function PlaneCard({ p }: { p: Aircraft }) {
         >
           {p.tail}
         </span>
-        {p.nickname && (
-          <span style={{ fontSize: 11, color: SS_TOKENS.fg1 }}>
-            &ldquo;{p.nickname}&rdquo;
-          </span>
-        )}
       </div>
       <div style={{ fontSize: 11, color: SS_TOKENS.fg2, marginTop: 5 }}>
         {p.operator}

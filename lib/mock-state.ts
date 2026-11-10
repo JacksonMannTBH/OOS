@@ -3,12 +3,8 @@
 // shape, no randomness, no time-of-day drift.
 //
 // Snapshot-level states: up, down, warning, eyes-up, mixed, multiple, stale.
-// Data-layer states: learning (forecast empty + Day 0 of 30),
-// full-data (predictor confident + learning panel hidden).
 
 import type { Snapshot, FleetRole } from "./types";
-import type { LearningState } from "./learning";
-import type { ForecastGrid, ForecastCell } from "./predictor";
 
 export const MOCK_STATES = [
   "up",
@@ -185,79 +181,7 @@ export function applyMockState(snap: Snapshot, state: MockState | null): Snapsho
       };
     case "learning":
     case "full-data":
-      // These two states are data-layer (forecast/learning), not
-      // snapshot-level. Fall through to the dedicated transformers
-      // (applyMockLearning, applyMockForecastGrid). Snapshot itself
-      // unchanged.
+      // Preserve old mock URLs without a separate data-layer feature.
       return snap;
   }
-}
-
-/** LearningState override for ?mock=learning / ?mock=full-data. */
-export function applyMockLearning(
-  real: LearningState,
-  state: MockState | null,
-): LearningState {
-  if (state === "learning") {
-    return {
-      firstSampleIso: new Date().toISOString(),
-      daysElapsed: 0,
-      daysRemaining: 30,
-      progress: 0,
-      stillLearning: true,
-    };
-  }
-  if (state === "full-data") {
-    return {
-      firstSampleIso: new Date(Date.now() - 31 * 86_400_000).toISOString(),
-      daysElapsed: 31,
-      daysRemaining: 0,
-      progress: 1,
-      stillLearning: false,
-    };
-  }
-  return real;
-}
-
-/**
- * ForecastGrid override. Learning state returns empty cells; full-data
- * synthesizes a deterministic 7×24 grid with realistic-looking commute-
- * shaped probabilities (peaks Mon–Fri 7–9 / 16–18 PT, lower weekends).
- */
-export function applyMockForecastGrid(
-  real: ForecastGrid,
-  state: MockState | null,
-): ForecastGrid {
-  if (state === "learning") {
-    return { cells: [], total_events: 0, generated_at: Date.now() };
-  }
-  if (state === "full-data") {
-    const cells: ForecastCell[] = [];
-    let total = 0;
-    for (let dow = 0; dow < 7; dow++) {
-      const weekday = dow >= 1 && dow <= 5;
-      for (let hour = 0; hour < 24; hour++) {
-        const commute =
-          weekday &&
-          ((hour >= 7 && hour <= 9) || (hour >= 16 && hour <= 18));
-        const base = commute ? 0.55 : weekday ? 0.18 : 0.12;
-        // Smooth daily curve so the heatmap looks plausible; deterministic.
-        const wave = 0.08 * Math.sin(((hour - 6) * Math.PI) / 12);
-        const probability = Math.max(0, Math.min(1, base + wave));
-        const sample_count = Math.round(probability * 22);
-        total += sample_count;
-        cells.push({
-          dow,
-          hour,
-          probability,
-          sample_count,
-          common_tails: [
-            { tail: "N305DK", nickname: "Bird 4", count: sample_count },
-          ],
-        });
-      }
-    }
-    return { cells, total_events: total, generated_at: Date.now() };
-  }
-  return real;
 }

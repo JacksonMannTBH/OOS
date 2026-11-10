@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { LogoMark } from "./brand/Logo";
 import { filterOpsAircraftByState } from "@/lib/aircraft-directory";
@@ -11,18 +11,19 @@ import { useRideStatusThresholds } from "@/lib/hooks/useRideStatusThresholds";
 import { SS_TOKENS } from "@/lib/tokens";
 import { haversineNm } from "@/lib/geo";
 import { proximityBandForDistance } from "@/lib/proximity-display";
-import { computeStatus } from "@/lib/status";
 import { aircraftVehicleType } from "@/lib/aircraft-type";
 import { AlertsOptInCard } from "./AlertsOptInCard";
 import { ProximityFlash } from "./ProximityFlash";
 import { SettingsButton } from "./SettingsButton";
 import { TakeOffButton } from "./TakeOffButton";
-import { StatusHero } from "./StatusHero";
+import { HomeActiveAircraft } from "./HomeActiveAircraft";
+import { isVisibleFlight } from "@/lib/aircraft-freshness";
+import { DataLoadingScreen } from "./DataLoadingScreen";
 import { LiveTrackingButton } from "./LiveTrackingButton";
 import { HomeBackground } from "./HomeBackground";
-import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
+import { RideHistory } from "./RideHistory";
+import type { Aircraft, Snapshot } from "@/lib/types";
 
-const HOME_TOP_OFFSET_PX = 50;
 type WatcherEntry = { plane: Aircraft; distanceNm: number | null };
 
 type Props = {
@@ -33,30 +34,29 @@ type Props = {
 
 export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, mockParam }: Props) {
   const snap = useAircraft(initial, mockOn);
-  const loading = snap.fetched_at <= 0;
   const stateId = useSelectedStateId();
   const { pos } = useRiderPos();
   const rideThresholds = useRideStatusThresholds();
+  const [initialLoadExpired, setInitialLoadExpired] = useState(false);
+  const hasSnapshot = snap.fetched_at > 0;
+  useEffect(() => {
+    setInitialLoadExpired(false);
+    if (hasSnapshot) return;
+    const timer = window.setTimeout(() => setInitialLoadExpired(true), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [stateId, hasSnapshot]);
 
   const stateAircraft = useMemo(
     () => filterOpsAircraftByState(snap.aircraft, stateId),
     [snap.aircraft, stateId],
   );
-  const stateSnap = useMemo(
-    () => ({ ...snap, aircraft: stateAircraft }),
-    [snap, stateAircraft],
+  const visibleFlights = useMemo(
+    () => stateAircraft.filter(isVisibleFlight),
+    [stateAircraft],
   );
   const airborne = useMemo(
     () => stateAircraft.filter((a) => a.airborne),
     [stateAircraft],
-  );
-  const fleetMap = useMemo(
-    () => new Map<string, FleetEntry>(stateAircraft.map((a) => [a.tail, a])),
-    [stateAircraft],
-  );
-  const status = useMemo(
-    () => computeStatus(stateSnap, fleetMap),
-    [stateSnap, fleetMap],
   );
 
   // All airborne planes, sorted by Haversine distance when rider location is
@@ -101,27 +101,29 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
       : "/map";
 
 
+  // Open the app using its most recent saved state.
+  if (!hasSnapshot && !initialLoadExpired) return <DataLoadingScreen />;
+
   return (
     <>
       <HomeBackground />
       <main
+        className="ss-home"
         style={{
           height: "100dvh",
           boxSizing: "border-box",
           width: "100%",
-          padding: `calc(clamp(52px, 13vw, 72px) + ${HOME_TOP_OFFSET_PX}px) clamp(14px, 5vw, 20px) 82px`,
           maxWidth: 430,
           margin: "0 auto",
           position: "relative",
           zIndex: 1,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          gap: "clamp(14px, 4vw, 18px)",
+          display: "grid",
+          gridTemplateRows: "minmax(0, 1fr) auto",
         }}
       >
+        <div className="ss-home-scroll">
         <LiveTrackingButton mockOn={mockOn} style={{
-          position: "absolute", top: `calc(max(8px, env(safe-area-inset-top)) + ${HOME_TOP_OFFSET_PX - 30}px)`,
+          position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)",
           left: "clamp(14px, 5vw, 20px)", zIndex: 3,
         }} />
         <SettingsButton
@@ -129,7 +131,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
           variant="plain"
           style={{
             position: "absolute",
-            top: `calc(max(8px, env(safe-area-inset-top)) + ${HOME_TOP_OFFSET_PX - 30}px)`,
+            top: "calc(env(safe-area-inset-top, 0px) + 12px)",
             right: "clamp(14px, 5vw, 20px)",
             width: 44,
             minHeight: 44,
@@ -150,42 +152,34 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
           style={{
             alignSelf: "center",
             display: "block",
-            width: 300,
-            height: 200,
+            width: "min(100%, 300px, 30dvh)",
+            aspectRatio: "3 / 2",
+            flexShrink: 0,
             WebkitTapHighlightColor: "transparent",
           }}
         >
           <LogoMark
-            height={200}
-            width={300}
+            height="100%"
+            width="100%"
             variant={
-              snap.fetched_at <= 0 || snap.aircraft.some((aircraft) => aircraft.airborne)
+              visibleFlights.length > 0
                 ? "open"
                 : "closed"
             }
           />
         </Link>
-        <div
-          style={{
-            position: "relative",
-            top: "clamp(16px, 4vw, 28px)",
-          }}
-        >
-          <StatusHero
-            status={status}
-            loading={loading}
-            unavailable={snap.source_ok === false && airborne.length === 0}
-            showPill={false}
-            frameless
-          />
+        <HomeActiveAircraft aircraft={visibleFlights} mockParam={mockParam} />
+
+        <RideHistory />
         </div>
 
         <div
+          className="ss-home-actions"
           style={{
             width: "100%",
             maxWidth: 460,
             alignSelf: "center",
-            marginTop: "clamp(44px, 12vw, 72px)",
+            padding: "12px clamp(14px, 5vw, 20px) calc(env(safe-area-inset-bottom, 0px) + 16px)",
             display: "flex",
             flexDirection: "column",
             gap: 12,
@@ -206,7 +200,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
               borderRadius: 18,
               border: "1px solid #fffdf8",
               background: "#fffdf8",
-              color: SS_TOKENS.alert,
+              color: "#050505",
               fontFamily: "inherit",
               fontSize: 18,
               fontWeight: 900,
@@ -222,7 +216,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
             View Map
           </Link>
         </div>
-
+      </main>
         <ProximityFlash
           active={
             nearest != null &&
@@ -233,7 +227,6 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
           color={nearestBand?.color}
         />
         <AlertsOptInCard />
-      </main>
     </>
   );
 }

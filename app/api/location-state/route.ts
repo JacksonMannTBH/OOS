@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import {
   stateCodeFromCensusResponse,
   validCoordinates,
@@ -15,13 +14,13 @@ export async function POST(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
   const lat = typeof body.lat === "number" ? body.lat : Number.NaN;
   const lon = typeof body.lon === "number" ? body.lon : Number.NaN;
   if (!validCoordinates(lat, lon)) {
-    return NextResponse.json({ error: "Invalid coordinates" }, { status: 400 });
+    return Response.json({ error: "Invalid coordinates" }, { status: 400 });
   }
 
   const url = new URL(CENSUS_COORDINATES_URL);
@@ -39,12 +38,12 @@ export async function POST(req: Request) {
     });
     if (!response.ok) throw new Error(`Census geocoder returned ${response.status}`);
     const stateCode = stateCodeFromCensusResponse(await response.json());
-    return NextResponse.json(
+    return Response.json(
       { stateCode },
       { status: stateCode ? 200 : 404, headers: { "Cache-Control": "no-store" } },
     );
   } catch {
-    return NextResponse.json(
+    return Response.json(
       { error: "State lookup unavailable" },
       { status: 502, headers: { "Cache-Control": "no-store" } },
     );

@@ -1,7 +1,4 @@
-// Single source of truth for how long Out Of Sight has been listening to
-// the sky?" Hot zones, takeoff forecasts, and the home prediction card all
-// read from getLearningState() so the "Learning your sky" panel says the
-// same thing wherever it appears.
+// Collection-age metadata used by the admin fleet-health page.
 //
 // The contract:
 //   - meta:first_sample_ts is written ONCE on the first successful track

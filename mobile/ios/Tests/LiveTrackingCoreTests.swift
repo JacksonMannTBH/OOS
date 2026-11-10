@@ -80,9 +80,12 @@ enum LiveTrackingCoreTests {
             let result = summary(snapshot([plane(age: 91)]))
             require(result.rideState == "Updating", "Position time must be checked separately")
         }
-        check("unlocated airborne aircraft cannot produce a false Clear or false nearest") {
+        check("unlocated aircraft cannot invent Clear or block located aircraft") {
             require(summary(snapshot([plane(latitude: nil)])).rideState == "Updating", "Missing aircraft position")
-            require(summary(snapshot([plane("VALID"), plane("UNKNOWN", latitude: nil)])).rideState == "Updating", "Unknown aircraft might be closer")
+            let located = summary(snapshot([plane("VALID"), plane("UNKNOWN", latitude: nil)]))
+            require(located.rideState == "Stop" && located.aircraftTail == "VALID", "Use the nearest aircraft with a usable position")
+            let expired = summary(snapshot([plane("OLD", latitude: 0, age: 91), plane("VALID", latitude: 0.1)]))
+            require(expired.rideState == "Watch" && expired.aircraftTail == "VALID", "An expired contact must not block a current one")
         }
         check("fallback position age is relative to feed time, not request completion") {
             let result = summary(snapshot([plane(age: 60, timestamp: false)], age: 20))
@@ -104,7 +107,43 @@ enum LiveTrackingCoreTests {
                 locationDate: now, configuration: config, now: now)
             require(result.rideState == "Updating", "Invalid location")
         }
-        check("a new session waits for a known state instead of showing Searching or a false Clear") {
+        try check("first use has no starting text or invented aircraft state") {
+            let initial = RideTrackingContent.initial(stateName: config.stateName, now: now)
+            require(initial.rideState.isEmpty && initial.message.isEmpty && !initial.hasKnownRideState, "No starting or unavailable-data copy")
+            require(initial.distanceNm == nil && initial.aircraftTail == nil, "No invented aircraft or distance")
+            require(initial.stateName == config.stateName, "Initial activity identifies the selected region")
+            let restored = try JSONDecoder().decode(RideTrackingContent.self, from: JSONEncoder().encode(initial))
+            require(restored == initial, "Widget and recovery preserve neutral first-use content")
+            require(RideTrackingCalculator.displayedContent(summary(nil), previous: restored) == nil,
+                    "Missing data does not invent a measured state")
+        }
+        check("restart immediately restores the complete previous state, even after its deadline") {
+            for fresh in [summary(snapshot([])), summary(snapshot([plane()])),
+                          summary(snapshot([plane(latitude: 0.05)])), summary(snapshot([plane(latitude: 0.1)]))] {
+                let restored = RideTrackingContent.initial(stateName: config.stateName, previous: fresh,
+                    now: now.addingTimeInterval(3600))
+                require(restored == fresh, "Keep the state, aircraft, distance and observation timestamp")
+            }
+            let unknown = RideTrackingContent.waiting("Waiting for location", now: now)
+            require(RideTrackingContent.initial(stateName: config.stateName, previous: unknown).message.isEmpty,
+                    "An unavailable placeholder is never restored as a result")
+        }
+        check("first valid result replaces empty content and later missing updates retain it") {
+            let initial = RideTrackingContent.initial(stateName: config.stateName, now: now)
+            for fresh in [summary(snapshot([])), summary(snapshot([plane()])),
+                          summary(snapshot([plane(latitude: 0.05)])), summary(snapshot([plane(latitude: 0.1)]))] {
+                let displayed = RideTrackingCalculator.displayedContent(fresh, previous: initial)
+                require(displayed == fresh && displayed?.hasKnownRideState == true, "First known result appears")
+                for unavailable in [summary(nil), summary(snapshot([], age: 46)),
+                                    summary(snapshot([plane()]), locationAge: 31),
+                                    summary(snapshot([], ok: false))] {
+                    let retained = RideTrackingCalculator.displayedContent(unavailable, previous: displayed)
+                    require(retained == fresh && retained?.hasKnownRideState == true,
+                            "Stale or failed data retains the result and its original timestamp")
+                }
+            }
+        }
+        check("unavailable data cannot create a replacement display or false Clear") {
             require(RideTrackingCalculator.displayedContent(summary(nil), previous: nil) == nil, "Missing initial feed")
             require(RideTrackingCalculator.displayedContent(summary(snapshot([], ok: false)), previous: nil) == nil, "Failed initial feed")
             require(RideTrackingCalculator.displayedContent(summary(snapshot([])), previous: nil)?.rideState == "Clear", "A healthy empty feed starts Clear")
@@ -146,7 +185,7 @@ enum LiveTrackingCoreTests {
             """
             let feed = try JSONDecoder().decode(RideTrackingSnapshot.self, from: Data(json.utf8))
             let result = summary(feed)
-            require(result.aircraft == "Patrol · Plane N123", "Type and nickname preserved before the tail number")
+            require(result.aircraft == "Plane N123", "Legacy feed nicknames must not appear in Live Activity content")
             let roundtrip = try JSONDecoder().decode(RideTrackingContent.self, from: JSONEncoder().encode(result))
             require(roundtrip == result, "App and widget must share content serialization")
         }

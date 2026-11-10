@@ -9,7 +9,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         window = UIWindow(windowScene: windowScene)
         let controller = OOSBridgeViewController()
-        controller.openHomeOnLoad = connectionOptions.urlContexts.contains { isLiveTrackingURL($0.url) }
+        controller.destinationOnLoad = connectionOptions.urlContexts.compactMap { destination(for: $0.url) }.first
         window?.rootViewController = controller
         window?.makeKeyAndVisible()
 
@@ -18,8 +18,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
         SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)
-        if URLContexts.contains(where: { isLiveTrackingURL($0.url) }) {
-            (window?.rootViewController as? OOSBridgeViewController)?.openHome()
+        if let path = URLContexts.compactMap({ destination(for: $0.url) }).first {
+            (window?.rootViewController as? OOSBridgeViewController)?.openDestination(path)
         }
     }
 
@@ -27,7 +27,24 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         SceneDelegateProxy.shared.scene(scene, continue: userActivity)
     }
 
-    private func isLiveTrackingURL(_ url: URL) -> Bool {
-        url.scheme == "oos" && (url.host == "home" || url.host == "ride")
+    func sceneWillResignActive(_ scene: UIScene) {
+        // Send this directly from the native scene. WebKit can delay its
+        // visibility event while iOS is closing, locking, or switching apps.
+        // Foreground-only location subscribers clear their Core Location
+        // watches on this event; background features retain the shared GPS service.
+        (window?.rootViewController as? OOSBridgeViewController)?.appWillPause()
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        (window?.rootViewController as? OOSBridgeViewController)?.appDidResume()
+    }
+
+    private func destination(for url: URL) -> String? {
+        guard url.scheme == "oos" else { return nil }
+        switch url.host {
+        case "home": return "home"
+        case "ride": return "ride"
+        default: return nil
+        }
     }
 }

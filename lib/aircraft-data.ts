@@ -1,8 +1,10 @@
 import { AIRCRAFT_DURATION_MINUTES, stateIdForOpsAircraftTail } from "./aircraft-directory";
+import { AIRCRAFT_FRESHNESS_MS } from "./aircraft-freshness";
 import {
   APP_STATES,
   DEFAULT_STATE_CODE,
   getAppState,
+  isSupportedStateCode,
   stateCodeForId,
   type StateCode,
 } from "./app-states";
@@ -90,8 +92,8 @@ export type StateIngestionSummary = {
 const TAKEOFF_CONFIRMATION_SAMPLES = 2;
 const LANDING_CONFIRMATION_SAMPLES = 2;
 const TAKEOFF_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1_000;
-const CURRENT_OBSERVATION_MAX_AGE_MS = 2 * 60 * 1_000;
-export const FLIGHT_TRANSITION_MAX_GAP_MS = CURRENT_OBSERVATION_MAX_AGE_MS;
+const CURRENT_OBSERVATION_MAX_AGE_MS = AIRCRAFT_FRESHNESS_MS;
+export const FLIGHT_TRANSITION_MAX_GAP_MS = 2 * 60_000;
 const FLIGHT_SESSION_LOST_GRACE_MS = 15 * 60 * 1_000;
 const MAX_OPEN_FLIGHT_SESSION_MS = 18 * 60 * 60 * 1_000;
 
@@ -120,7 +122,7 @@ export async function ensureCatalogSeeded(): Promise<void> {
   const existingTails = new Set(
     (existingRows ?? []).map((row) => String(row.tail).trim().toUpperCase()),
   );
-  const missing = FLEET.filter(
+  const missing = supportedFleet().filter(
     (entry) => !existingTails.has(entry.tail.trim().toUpperCase()),
   );
   if (missing.length === 0) return;
@@ -153,7 +155,7 @@ export async function getCatalog(
   stateCode?: StateCode,
 ): Promise<FleetEntry[]> {
   if (!isSupabaseConfigured()) {
-    return filterSeedByState(FLEET, stateCode);
+    return filterSeedByState(supportedFleet(), stateCode);
   }
 
   const data = await readAllCatalogPages((from, to) => {
@@ -280,7 +282,7 @@ export async function getDatabaseSnapshot(
       .order("tail"),
     db
       .from("ingestion_runs")
-      .select("finished_at")
+      .select("finished_at,source")
       .in("status", ["succeeded", "partial"])
       .not("finished_at", "is", null)
       .order("started_at", { ascending: false })
@@ -298,9 +300,9 @@ export async function getDatabaseSnapshot(
     const observedAt = parseTime(row.observed_at);
     const lastSeenAt = parseTime(row.last_seen_at);
     if (observedAt != null) fetchedAt = Math.max(fetchedAt, observedAt);
-    const hasCurrentObservation =
-      observedAt != null &&
-      snapshotReadAt - observedAt <= CURRENT_OBSERVATION_MAX_AGE_MS;
+    // Display the latest stored observation; elapsed time alone must not
+    // remove an aircraft or turn its last reported flight into "unknown".
+    const hasCurrentObservation = observedAt != null;
     const status = row.observation_status as Aircraft["observation_status"];
     // Keep a confirmed flight visible through the first grounded candidate.
     // It stops being airborne only after the second grounded sample confirms
@@ -310,6 +312,7 @@ export async function getDatabaseSnapshot(
       (status === "airborne" ||
         status === "airborne_candidate" ||
         status === "landing_candidate");
+    const hasDisplayObservation = hasCurrentObservation;
     const takeoffAt = parseTime(row.detected_takeoff_at);
     const takeoffConfidence =
       (row.takeoff_confidence as Aircraft["takeoff_confidence"]) ?? null;
@@ -323,7 +326,7 @@ export async function getDatabaseSnapshot(
       icao24: String(row.icao24),
       operator: String(row.operator),
       model: String(row.model),
-      nickname: row.nickname ? String(row.nickname) : null,
+      nickname: null,
       roleDescription: String(row.role_description ?? "—"),
       base: String(row.base),
       role: row.role as FleetEntry["role"],
@@ -334,6 +337,7 @@ export async function getDatabaseSnapshot(
       position_observed_at:
         observedAt != null ? new Date(observedAt).toISOString() : null,
       airborne,
+      last_known_airborne: false,
       observation_status: hasCurrentObservation ? status ?? "unknown" : "unknown",
       home_state_code: String(row.home_state_code),
       current_state_code: hasCurrentObservation && row.current_state_code
@@ -341,6 +345,9 @@ export async function getDatabaseSnapshot(
         : null,
       flight_session_id: hasCurrentObservation && row.flight_session_id
         ? String(row.flight_session_id)
+        : null,
+      tracking_started_at: hasCurrentObservation && row.tracking_started_at
+        ? String(row.tracking_started_at)
         : null,
       detected_takeoff_at: hasCurrentObservation && row.detected_takeoff_at
         ? String(row.detected_takeoff_at)
@@ -356,15 +363,15 @@ export async function getDatabaseSnapshot(
       low_burn_gph: finiteNumber(row.low_burn_gph),
       high_burn_gph: finiteNumber(row.high_burn_gph),
       reserve_min: finiteNumber(row.reserve_min),
-      lat: hasCurrentObservation ? finiteNumber(row.latitude) : undefined,
-      lon: hasCurrentObservation ? finiteNumber(row.longitude) : undefined,
-      altitude_ft: hasCurrentObservation
+      lat: hasDisplayObservation ? finiteNumber(row.latitude) : undefined,
+      lon: hasDisplayObservation ? finiteNumber(row.longitude) : undefined,
+      altitude_ft: hasDisplayObservation
         ? finiteNumber(row.altitude_ft)
         : undefined,
-      ground_speed_kt: hasCurrentObservation
+      ground_speed_kt: hasDisplayObservation
         ? finiteNumber(row.ground_speed_kt)
         : undefined,
-      heading: hasCurrentObservation ? finiteNumber(row.heading_deg) : undefined,
+      heading: hasDisplayObservation ? finiteNumber(row.heading_deg) : undefined,
       squawk: hasCurrentObservation && row.squawk ? String(row.squawk) : null,
       time_aloft_min:
         airborne && elapsedStart != null
@@ -378,7 +385,8 @@ export async function getDatabaseSnapshot(
 
   return {
     fetched_at: fetchedAt || snapshotReadAt,
-    source: inferSnapshotSource(data),
+    source: inferSnapshotSource(data, ingestionResult.data?.source),
+    source_ok: fetchedAt > 0 && snapshotReadAt - fetchedAt < CURRENT_OBSERVATION_MAX_AGE_MS,
     aircraft,
     live_seen_count: aircraft.filter((row) => row.observed).length,
   };
@@ -492,8 +500,8 @@ export async function ingestSnapshot(
     if (!wasObserved) {
       if (!shouldClearUnobservedState(previous)) continue;
       // A missing provider row is not a landing. Keep the active session
-      // through transient coverage gaps; the public read path already hides
-      // observations once they exceed CURRENT_OBSERVATION_MAX_AGE_MS.
+      // through transient coverage gaps; the public read path marks old
+      // observations as inactive after five minutes without new aircraft data.
       if (
         previous?.flight_session_id &&
         !isUnseenFlightSessionExpired(previous, snapshotObservedAt)
@@ -828,7 +836,7 @@ export async function ingestSnapshot(
         occurred_at: candidate.eventOccurredAt,
         payload: {
           tail: candidate.catalogRow.tail,
-          nickname: candidate.catalogRow.nickname,
+          nickname: null,
           model: candidate.catalogRow.model,
           state_code: candidate.catalogRow.home_state_code,
           takeoff_time_source: candidate.takeoffTimeSource,
@@ -910,12 +918,18 @@ function filterSeedByState(
   entries: FleetEntry[],
   stateCode?: StateCode,
 ): FleetEntry[] {
-  if (!stateCode) return entries;
-  return entries.filter((entry) => fleetEntryStateCode(entry) === stateCode);
+  return entries.filter((entry) => {
+    const code = fleetEntryStateCode(entry);
+    return isSupportedStateCode(code) && (!stateCode || code === stateCode);
+  });
+}
+
+function supportedFleet(): FleetEntry[] {
+  return FLEET.filter((entry) => isSupportedStateCode(fleetEntryStateCode(entry)));
 }
 
 function seedCatalogEntries(): AircraftCatalogEntry[] {
-  return FLEET.map((aircraft) => ({
+  return supportedFleet().map((aircraft) => ({
     aircraft,
     homeStateCode: fleetEntryStateCode(aircraft),
     nominalEnduranceMin: AIRCRAFT_DURATION_MINUTES[aircraft.tail] ?? null,
@@ -941,7 +955,7 @@ export function mergeSeedCatalogEntries(
     const key = seedEntry.aircraft.tail.trim().toUpperCase();
     if (!byTail.has(key)) byTail.set(key, seedEntry);
   }
-  return [...byTail.values()].sort((a, b) =>
+  return [...byTail.values()].filter((entry) => isSupportedStateCode(entry.homeStateCode)).sort((a, b) =>
     a.aircraft.tail.localeCompare(b.aircraft.tail),
   );
 }
@@ -950,7 +964,7 @@ function mergeSeedFleetEntries(entries: FleetEntry[]): FleetEntry[] {
   const byTail = new Map(
     entries.map((entry) => [entry.tail.trim().toUpperCase(), entry]),
   );
-  for (const seedEntry of FLEET) {
+  for (const seedEntry of supportedFleet()) {
     const key = seedEntry.tail.trim().toUpperCase();
     if (!byTail.has(key)) byTail.set(key, seedEntry);
   }
@@ -965,7 +979,7 @@ function fleetEntryToCatalogRow(entry: FleetEntry, updatedAt: string) {
     home_state_code: stateCodeForId(stateId),
     operator: entry.operator,
     model: entry.model,
-    nickname: entry.nickname,
+    nickname: null,
     base: entry.base,
     role: entry.role,
     role_confidence: entry.roleConfidence,
@@ -999,7 +1013,7 @@ function catalogRowToFleetEntry(row: Record<string, unknown>): FleetEntry {
     hex: String(row.icao24),
     operator: String(row.operator),
     model: String(row.model),
-    nickname: row.nickname ? String(row.nickname) : null,
+    nickname: null,
     base: String(row.base),
     role: row.role as FleetEntry["role"],
     roleConfidence: row.role_confidence as FleetEntry["roleConfidence"],
@@ -1267,7 +1281,7 @@ async function shouldSuppressTakeoffNotification(
   );
 }
 
-function inferSnapshotSource(rows: Record<string, unknown>[] | null): SnapshotSource {
-  const source = rows?.find((row) => row.source)?.source;
-  return source === "opensky" ? "opensky" : "adsbfi";
+function inferSnapshotSource(rows: Record<string, unknown>[] | null, lastSource?: unknown): SnapshotSource {
+  const source = rows?.find((row) => row.source)?.source ?? lastSource;
+  return source === "adsblol" ? "adsblol" : source === "opensky" ? "opensky" : "adsbfi";
 }

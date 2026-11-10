@@ -51,10 +51,14 @@ export type AircraftLive = {
   /** Timestamp of the upstream position used for lat/lon. */
   position_observed_at?: string | null;
   airborne: boolean;
+  /** Last observation was a flight, but it is stale. Display only, never a live alert. */
+  last_known_airborne?: boolean;
   observation_status?: "grounded" | "airborne_candidate" | "airborne" | "landing_candidate" | "unknown";
   home_state_code?: string;
   current_state_code?: string | null;
   flight_session_id?: string | null;
+  /** First airborne observation of the current flight. */
+  tracking_started_at?: string | null;
   detected_takeoff_at?: string | null;
   takeoff_confidence?: "low" | "medium" | "high" | null;
   /** Server snapshot instant used for exact endurance calculations. */
@@ -78,7 +82,7 @@ export type AircraftLive = {
 
 export type Aircraft = FleetEntry & AircraftLive;
 
-export type SnapshotSource = "adsbfi" | "opensky" | "mock";
+export type SnapshotSource = "adsbfi" | "adsblol" | "opensky" | "mock";
 
 /** Explicit provider-backed ground classification for a single observation. */
 export type AircraftGroundState = "grounded" | "airborne" | "unknown";

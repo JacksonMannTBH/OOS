@@ -1,3 +1,4 @@
+import { getDevicePreference, updateDevicePreferences } from "./device-preferences";
 import { isStateCode, type StateCode } from "./app-states";
 
 // Store exclusions so existing and newly added aircraft are tracked by default.
@@ -43,14 +44,16 @@ export function filterTrackedAircraft<T extends { tail: string }>(aircraft: T[],
 
 export function readAircraftTrackingPreferences(): AircraftTrackingPreferences {
   if (typeof window === "undefined") return {};
-  try {
-    return parseAircraftTrackingPreferences(JSON.parse(window.localStorage.getItem(AIRCRAFT_TRACKING_STORAGE_KEY) ?? "{}")) ?? {};
-  } catch {
-    return {};
-  }
+  const saved = getDevicePreference(AIRCRAFT_TRACKING_STORAGE_KEY);
+  if (saved === null) return {};
+  const parsed = parseAircraftTrackingPreferences(JSON.parse(saved));
+  if (!parsed) throw new Error("aircraft_preferences_invalid");
+  return parsed;
 }
 
-export function saveAircraftTrackingPreferences(preferences: AircraftTrackingPreferences): void {
-  window.localStorage.setItem(AIRCRAFT_TRACKING_STORAGE_KEY, JSON.stringify(preferences));
+export async function saveAircraftTrackingPreferences(preferences: AircraftTrackingPreferences): Promise<void> {
+  const parsed = parseAircraftTrackingPreferences(preferences);
+  if (!parsed) throw new Error("aircraft_preferences_invalid");
+  await updateDevicePreferences({ [AIRCRAFT_TRACKING_STORAGE_KEY]: JSON.stringify(parsed) });
   window.dispatchEvent(new Event(AIRCRAFT_TRACKING_CHANGE_EVENT));
 }

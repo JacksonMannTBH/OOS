@@ -14,6 +14,8 @@ export type FuelEstimateAircraft = {
   altitude_ft?: number | null;
   ground_speed_kt?: number | null;
   heading?: number | null;
+  /** First airborne observation of this flight, persisted across data gaps. */
+  tracking_started_at?: string | number | null;
   /** Exact detected takeoff instant, expressed as ISO-8601 or epoch ms. */
   detected_takeoff_at?: string | number | null;
   /** Confidence assigned by the flight-lifecycle detector. */
@@ -23,7 +25,7 @@ export type FuelEstimateAircraft = {
   /**
    * Legacy, minute-precision duration. Retained in the input shape so older
    * callers remain structurally compatible, but it is not precise enough to
-   * produce a confidence-aware endurance estimate.
+   * produce an exact elapsed-time endurance estimate.
    */
   time_aloft_min?: number | null;
   starting_fuel_estimate_gal?: number | null;
@@ -113,20 +115,13 @@ export function estimateFuelRemaining(
   if (!profile) return null;
   if (!isAircraftAirborne(aircraft)) return null;
 
-  if (
-    aircraft.takeoff_confidence !== "medium" &&
-    aircraft.takeoff_confidence !== "high"
-  ) {
-    return null;
-  }
-
-  const takeoffAtMs = timestampMs(aircraft.detected_takeoff_at);
+  const trackingStartedAtMs = timestampMs(aircraft.tracking_started_at);
   const asOfMs = timestampMs(aircraft.as_of);
-  if (takeoffAtMs == null || asOfMs == null || asOfMs < takeoffAtMs) {
+  if (trackingStartedAtMs == null || asOfMs == null || asOfMs < trackingStartedAtMs) {
     return null;
   }
 
-  const elapsedSeconds = (asOfMs - takeoffAtMs) / 1_000;
+  const elapsedSeconds = (asOfMs - trackingStartedAtMs) / 1_000;
   const catalogUpperBoundSeconds = profile.meanMaxDurationMin * 60;
   const remainingSeconds = clamp(
     catalogUpperBoundSeconds - elapsedSeconds,

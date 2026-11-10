@@ -1,5 +1,6 @@
 "use client";
 
+import { getDevicePreference } from "../device-preferences";
 import { useMemo, useSyncExternalStore } from "react";
 import { AIRCRAFT_TRACKING_CHANGE_EVENT, AIRCRAFT_TRACKING_STORAGE_KEY, parseAircraftTrackingPreferences } from "../aircraft-tracking";
 
@@ -16,14 +17,14 @@ function subscribe(listener: () => void) {
 }
 
 function snapshot() {
-  try { return window.localStorage.getItem(AIRCRAFT_TRACKING_STORAGE_KEY) ?? "{}"; }
-  catch { return "{}"; }
+  return getDevicePreference(AIRCRAFT_TRACKING_STORAGE_KEY) ?? "{}";
 }
 
 export function useAircraftTracking() {
   const serialized = useSyncExternalStore(subscribe, snapshot, () => "{}");
   return useMemo(() => {
-    try { return parseAircraftTrackingPreferences(JSON.parse(serialized)) ?? {}; }
-    catch { return {}; }
+    const parsed = parseAircraftTrackingPreferences(JSON.parse(serialized));
+    if (!parsed) throw new Error("aircraft_preferences_invalid");
+    return parsed;
   }, [serialized]);
 }

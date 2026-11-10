@@ -17,8 +17,6 @@ const ABOUT_INTRO_HTML = `
 `;
 
 const ABOUT_CLOSING_HTML = `
-<p>I'm not looking to create more criminals. This a fuck you to the policy makers that killed my friend by implementing a panopticon around our hobby. Stay out of sight and stay safe.</p>
-
 <p>LLC</p>
 `;
 

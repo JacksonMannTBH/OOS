@@ -1,4 +1,5 @@
-export const APP_STATES = [
+import { getDevicePreference, updateDevicePreferences } from "./device-preferences";
+export const ALL_STATES = [
   { id: "alabama", code: "AL", label: "Alabama", centerLat: 32.8, centerLon: -86.8 },
   { id: "alaska", code: "AK", label: "Alaska", centerLat: 64.2, centerLon: -152.0 },
   { id: "arizona", code: "AZ", label: "Arizona", centerLat: 34.3, centerLon: -111.7 },
@@ -51,7 +52,12 @@ export const APP_STATES = [
   { id: "wyoming", code: "WY", label: "Wyoming", centerLat: 43.0, centerLon: -107.6 },
 ] as const;
 
-export type AppState = (typeof APP_STATES)[number];
+// Keep national catalog metadata separate from the states currently offered in the app.
+export const APP_STATES = ALL_STATES.filter((state) => state.code === "WA" || state.code === "CA" || state.code === "TX");
+
+export const SUPPORTED_STATE_CODES = APP_STATES.map((state) => state.code);
+
+export type AppState = (typeof ALL_STATES)[number];
 export type AppStateId = AppState["id"];
 export type StateCode = AppState["code"];
 
@@ -65,25 +71,29 @@ export type StateSelectionSource = "automatic" | "manual";
 export function isStateCode(value: unknown): value is StateCode {
   return (
     typeof value === "string" &&
-    APP_STATES.some((state) => state.code === value.toUpperCase())
+    ALL_STATES.some((state) => state.code === value.toUpperCase())
   );
+}
+
+export function isSupportedStateCode(value: unknown): value is StateCode {
+  return typeof value === "string" && APP_STATES.some((state) => state.code === value.toUpperCase());
 }
 
 export function isAppStateId(value: unknown): value is AppStateId {
   return (
     typeof value === "string" &&
-    APP_STATES.some((state) => state.id === value)
+    ALL_STATES.some((state) => state.id === value)
   );
 }
 
 export function getAppState(value: string | null | undefined): AppState {
   const normalized = value?.trim();
   return (
-    APP_STATES.find(
+    ALL_STATES.find(
       (state) =>
         state.id === normalized || state.code === normalized?.toUpperCase(),
     ) ??
-    APP_STATES.find((state) => state.code === DEFAULT_STATE_CODE)!
+    ALL_STATES.find((state) => state.code === DEFAULT_STATE_CODE)!
   );
 }
 
@@ -97,8 +107,8 @@ export function stateIdForCode(code: StateCode): AppStateId {
 
 export function getSelectedStateCode(): StateCode {
   if (typeof window === "undefined") return DEFAULT_STATE_CODE;
-  const stored = window.localStorage.getItem(STATE_PREFERENCE_KEY);
-  return isStateCode(stored) ? stored.toUpperCase() as StateCode : DEFAULT_STATE_CODE;
+  const stored = getDevicePreference(STATE_PREFERENCE_KEY);
+  return isSupportedStateCode(stored) ? stored.toUpperCase() as StateCode : DEFAULT_STATE_CODE;
 }
 
 export function shouldAutoDetectStateSelection(
@@ -108,30 +118,37 @@ export function shouldAutoDetectStateSelection(
   return storedCode === null && storedSource === null;
 }
 
+let pendingStateSelections = 0;
+
 export function shouldAutomaticallyDetectState(): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === "undefined" || pendingStateSelections > 0) return false;
   // A pre-existing preference predates source tracking and must be treated as
   // an intentional/manual choice so an upgrade never overwrites it.
   return shouldAutoDetectStateSelection(
-    window.localStorage.getItem(STATE_PREFERENCE_KEY),
-    window.localStorage.getItem(STATE_SELECTION_SOURCE_KEY),
+    getDevicePreference(STATE_PREFERENCE_KEY),
+    getDevicePreference(STATE_SELECTION_SOURCE_KEY),
   );
 }
 
-export function setSelectedStateCode(
+export async function setSelectedStateCode(
   code: StateCode,
   source: StateSelectionSource = "manual",
-): void {
+): Promise<void> {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STATE_PREFERENCE_KEY, code);
-  window.localStorage.setItem(STATE_SELECTION_SOURCE_KEY, source);
+  const selectedCode = isSupportedStateCode(code) ? code.toUpperCase() as StateCode : DEFAULT_STATE_CODE;
+  pendingStateSelections++;
+  try {
+    await updateDevicePreferences({ [STATE_PREFERENCE_KEY]: selectedCode, [STATE_SELECTION_SOURCE_KEY]: source });
+  } finally {
+    pendingStateSelections--;
+  }
   window.dispatchEvent(
-    new CustomEvent(STATE_CHANGE_EVENT, { detail: { code } }),
+    new CustomEvent(STATE_CHANGE_EVENT, { detail: { code: selectedCode } }),
   );
 }
 
-export function setAutomaticallyDetectedStateCode(code: StateCode): boolean {
-  if (!shouldAutomaticallyDetectState()) return false;
-  setSelectedStateCode(code, "automatic");
+export async function setAutomaticallyDetectedStateCode(code: StateCode): Promise<boolean> {
+  if (!isSupportedStateCode(code) || !shouldAutomaticallyDetectState()) return false;
+  await setSelectedStateCode(code, "automatic");
   return true;
 }

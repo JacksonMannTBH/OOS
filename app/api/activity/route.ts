@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getRecentActivity } from "@/lib/activity";
 import { getAppState } from "@/lib/app-states";
 import { liveDataHeaders } from "@/lib/http-cache";
@@ -15,7 +14,7 @@ export async function GET(req: Request) {
   const stateParam = url.searchParams.get("state_id");
   const stateId = stateParam ? getAppState(stateParam).id : undefined;
   const entries = await getRecentActivity(limit, stateId);
-  return NextResponse.json(
+  return Response.json(
     { entries, fetched_at: Date.now() },
     {
       headers: liveDataHeaders("query=limit|state_id"),

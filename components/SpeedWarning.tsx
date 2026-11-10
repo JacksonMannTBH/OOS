@@ -102,7 +102,7 @@ function SpeedWarningActive() {
     <Overlay
       mph={mph}
       limit={limit}
-      nearestTail={nearest!.plane.nickname || nearest!.plane.tail}
+      nearestTail={nearest!.plane.tail}
       nearestNm={nearest!.distanceNm}
     />
   );

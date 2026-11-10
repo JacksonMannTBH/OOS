@@ -31,10 +31,13 @@ import {
   aircraftColorIndex,
   aircraftColorForTail,
 } from "@/lib/aircraft-colors";
-import { getAppState, type StateCode } from "@/lib/app-states";
+import { type StateCode } from "@/lib/app-states";
 import {
   estimateFuelRemaining,
 } from "@/lib/fuel-estimate";
+
+import { useCaliforniaRegion } from "@/lib/hooks/useCaliforniaRegion";
+import { getRegionalMapState } from "@/lib/california-regions";
 
 const DEFAULT_ZOOM = 9;
 const STATE_OVERVIEW_ZOOM = 6;
@@ -96,7 +99,7 @@ function setHelicopterFrame(map: MaplibreMap, activeFrame: number) {
 }
 
 const RIDER_COLOR = "#8bd2ff";
-const RIDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="${RIDER_COLOR}" fill-opacity="0.10"/><circle cx="24" cy="24" r="12" fill="${RIDER_COLOR}" fill-opacity="0.22"/><circle cx="24" cy="24" r="6" fill="${RIDER_COLOR}" stroke="white" stroke-width="2"/></svg>`;
+const RIDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="6" fill="${RIDER_COLOR}" stroke="white" stroke-width="2"/></svg>`;
 
 async function loadSvgBitmap(svg: string, size: number): Promise<ImageBitmap> {
   const blob = new Blob([svg], { type: "image/svg+xml" });
@@ -376,10 +379,8 @@ const EMPTY_SNAPSHOT: Snapshot = {
   startedAt: 0,
 };
 
-// Aircraft data polls every 10 seconds. Animate just beyond that window so a
-// marker keeps moving continuously and the next sample can reconcile it from
-// its exact on-screen position without a stop/jump cycle.
-const ANIM_MS = 10_500;
+// Reconcile each update quickly while keeping marker movement smooth.
+const ANIM_MS = 3_000;
 const POSITION_FRESHNESS_MS = 30_000;
 const MAX_TURN_BANK_DEG = 6;
 
@@ -471,11 +472,15 @@ export default function RadarMap({
   riderFocusRequest?: number;
   onMapReady?: (map: MaplibreMap | null) => void;
 }) {
+  const region = useCaliforniaRegion();
+  const regionRef = useRef(region);
+  regionRef.current = region;
+  const lastRegionRef = useRef(region);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MaplibreMap | null>(null);
   const readyRef = useRef(false);
   const animRef = useRef<number | null>(null);
-  const pulseRef = useRef<number | null>(null);
+  const aircraftAnimationRef = useRef<number | null>(null);
   const stateRef = useRef<Snapshot>(EMPTY_SNAPSHOT);
   const aircraftRef = useRef<Aircraft[]>(aircraft);
   const riderRef = useRef<RiderPos | null>(rider);
@@ -505,13 +510,14 @@ export default function RadarMap({
   onMapReadyRef.current = onMapReady;
   const focusRequestRef = useRef(focusRequest);
   focusRequestRef.current = focusRequest;
+  const appliedFocusRef = useRef<string | null>(null);
 
   // Mount the map once.
   useEffect(() => {
     if (!containerRef.current) return;
 
     const initialState = stateCodeRef.current
-      ? getAppState(stateCodeRef.current)
+      ? getRegionalMapState(stateCodeRef.current, regionRef.current)
       : null;
     const map = new maplibregl.Map({
       container: containerRef.current,
@@ -672,7 +678,7 @@ export default function RadarMap({
           "icon-image": "rider-dot",
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
-          "icon-size": 0.6,
+          "icon-size": 1,
         },
       });
 
@@ -712,7 +718,7 @@ export default function RadarMap({
           "icon-anchor": "center",
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
-          "text-field": ["get", "tail"],
+          "text-field": ["get", "label"],
           "text-font": MAP_LABEL_FONT,
           "text-size": [
             "interpolate",
@@ -796,22 +802,21 @@ export default function RadarMap({
       // apply the latest state here so that update cannot be lost and leave
       // live aircraft and trails rendered offscreen in the previous state.
       if (!riderRef.current && stateCodeRef.current) {
-        const selectedState = getAppState(stateCodeRef.current);
+        const selectedState = getRegionalMapState(stateCodeRef.current, regionRef.current);
         map.jumpTo({
           center: [selectedState.centerLon, selectedState.centerLat],
           zoom: STATE_OVERVIEW_ZOOM,
         });
       }
       lastStateRef.current = stateCodeRef.current;
+      lastRegionRef.current = regionRef.current;
       applyAircraft(aircraftRef.current);
       applyRider(riderRef.current);
       applyDistanceRings(riderRef.current);
-      if (focusRequestRef.current) {
-        focusTailOnMap(focusRequestRef.current.tail);
-      }
+      applyRequestedFocus();
       // Map mounted with rider already known (geolocation resolved
       // before MapLibre finished loading) — do the one-time zoom now.
-      if (riderRef.current && !didFirstRiderZoomRef.current) {
+      if (riderRef.current && !didFirstRiderZoomRef.current && !focusRequestRef.current) {
         didFirstRiderZoomRef.current = true;
         map.flyTo({
           center: [riderRef.current.lon, riderRef.current.lat],
@@ -819,7 +824,7 @@ export default function RadarMap({
           duration: 1000,
         });
       }
-      startPulse();
+      startAircraftAnimation();
       onMapReadyRef.current?.(map);
     };
     map.on("load", onLoad);
@@ -873,7 +878,7 @@ export default function RadarMap({
     return () => {
       readyRef.current = false;
       if (animRef.current) cancelAnimationFrame(animRef.current);
-      if (pulseRef.current) cancelAnimationFrame(pulseRef.current);
+      if (aircraftAnimationRef.current) cancelAnimationFrame(aircraftAnimationRef.current);
       map.off("load", onLoad);
       map.off("styledata", collapseAttributionPreset);
       map.off("dragstart", onUserInteract);
@@ -901,7 +906,7 @@ export default function RadarMap({
     if (readyRef.current) {
       applyRider(rider);
       applyDistanceRings(rider);
-      if (rider && !didFirstRiderZoomRef.current && mapRef.current) {
+      if (rider && !didFirstRiderZoomRef.current && mapRef.current && !focusRequestRef.current) {
         didFirstRiderZoomRef.current = true;
         // Skip the auto-zoom if the user has already manually panned
         // or zoomed (they meant it).
@@ -962,8 +967,7 @@ export default function RadarMap({
   }, [darkMode]);
 
   useEffect(() => {
-    if (!focusRequest) return;
-    focusTailOnMap(focusRequest.tail);
+    applyRequestedFocus();
   }, [focusRequest]);
 
   useEffect(() => {
@@ -973,18 +977,19 @@ export default function RadarMap({
 
   const lastStateRef = useRef<StateCode | undefined>(stateCode);
   useEffect(() => {
-    if (!stateCode || stateCode === lastStateRef.current) return;
+    if (!stateCode || (stateCode === lastStateRef.current && (stateCode !== "CA" || region === lastRegionRef.current))) return;
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     lastStateRef.current = stateCode;
-    const state = getAppState(stateCode);
+    lastRegionRef.current = region;
+    const state = getRegionalMapState(stateCode, region);
     map.flyTo({
       center: [state.centerLon, state.centerLat],
       zoom: STATE_OVERVIEW_ZOOM,
       duration: 800,
     });
     userInteractedAtRef.current = Date.now();
-  }, [stateCode]);
+  }, [stateCode, region]);
 
   // Auto-recenter every 5s, paused for 30s after the user pans or zooms.
   // Also paused while a plane is being followed — applyAircraft handles
@@ -1005,6 +1010,17 @@ export default function RadarMap({
     return () => clearInterval(id);
   }, [rider]);
 
+  function applyRequestedFocus() {
+    const request = focusRequestRef.current;
+    if (!request) return;
+    const key = `${request.tail}:${request.seq}`;
+    if (appliedFocusRef.current === key) return;
+    if (focusTailOnMap(request.tail)) {
+      appliedFocusRef.current = key;
+      didFirstRiderZoomRef.current = true;
+    }
+  }
+
   function focusTailOnMap(tail: string): boolean {
     const map = mapRef.current;
     if (!map || !readyRef.current) return false;
@@ -1014,11 +1030,9 @@ export default function RadarMap({
     followedTailRef.current = tail;
     setFuelCardTail(map, tail);
     popupRef.current?.remove();
-    const meta = stateRef.current.metaByTail.get(tail);
-    const label = meta?.nickname ?? tail;
     const popup = new maplibregl.Popup({
       anchor: "top",
-      closeButton: true,
+      closeButton: false,
       closeOnClick: false,
       closeOnMove: false,
       offset: 18,
@@ -1026,10 +1040,7 @@ export default function RadarMap({
     })
       .setLngLat(pos)
       .setHTML(
-        `<div style="font:700 12px/1.4 Math Bold,Cambria Math,STIX Two Math,serif;color:var(--ss-fg0)">` +
-          `<div>${label}</div>` +
-          `<a href="/plane/${tail}" style="color:var(--ss-sky);text-decoration:underline;font-weight:400">View detail</a>` +
-          `</div>`,
+        `<a href="/plane/${encodeURIComponent(tail)}" style="color:var(--ss-alert);text-decoration:none;font:inherit;font-weight:700">View Details</a>`,
       )
       .addTo(map);
     popup.on("close", () => {
@@ -1065,19 +1076,16 @@ export default function RadarMap({
     return true;
   }
 
-  function startPulse() {
+  function startAircraftAnimation() {
     const map = mapRef.current;
     if (!map) return;
     const start = Date.now();
     const tick = () => {
       const elapsedMs = Date.now() - start;
-      const phase = elapsedMs / 1600; // 1.6s loop
-      const sized = 0.86 + 0.14 * (Math.sin(phase * Math.PI * 2) + 1);
       const helicopterFrame = reducedMotionRef.current
         ? 0
         : helicopterFrameAt(elapsedMs);
       try {
-        map.setLayoutProperty("rider", "icon-size", sized);
         if (helicopterFrame !== lastHelicopterFrameRef.current) {
           setHelicopterFrame(map, helicopterFrame);
           lastHelicopterFrameRef.current = helicopterFrame;
@@ -1085,9 +1093,9 @@ export default function RadarMap({
       } catch {
         // Layer may not exist yet; ignore.
       }
-      pulseRef.current = requestAnimationFrame(tick);
+      aircraftAnimationRef.current = requestAnimationFrame(tick);
     };
-    pulseRef.current = requestAnimationFrame(tick);
+    aircraftAnimationRef.current = requestAnimationFrame(tick);
   }
 
   function applyDistanceRings(pos: RiderPos | null) {
@@ -1153,7 +1161,7 @@ export default function RadarMap({
     if (readyRef.current) applyAircraft(aircraft);
   }, [aircraft]);
 
-  // Compute new from/to and start a 1s linear interp.
+  // Compute new from/to and start a 3s linear interp.
   function applyAircraft(list: Aircraft[]) {
     const map = mapRef.current;
     if (!map) return;
@@ -1233,7 +1241,7 @@ export default function RadarMap({
         fromTrack: newFromTrack.get(a.tail) ?? targetTrack,
         toTrack: targetTrack,
         observedAtMs,
-        nickname: a.nickname,
+        nickname: null,
         color,
         labelIcon,
         label: a.tail.toUpperCase(),
@@ -1251,6 +1259,9 @@ export default function RadarMap({
       metaByTail: newMeta,
       startedAt: now,
     };
+
+    // A notification can open the map before its first aircraft snapshot arrives.
+    applyRequestedFocus();
 
     // Follow-mode recenter — once per snapshot, when the plane has drifted
     // either >FOLLOW_RECENTER_PX from center OR within FOLLOW_EDGE_MARGIN
@@ -1318,10 +1329,9 @@ export default function RadarMap({
           labelIcon: meta.labelIcon,
           label: meta.label,
         };
-        if (meta.nickname) props.nickname = meta.nickname;
         if (showFuelEstimateRef.current) {
           const plane = aircraftRef.current.find((a) => a.tail === tail);
-          const fuel = plane ? estimateFuelRemaining(plane) : null;
+          const fuel = plane && !plane.last_known_airborne ? estimateFuelRemaining(plane) : null;
           if (fuel) props.fuelLabel = fuel.label.replace(" - ", "\n");
         }
         features.push({
@@ -1344,7 +1354,7 @@ export default function RadarMap({
     <div
       ref={containerRef}
       role="region"
-      aria-label={`Live aircraft map, showing ${aircraft.length} airborne tail${aircraft.length === 1 ? "" : "s"}`}
+      aria-label={`Aircraft map, showing ${aircraft.filter((plane) => plane.airborne).length} live flights and ${aircraft.filter((plane) => plane.last_known_airborne).length} last known flights`}
       style={{
         position: "absolute",
         inset: 0,

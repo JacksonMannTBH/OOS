@@ -1,5 +1,6 @@
 "use client";
 
+import { getDevicePreference, resetDevicePreferences } from "@/lib/device-preferences";
 import { useState } from "react";
 import { resetPreferenceCookiesAction } from "@/app/(tabs)/settings/actions";
 import { disableAircraftAlerts } from "@/lib/aircraft-alerts/client";
@@ -71,7 +72,7 @@ export function ResetPreferencesButton() {
 
     try {
       const hasAlertIdentity = Boolean(
-        window.localStorage.getItem(ALERT_DEVICE_ID_KEY),
+        getDevicePreference(ALERT_DEVICE_ID_KEY),
       );
       const hasPushSubscription = await hasBrowserPushSubscription();
       if (hasAlertIdentity || hasPushSubscription) {
@@ -81,6 +82,7 @@ export function ResetPreferencesButton() {
 
       await stopLiveTracking();
       await resetPreferenceCookiesAction();
+      await resetDevicePreferences();
       clearLocalStorage();
       window.location.assign("/settings");
     } catch {

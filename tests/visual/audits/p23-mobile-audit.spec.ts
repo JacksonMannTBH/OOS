@@ -22,7 +22,6 @@ const ROUTES: Array<{ name: string; path: string; settleMs?: number }> = [
   { name: "02-home-mock-up", path: "/?mock=up", settleMs: 2000 },
   { name: "03-map", path: "/map", settleMs: 4000 },
   { name: "04-map-mock-up", path: "/map?mock=up", settleMs: 4000 },
-  { name: "05-forecast", path: "/forecast", settleMs: 1500 },
   { name: "07-about", path: "/about", settleMs: 1500 },
   { name: "08-help", path: "/help", settleMs: 1500 },
   { name: "09-legal", path: "/legal", settleMs: 1500 },

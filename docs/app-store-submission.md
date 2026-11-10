@@ -1,36 +1,154 @@
-# Out Of Sight App Store submission draft
+# Out Of Sight App Store release
 
-Apple enrollment is active per the owner's October 9, 2026 update. The
-listing below describes the core aircraft experience. Upload must wait for a
-tested iPhone build, active signing, notification configuration, and deployment
-of the matching website changes. Nothing in this draft has been submitted.
+## App Store 1.0.1 (97) — November 9, 2026
 
-## Listing fields
+Build 97 replaces build 85 in the version 1.0.1 review submission. It includes
+police sighting reports, first-use guidance, nearby Still Here / Not Seen voting,
+and the owner's latest dialog edits. Signed archive/export and live backend
+checks passed; the exported interface matches all 205 tested phone files.
+Apple processed the upload without errors or warnings. Version 1.0.1 and its
+new submission were both verified as Waiting for Review at 6:54 PM Pacific.
+Automatic release after approval remains selected. Existing screenshots were
+preserved, with release notes and reviewer instructions updated for the feature.
+Records: `.local/release-1.0.1-97/release-record.json`.
 
-| Field | Draft value |
+## TestFlight build 1.0 (34) — October 27, 2026
+
+Home retains its heading and visible aircraft during connection interruptions,
+including after reopening the app. Ride mode has larger status text, a smaller
+map placed higher, a flight estimate directly above aircraft information, and
+vertically centered aircraft metrics. Development build 34 was installed and
+launched directly on the owner's phone before the owner authorized TestFlight upload.
+
+All 150 app tests passed, along with mobile type checking, packaged-interface
+build, four ride status previews, and phone/tablet layout checks. The archive
+matches all 202 tested interface files. Exported signatures, production APNs,
+and matching app/widget build numbers passed. Apple accepted the upload at
+12:24 PM Pacific. Apple processed and approved build 34 for TestFlight; status
+is Testing. Owner Phone Testing and the four other existing individual testers
+are assigned, covering all five testers. Test notes were saved and automatic
+tester notification enabled.
+
+[TestFlight build 34](https://appstoreconnect.apple.com/teams/afbc0f39-09ef-49b4-9029-e5ffd03729a4/apps/6821150916/testflight/ios/1b8aa9cf-33b0-48b5-8789-aaa506e20d7c).
+
+No public App Store submission was made. Release records are in
+`.local/release-1.0-34/`.
+
+## TestFlight build 1.0 (31) — location lifecycle fix
+
+Ordinary Home/map GPS watches now pause when OOS is hidden or receives a native
+pause event and resume when it returns. Explicit ride recording and Live Tracking
+remain controlled by their separate native sessions. This addresses the missing
+UI watch cleanup found after the owner reported background location indication
+with both controls showing Start. The owner installed TestFlight build 31 and
+confirmed the location indicator clears outside OOS with both controls showing
+Start. The owner also confirmed active ride recording and Live Tracking still
+work while locked/backgrounded on build 31.
+
+All 148 app tests, mobile type checking, packaged interface tests including
+location lifecycle checks, archive/export and signed bundle validation passed.
+Apple accepted the upload at 12:20 PM Pacific on October 26. TestFlight status is
+Testing, assigned to the single owner tester through Owner Phone Testing. Testing
+notes were saved and automatic owner notification enabled. No public App Store
+submission was made.
+Artifacts and test notes are in `.local/release-1.0-31/`.
+The owner-approved description was saved to App Store Connect version 1.0,
+English (U.S.), on October 26. Exact copy: `.local/release-1.0-31/description-approved.txt`.
+This metadata save did not submit the app for review.
+
+## TestFlight build 1.0 (30) — October 26, 2026
+
+The owner authorized release preparation and TestFlight testing after confirming
+background ride recording works on the development build. Version 1.0 (30)
+archived, exported, and uploaded successfully at 11:50 AM Pacific. Apple processed
+and approved it for TestFlight; status is Testing. Only the owner's existing
+Jackson Mann tester account was assigned and notified. Test notes are saved.
+
+[TestFlight build 30](https://appstoreconnect.apple.com/teams/afbc0f39-09ef-49b4-9029-e5ffd03729a4/apps/6821150916/testflight/ios/7d9272c7-9763-4912-8f5c-b32a117a0841).
+
+All 143 app tests and 52 native ride/tracking/recovery/widget checks passed,
+as did packaged-interface browser tests, mobile type checking, backend checks,
+and release validation. The exported app and widget have matching build numbers,
+valid distribution signatures, and production APNs entitlements on the app.
+Exported interface assets match the tested bundle. The owner installed TestFlight build 30 and confirmed Send test notification
+arrives on the physical phone, verifying production push delivery.
+
+Native iPad verification passed on the iPad Air 11-inch (M3) simulator running
+27.0. Home was checked in portrait and landscape with three saved-ride fixtures;
+Start Ride and View Map remained reachable after a swipe. View Map opened and
+the ride confirmation opened/cancelled. Screenshots and the passing XCTest result
+are saved with the release artifacts. Apple's reported 27.2 was not available.
+
+The owner still saw build 13 in TestFlight after refreshing and opening the email
+invitation. A dedicated external group, Owner Phone Testing, now contains only
+build 30 and the owner's existing phone tester account. No public link was enabled.
+The owner confirmed build 30 became available after this group assignment.
+The owner subsequently installed build 30 and confirmed the test notification arrives.
+
+The owner is preparing the demonstration recording and screenshots. A concise
+App Store description draft is saved in
+`.local/release-1.0-30/description-draft.txt`; it has not been published.
+The public App Store resubmission remains pending. No website or backend changes
+were deployed. Release artifacts and logs are in `.local/release-1.0-30/`.
+
+## TestFlight build 1.0 (12) — October 18, 2026
+
+The owner requested a new TestFlight build and explicitly prohibited public
+App Store publication. Build 12 includes Texas (84 aircraft; 343 across WA/CA/TX),
+native persistence for aircraft selections and state/alert preferences, and
+alert-registration recovery. All 141 automated tests passed.
+
+The signed archive and upload succeeded at 11:39 AM PDT. App Store Connect
+processed and approved build 12 for TestFlight; the same four existing individual
+testers are assigned. Testing notes are saved. Automatic notifications were left
+off, and the final Notify Testers action is pending owner permission to send.
+
+Build ID: `7b271dae-5d92-4b80-b557-b6a54cd4146c`.
+[TestFlight build 12](https://appstoreconnect.apple.com/teams/afbc0f39-09ef-49b4-9029-e5ffd03729a4/apps/6821150916/testflight/ios/7b271dae-5d92-4b80-b557-b6a54cd4146c).
+
+Netlify production deploy `6ad5133481b34cfde8049ca6` is live. Production checks
+returned 343 mobile catalog entries (WA 29, CA 230, TX 84) and a healthy Texas
+aircraft endpoint with 84 entries. The database and collector already include
+Texas. No new public App Review submission or App Store release was made.
+Historical App Store metadata below remains unchanged. A future Git-based
+website deploy must retain these source changes to preserve Texas support.
+
+## Current release — October 12, 2026
+
+Version **1.0 (11)** was successfully **submitted to Apple App Review** on
+October 12, 2026 at 11:59 AM PDT. Apple confirmed “1 Item Submitted”; the
+submission detail status is **Waiting for Review**.
+This is not yet an approved or public release.
+
+Submission ID: `230cce38-a202-4737-84a5-6935b3ab6a65`.
+[App Review submission](https://appstoreconnect.apple.com/apps/6821150916/distribution/reviewsubmissions/details/230cce38-a202-4737-84a5-6935b3ab6a65).
+
+The owner approved a **free, United States-only iPhone launch**, with automatic
+release after Apple approval. Mac and Apple Vision Pro distribution are disabled.
+The app uses the new OOS backend and offers Washington and California only.
+The catalog contains tracked public-safety aircraft, not every aircraft physically
+within those states.
+
+| Field | Saved value |
 | --- | --- |
-| Name | Out Of Sight |
+| Name | Out Of Sight: Aircraft Tracker |
 | Subtitle | Public safety aircraft tracker |
-| Primary language | English US |
+| Apple ID | 6821150916 |
 | Bundle ID | live.outofsight.app |
-| Version | 1.0 |
-| Build | 1; increment for later uploads |
-| Suggested SKU | oos-iphone-001 |
-| Suggested category | Reference |
+| Version / build | 1.0 / 11 |
+| SKU | oos-iphone-001 |
+| Category / age rating | Reference / 4+ |
+| Language | English (U.S.) |
+| Copyright | 2026 Jackson Mann |
+| Price / availability | Free / United States |
+| Release | Automatically after App Review |
 | Support URL | https://outofsight.live/help |
 | Privacy URL | https://outofsight.live/legal#privacy |
 | Marketing URL | https://outofsight.live |
-| Suggested release setting | Manual release after approval |
-
-Confirm name availability, category, copyright ownership, pricing, distribution
-regions, age-rating answers, and the review contact before creating the final
-record. The URLs need a live check after deployment. Apple's [app information](https://developer.apple.com/help/app-store-connect/reference/app-information/app-information)
-and [version information](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information)
-describe the fields and their limits.
 
 ### Promotional text
 
-Explore public-safety aircraft by state, follow available flight paths, and view aircraft details with a focused map and Ride Mode.
+Explore public-safety aircraft by state, view available flight paths, and keep nearby aircraft information handy with Live Tracking and a Home Screen widget.
 
 ### Keywords
 
@@ -38,84 +156,97 @@ aviation,helicopter,plane,flight,radar,ADS-B,police,emergency,map,tracking
 
 ### Description
 
-Explore law-enforcement and public-safety aircraft activity across the United States with Out Of Sight.
+Explore law-enforcement and public-safety aircraft activity in Washington and California with Out Of Sight.
 
-Choose a state to focus the map and tracked aircraft list. Browse aircraft profiles, see available positions and flight paths, and adjust which aircraft appear in your view.
+Choose Washington or California to focus the map and tracked aircraft list. Browse aircraft profiles, see available positions and flight paths, and adjust which aircraft appear in your view.
 
-Ride Mode brings nearby aircraft information into a focused display with distance, direction, and speed when location is available. Customize distance bands, time format, contrast, and screen-wake behavior in Settings.
+Ride Mode shows nearby aircraft distance and direction, with an optional speedometer. Customize distance bands, time format, contrast, and screen-wake behavior in Settings.
+
+Start optional Live Tracking from Home to see the nearest tracked aircraft, distance, and Clear, Watch, Warning, or Stop on your Lock Screen and supported Dynamic Island. Add the OOS Aircraft Home Screen widget for a quick view of the latest available result. When new data is unavailable, these displays retain their last result and original update time.
 
 Aircraft data comes from public observations. Coverage and freshness vary, and an aircraft may be missing or its position delayed. An internet connection is required for live information. Location permission is optional and is used for features that depend on your position.
 
 Out Of Sight is an independent project and is not affiliated with a government agency or aircraft operator. It is for informational use, not navigation, emergency response, or collision avoidance. Use the app only when it is safe to do so.
 
-### Notification copy after validation
+### Reviewer notes
 
-Add this paragraph to the description only after physical-device push tests pass:
+No sign-in is required. Open Home, then Map to view available aircraft. Select Washington or California in Settings > Notifications & state. Settings also contains the aircraft catalog, display preferences, Help, and Legal & privacy.
 
-Enable optional takeoff notifications for tracked aircraft in your selected state. Adjust your aircraft selections and turn alerts off at any time in Settings.
+Aircraft observations depend on third-party coverage and real flight activity; a state may have no currently airborne aircraft. The catalog remains available to browse. This app is informational and does not provide navigation or collision avoidance.
 
-## Reviewer notes draft
+Location permission is optional. Map and Ride Mode use it for position, distance, and speed on the device. The map may send one location fix through our server to the US Census geocoder to choose the initial state; map tile requests also reveal the viewed area to the tile provider. Ride Mode has optional screen-wake and MPH speedometer controls.
 
-The main aircraft features do not require an account. Start at Home, open Map,
-and choose a state. Settings provides the tracked aircraft catalog, display
-preferences, Help & support, and Legal & privacy.
+On iOS 16.2+, the small Live button on Home starts and stops Live Tracking. Background location is used only during this user-started session to calculate aircraft distances locally while the phone is locked or another app is open. Always authorization is not requested. End Ride does not stop Live Tracking; tap Live on Home to stop it. The Live Activity shows aircraft type and tail, distance in nautical miles, and the user's distance-band status. Tap it to reopen Home. Unavailable or expired observations retain the last result and original timestamp rather than implying a fresh Clear state.
 
-Aircraft observations depend on third-party coverage and actual flight activity.
-A state may have no currently airborne aircraft. The catalog remains available
-to browse. Location permission is optional; allowing it enables position,
-distance, speed, and Ride Mode features. Ride Mode includes an optional
-screen-wake setting, an optional MPH speedometer, and a user-started Live
-tracking session from the small Live button on Home on iOS 16.2+.
-Live tracking uses background location to calculate aircraft distances on the
-device while another app is open or the phone is locked. It does not request
-Always location authorization. Tap Live on Home to start or stop the session. Ending Ride Mode leaves
-Live tracking running.
-The activity shows the nearest tracked airborne aircraft in the selected state,
-distance in nautical miles, and Stop/Warning/Watch/Clear using the user's Ride
-Mode thresholds. Expired location or aircraft data does not display a fresh
-Clear state. Tap the activity to reopen Home.
+The small OOS Aircraft Home Screen widget works independently of Live Tracking and opens Home when tapped. iOS controls its refresh schedule; missing data retains its last known result.
 
-The iPhone app uses Capacitor with its screens, Help, and assets packaged inside
-the app, native location access, native screen-wake support, and a WidgetKit Live
-Activity. Live aircraft data, map tiles, flight history, forecasts, and alerts use
-online services. Home, Help, and local display controls can open offline.
-Unavailable aircraft data must not appear as a fresh Clear state.
+The app packages its interface and Help locally. Aircraft data, map tiles, flight history, and alerts require internet. Home and Help can open offline. The app has no purchases or checkout.
 
-After notification configuration and testing are complete, include these steps:
-Open Settings → Notifications & state, select a state, turn notifications on,
-and allow the iPhone prompt. Use Send test notification to verify delivery.
+### Published privacy disclosures
 
-Before submission, replace conditional instructions with the tested build's
-final behavior and supply a monitored review-contact email and phone number.
-Do not claim that notifications work until their complete delivery path passes.
+The owner explicitly approved Apple's privacy confirmation. Disclosures are
+published, with no advertising tracking:
 
-## Screenshots to capture
-
-Capture the actual tested iPhone app: Home, Map with aircraft details, the
-aircraft catalog, Ride Mode, and notification preferences. Use a clear example
-state and remove incidental personal location from marketing captures. Do not
-present mock aircraft positions as current real observations. Existing Android
-artwork is not a substitute for iPhone screenshots. Confirm the required device
-sizes in [Apple's screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications/).
-
-## Privacy answers to finish
-
-Use this inventory to complete the App Store privacy questionnaire after checking
-the deployed services and final archive. These are not submitted privacy answers.
-Apple requires consideration of data collected by partners and through the app's
-web content, not just native code. [App privacy details](https://developer.apple.com/app-store/app-privacy-details/)
-
-| Data path | Current implementation | Remaining check |
+| Data | Purposes | Linked |
 | --- | --- | --- |
-| Location and heading | Map, Ride, and opt-in background Live tracking calculations occur on device; native aircraft requests contain only state and cache timestamp | Confirm outgoing requests, including map tiles, and provider retention |
-| Notifications | Random device ID, selected state, aircraft preferences, and FCM token are sent to the subscription service | Identify applicable identifier and usage categories, purposes, linkage, and provider practices |
-| Preferences | Stored locally; alert selections also sync to the server when alerts are enabled | Distinguish local-only preferences from uploaded choices |
-| Technical requests | Hosting, database, map, and push services process request data | Review retained IP addresses, diagnostics, SDK manifests, and provider settings |
+| Precise location | App functionality | Yes, conservatively accounting for provider request logs |
+| Device ID | App functionality | Yes |
+| Product interaction | App functionality and product personalization | Yes |
+| Other diagnostic data | Analytics and app functionality | Yes |
+| Other data types | Analytics (anonymous Firebase metadata) | No |
 
-Do not select “Data Not Collected” or finalize tracking/linkage answers from the
-location behavior alone. Check the entire configured app and its partners.
+Location calculations for Ride/Live Tracking occur on the device. The initial
+map state lookup can send one location fix through our server to the US Census
+geocoder, and tile requests reveal the viewed map area. Notification identifiers,
+preferences, and delivery diagnostics are stored by online services. Firebase
+SDK manifests and partner privacy policies were reviewed. Public Help and Legal
+were updated; the live privacy page includes the location lookup, SDK metadata,
+and Home Screen widget. Website commit:
+`a448a937336fa93da3aa661b36bf2711792d4e88`.
 
-## Release findings
+### Validation and artifacts
+
+- Mobile type check and web build passed; Capacitor assets synchronized.
+- Nine recovery, twenty tracking, and seven widget-storage tests passed.
+- Build 11 signed archive and App Store upload succeeded; both app and widget
+  have matching version/build and verified signatures.
+- Build 11 simulator build and installation passed; Home → Settings → catalog
+  UI checks passed on iPhone 18 Pro and Pro Max simulators. One exploratory
+  capture failed due to an incorrect “Tracked Aircraft” test label; correcting
+  it to the actual “Tracked Aircrafts” label passed without app changes.
+- Uploaded two medium iPhone screenshots (Home and Washington catalog) and four
+  large iPhone screenshots (Home, catalog, map, Settings). Captures use actual
+  app screens and real observations, with location permission denied. Large
+  Home/map captures use the identical interface from build 10; medium captures
+  and large catalog/Settings use build 11. Loading/unfinished captures were
+  excluded. Apple accepted the dimensions and final submission validation.
+- No non-exempt encryption is declared; HTTPS uses operating-system encryption.
+- Release artifacts are kept locally under `.local/release-1.0-11/` (ignored).
+- Prior physical-device Live Tracking, widget, and development push checks are
+  documented below. Production TestFlight notification delivery has not been
+  independently verified; no claim of a completed production push test is made.
+
+## Organization conversion request — October 12, 2026
+
+At the owner's explicit request, submitted Apple's Individual to Organization
+Membership Update for **QWIKWRK LLC**, United States, D-U-N-S **148645084**.
+The request asks for public developer name **QwikWrk** and seller name
+**QWIKWRK LLC** for the existing app and team. Owner supplied founder status,
+no separate company membership, no Tax ID associated with the current individual
+membership, and no known DBA/trade name.
+
+Apple confirmed receipt: “Thanks for contacting us” and stated it would review
+the request and respond within one business day. The conversion and public name
+change are **pending Apple's verification and approval**, not completed. The
+owner explicitly chose to keep automatic app release enabled while this request
+is processed. Confirmation screenshot is stored locally at
+`.local/release-1.0-11/qwikwrk-conversion-submitted.png`.
+
+## Historical release findings
+
+The entries below describe earlier packages and their state at the time. The
+current release section above supersedes earlier statements that no upload or
+website deployment occurred.
 
 - The website changes were published on October 9, 2026 in commit
   `2463c10a1e47288fccd67ee90b7e791fa9e3d351`, Netlify deploy

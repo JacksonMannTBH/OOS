@@ -1,30 +1,18 @@
 "use client";
 
-// Polls /api/trails for the currently-airborne tail set and renders a
+// Receives live trails for the currently-airborne tail set and renders a
 // polyline + endpoint dots behind each plane on /map.
 //
-// PROMPT_22 rebuild on the confirmed-working PROMPT_19C strip-back
-// (PR #119) — the data path was proven; this brings back halo +
-// endpoint dots + zoom-interpolated width + explicit z-ordering.
-//
-// One deviation from PROMPT_22's "decisions locked" section, on the
-// strength of the live visual feedback after #119 deployed:
-//   - Line color is WHITE, not SS_TOKENS.sky. The cyan brand token
-//     (#5BB6FF) read too close to the map's warm road highlights.
-//     White has strong luminance contrast against the dark basemap and
-//     can't be perceptually mistaken for any existing rider-facing element.
-//   - Widths bumped well past the prompt's spec because Alex
-//     reported the strip-back's flat 16 px still read skinny on
-//     prod. Going wider so a glance-at-a-stoplight rider can
-//     find the trail without looking.
-//
-// The TrailStatusBadge from #119 stays as a debug aid. [trail]
-// console.debug lines stay. Both clean up in a follow-up after the
-// rebuild has soaked.
+// Thin aircraft-colored lines keep a consistent opacity along the full
+// recorded path. A subtle dark outline separates them from map roads.
 
 import { useEffect, useRef } from "react";
+import { subscribeLiveState } from "@/lib/live-data-client";
+import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
+import { stateCodeForId } from "@/lib/app-states";
 import type { Map as MaplibreMap, GeoJSONSource } from "maplibre-gl";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
+import { smoothFlightPath } from "@/lib/flight-path-smoothing";
 import type { Aircraft } from "@/lib/types";
 
 const SOURCE_ID = "aircraft-trails";
@@ -35,12 +23,9 @@ const START_DOT_LAYER_ID = "aircraft-trail-start-dot";
 const END_DOT_LAYER_ID = "aircraft-trail-end-dot";
 const AIRCRAFT_LAYER_ID = "aircraft";
 const AIRCRAFT_ROTOR_LAYER_ID = "aircraft-heli-rotor";
-const POLL_MS = 10_000;
 const PULSE_PERIOD_MS = 1600;
-const MIN_TRAIL_OPACITY = 0.22;
-const MAX_TRAIL_OPACITY = 0.95;
-const MIN_HALO_OPACITY = 0.12;
-const MAX_HALO_OPACITY = 0.3;
+const TRAIL_OPACITY = 0.9;
+const HALO_OPACITY = 0.28;
 const TRAIL_LAYER_IDS = [
   HALO_LAYER_ID,
   LAYER_ID,
@@ -50,57 +35,26 @@ const TRAIL_LAYER_IDS = [
 
 type TrailPoint = { lat: number; lon: number; ts: number };
 type TrailsResponse = { trails: Record<string, TrailPoint[]> };
-type TrailSegmentProps = {
+type TrailProps = {
   tail: string;
   color: string;
-  opacity: number;
-  haloOpacity: number;
-  sort: number;
 };
 
 type EndpointKind = "start" | "end";
 type EndpointProps = { tail: string; kind: EndpointKind; color: string };
 
-function fadeValue(progress: number, min: number, max: number): number {
-  const clamped = Math.max(0, Math.min(1, progress));
-  const eased = clamped ** 1.35;
-  return min + (max - min) * eased;
-}
-
 function buildFeatureCollection(
   trails: Record<string, TrailPoint[]>,
-): GeoJSON.FeatureCollection<GeoJSON.LineString, TrailSegmentProps> {
-  const features: GeoJSON.Feature<GeoJSON.LineString, TrailSegmentProps>[] = [];
+): GeoJSON.FeatureCollection<GeoJSON.LineString, TrailProps> {
+  const features: GeoJSON.Feature<GeoJSON.LineString, TrailProps>[] = [];
   for (const [tail, pts] of Object.entries(trails)) {
     if (pts.length < 2) continue;
     const color = aircraftColorForTail(tail);
-    const segmentCount = pts.length - 1;
-    const oldestTs = pts[0]!.ts;
-    const newestTs = pts[pts.length - 1]!.ts;
-    const tsRange = newestTs - oldestTs;
-    for (let i = 0; i < segmentCount; i++) {
-      const from = pts[i]!;
-      const to = pts[i + 1]!;
-      const timeProgress =
-        tsRange > 0 ? (to.ts - oldestTs) / tsRange : (i + 1) / segmentCount;
-      features.push({
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: [
-            [from.lon, from.lat],
-            [to.lon, to.lat],
-          ],
-        },
-        properties: {
-          tail,
-          color,
-          opacity: fadeValue(timeProgress, MIN_TRAIL_OPACITY, MAX_TRAIL_OPACITY),
-          haloOpacity: fadeValue(timeProgress, MIN_HALO_OPACITY, MAX_HALO_OPACITY),
-          sort: i,
-        },
-      });
-    }
+    features.push({
+      type: "Feature",
+      geometry: { type: "LineString", coordinates: smoothFlightPath(pts) },
+      properties: { tail, color },
+    });
   }
   return { type: "FeatureCollection", features };
 }
@@ -209,9 +163,7 @@ export function AircraftTrailLayer({
       } catch {
         return;
       }
-      // Halo first (renders below the line). Page-background near-
-      // black at 0.6 opacity gives the white line a dark outline that
-      // survives over heat density, water, road labels — anything.
+      // Draw the subtle dark outline beneath the colored trail.
       map.addLayer({
         id: HALO_LAYER_ID,
         type: "line",
@@ -220,7 +172,6 @@ export function AircraftTrailLayer({
           visibility: enabledRef.current ? "visible" : "none",
           "line-cap": "round",
           "line-join": "round",
-          "line-sort-key": ["coalesce", ["get", "sort"], 0],
         },
         paint: {
           "line-color": "#050505",
@@ -237,11 +188,10 @@ export function AircraftTrailLayer({
             18,
             7,
           ],
-          "line-opacity": ["coalesce", ["get", "haloOpacity"], 0.28],
+          "line-opacity": HALO_OPACITY,
         },
       });
-      // Line — high contrast against the dark basemap. Wider than every
-      // prior iteration so a glance-at-a-stoplight rider can't miss it.
+      // Keep the thin trail equally visible from start to finish.
       map.addLayer({
         id: LAYER_ID,
         type: "line",
@@ -250,7 +200,6 @@ export function AircraftTrailLayer({
           visibility: enabledRef.current ? "visible" : "none",
           "line-cap": "round",
           "line-join": "round",
-          "line-sort-key": ["coalesce", ["get", "sort"], 0],
         },
         paint: {
           "line-color": ["coalesce", ["get", "color"], "#8bd2ff"],
@@ -267,7 +216,7 @@ export function AircraftTrailLayer({
             18,
             3.6,
           ],
-          "line-opacity": ["coalesce", ["get", "opacity"], 0.9],
+          "line-opacity": TRAIL_OPACITY,
         },
       });
       map.addLayer({
@@ -377,81 +326,23 @@ export function AircraftTrailLayer({
     }
   }, [map, enabled]);
 
-  // Poll /api/trails whenever the airborne tail set changes, plus every
-  // POLL_MS while it's stable. Cancel + restart cleanly if tails change
-  // mid-cycle so we never write a stale set to the source.
+  const stateCode = stateCodeForId(useSelectedStateId());
+  // Aircraft markers and trail layers share the same state channel.
   useEffect(() => {
-    if (!map) return;
-    if (!enabled) return;
-    if (!tailsKey) {
-      console.debug("[trail] no airborne tails, clearing sources");
-      const lineSrc = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      if (lineSrc) lineSrc.setData({ type: "FeatureCollection", features: [] });
-      const endpointSrc = map.getSource(ENDPOINTS_SOURCE_ID) as
-        | GeoJSONSource
-        | undefined;
-      if (endpointSrc) {
-        endpointSrc.setData({ type: "FeatureCollection", features: [] });
-      }
-      return;
-    }
-    let cancelled = false;
-    const fetchOnce = async () => {
-      console.debug("[trail] fetchOnce start", { tailsKey });
-      try {
-        const r = await fetch(`/api/trails?tails=${tailsKey}`, {
-          cache: "no-store",
-        });
-        if (!r.ok) {
-          console.warn("[trail] fetchOnce: bad response", r.status);
-          return;
-        }
-        if (cancelled) return;
-        const d = (await r.json()) as TrailsResponse;
-        if (cancelled) return;
-        if (tailsKeyRef.current !== tailsKey) {
-          console.debug("[trail] fetchOnce: stale tailsKey, bailing");
-          return;
-        }
-        const trails = d.trails ?? {};
-        const totalPoints = Object.values(trails).reduce(
-          (acc, pts) => acc + pts.length,
-          0,
-        );
-        console.debug("[trail] fetchOnce: data received", {
-          tails: Object.keys(trails),
-          totalPoints,
-        });
-        const lineSrc = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-        if (!lineSrc) {
-          console.warn("[trail] fetchOnce: line source missing");
-          return;
-        }
-        const fc = buildFeatureCollection(trails);
-        lineSrc.setData(fc);
-        const endpointSrc = map.getSource(ENDPOINTS_SOURCE_ID) as
-          | GeoJSONSource
-          | undefined;
-        if (endpointSrc) {
-          endpointSrc.setData(buildEndpointCollection(trails));
-        }
-        console.debug("[trail] fetchOnce: setData complete", {
-          featureCount: fc.features.length,
-        });
-        // Re-run reorder so a sibling layer that mounted between attach
-        // and now can't bury us.
-        reorderTrailLayers(map);
-      } catch (e) {
-        console.warn("[trail] fetchOnce: threw", e);
-      }
+    if (!map || !enabled) return;
+    const render = (trails: Record<string, TrailPoint[]>) => {
+      const line = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
+      const endpoints = map.getSource(ENDPOINTS_SOURCE_ID) as GeoJSONSource | undefined;
+      line?.setData(buildFeatureCollection(trails));
+      endpoints?.setData(buildEndpointCollection(trails));
+      reorderTrailLayers(map);
     };
-    void fetchOnce();
-    const id = window.setInterval(fetchOnce, POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [map, tailsKey, enabled]);
+    if (!tailsKey) { render({}); return; }
+    const tails = new Set(tailsKey.split(","));
+    return subscribeLiveState(stateCode, update => {
+      render(Object.fromEntries(Object.entries(update.trails).filter(([tail]) => tails.has(tail))));
+    });
+  }, [map, tailsKey, enabled, stateCode]);
 
   return null;
 }

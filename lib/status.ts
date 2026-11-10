@@ -1,7 +1,6 @@
-// Single source of truth for "what's the fleet doing right now." Both the
-// home hero, radar status pill, PWA app-icon badge, and embeddable badge use
-// the same rule: any airborne tracked aircraft is BIRD UP.
+// Status and eye indicators follow the same fresh aircraft as the map.
 
+import { isVisibleFlight } from "./aircraft-freshness";
 import type { Aircraft, Snapshot, FleetEntry, FleetRole } from "./types";
 
 export type StatusKind = "alert" | "clear";
@@ -28,7 +27,7 @@ export function computeStatus(
   snapshot: Snapshot,
   fleet: Map<string, FleetEntry>,
 ): StatusState {
-  const airborne = snapshot.aircraft.filter((a) => a.airborne);
+  const airborne = snapshot.aircraft.filter(isVisibleFlight);
   const up: Array<{ aircraft: Aircraft; entry: FleetEntry }> = [];
 
   for (const aircraft of airborne) {

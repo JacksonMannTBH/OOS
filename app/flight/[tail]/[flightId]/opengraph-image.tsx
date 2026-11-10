@@ -42,11 +42,7 @@ export default async function OGImage({ params }: Props) {
       ? buildTrackArt(flight.points)
       : null;
 
-  const title = entry
-    ? entry.nickname
-      ? `${tail} · ${entry.nickname}`
-      : tail
-    : tail;
+  const title = tail;
   const subtitle = flight
     ? `${flight.inProgress ? "IN PROGRESS · " : ""}${formatTs(flight.session.start_ts, "date-short")} PT · ${fmtDurationHuman(flight.session.duration_s)}`
     : "Flight track";

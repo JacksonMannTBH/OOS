@@ -1,32 +1,17 @@
-import UIKit
 import WidgetKit
 
 @MainActor
 final class HomeWidgetAppUpdater {
     static let shared = HomeWidgetAppUpdater()
-    private var request: Task<Void, Never>?
-    private var lastReload = Date.distantPast
+    private var didReload = false
 
     func configure(_ configuration: RideTrackingConfiguration) {
-        let changed = HomeWidgetStore.shared.configure(configuration)
-        if changed { reload() }
-        guard UIApplication.shared.applicationState == .active else { return }
-        request?.cancel()
-        request = Task {
-            if await HomeWidgetRefresh.refresh(configuration: configuration, forWidget: false) {
-                reload()
-            }
-        }
-    }
-
-    func publish(_ content: RideTrackingContent, configuration: RideTrackingConfiguration) {
-        guard HomeWidgetStore.shared.publish(content, for: configuration) else { return }
-        // Live Tracking can emit GPS updates every second; don't flood WidgetKit.
-        if Date().timeIntervalSince(lastReload) >= 60 { reload() }
-    }
-
-    private func reload() {
-        lastReload = Date()
+        // Keep preferences available for legacy Live Activity recovery.
+        HomeWidgetStore.shared.configure(configuration)
+        // Replace an existing aircraft widget with the static Ride launcher once
+        // per app launch, without fetching location or aircraft data.
+        guard !didReload else { return }
+        didReload = true
         WidgetCenter.shared.reloadTimelines(ofKind: HomeWidgetStore.kind)
     }
 }

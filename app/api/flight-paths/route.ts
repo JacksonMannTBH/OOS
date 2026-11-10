@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import { DEFAULT_STATE_CODE, isStateCode, type StateCode } from "@/lib/app-states";
+import { DEFAULT_STATE_CODE, isSupportedStateCode, type StateCode } from "@/lib/app-states";
 import { getCatalog } from "@/lib/aircraft-data";
 import { liveDataHeaders } from "@/lib/http-cache";
 import { getCurrentFlightTrack } from "@/lib/tracks";
@@ -15,7 +14,7 @@ type LineFeature = GeoJSON.Feature<
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const requestedState = url.searchParams.get("state");
-  const stateCode = isStateCode(requestedState)
+  const stateCode = isSupportedStateCode(requestedState)
     ? requestedState.toUpperCase() as StateCode
     : DEFAULT_STATE_CODE;
   const requestedTails = parseTails(url.searchParams.get("tails"));
@@ -43,7 +42,7 @@ export async function GET(req: Request) {
     )
   ).filter((feature): feature is LineFeature => feature !== null);
 
-  return NextResponse.json(
+  return Response.json(
     {
       type: "FeatureCollection",
       features,

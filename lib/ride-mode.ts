@@ -194,3 +194,12 @@ export function getRideContacts(
   contacts.sort((a, b) => a.distanceNm - b.distanceNm);
   return contacts;
 }
+
+/** Ride display uses the most recent reported aircraft state. */
+export function getRideDisplayContacts(
+  aircraft: Aircraft[],
+  rider: { lat: number; lon: number },
+  riderHeadingDeg: number | null = null,
+): RideContact[] {
+  return getRideContacts(aircraft.filter((plane) => plane.observed !== false), rider, riderHeadingDeg);
+}

@@ -4,6 +4,7 @@ import { LogoMark } from "@/components/brand/Logo";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { isVisibleFlight } from "@/lib/aircraft-freshness";
 import {
   EMPTY_AIRCRAFT_SNAPSHOT,
   useAircraft,
@@ -12,6 +13,7 @@ import {
 export function SiteHeader() {
   const pathname = usePathname();
   const settingsFamilyRoutes = [
+    "/help",
     "/aircraft",
     "/plane",
     "/about",
@@ -91,11 +93,23 @@ export function SiteHeader() {
               WebkitTapHighlightColor: "transparent",
             }}
           >
-            <Suspense fallback={<HeaderLogoMark variant="open" />}>
+            <Suspense fallback={<HeaderLogoMark variant="closed" />}>
               <HeaderAircraftLogo />
             </Suspense>
           </Link>
-          <Link
+          {pathname === "/settings" ? (
+            <h1 style={{
+              margin: 0,
+              fontFamily: "var(--font-header-ui)",
+              fontSize: "clamp(28px, 6.4vw, 38px)",
+              fontWeight: 800,
+              lineHeight: 1,
+              letterSpacing: 0,
+              paddingTop: 12,
+              whiteSpace: "nowrap",
+              textAlign: "center",
+            }}>Settings</h1>
+          ) : <Link
             href="/home"
             prefetch={false}
             aria-label="Out Of Sight home"
@@ -114,7 +128,7 @@ export function SiteHeader() {
             }}
           >
             OUT OF SIGHT
-          </Link>
+          </Link>}
         </div>
       </div>
     </header>
@@ -146,14 +160,11 @@ function HeaderAircraftLogo() {
 
 function LiveHeaderAircraftLogo() {
   const snapshot = useAircraft(EMPTY_AIRCRAFT_SNAPSHOT);
-  const hasLoaded = snapshot.fetched_at > 0;
-  const hasAirborneAircraft = hasLoaded
-    ? snapshot.aircraft.some((aircraft) => aircraft.airborne)
-    : null;
+  const hasAirborneAircraft = snapshot.aircraft.some(isVisibleFlight);
 
   return (
     <HeaderLogoMark
-      variant={hasAirborneAircraft === false ? "closed" : "open"}
+      variant={hasAirborneAircraft ? "open" : "closed"}
     />
   );
 }

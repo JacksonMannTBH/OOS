@@ -39,7 +39,18 @@ export default async function aircraftIngestBackground(
   }
 
   const db = getSupabaseAdmin();
+  // Existing deployment URLs must not restart delivery after the handoff.
+  // Fail closed if the control setting cannot be read.
+  const backend = await db.from("app_settings").select("value")
+    .eq("key", "notification_worker_backend").maybeSingle();
+  if (backend.error) throw new Error("Worker configuration unavailable");
+  if (backend.data?.value === "supabase") return;
   const workerId = crypto.randomUUID();
+  // Supabase owns aircraft polling; keep authenticated notification delivery alive.
+  if (Netlify.env.get("AIRCRAFT_INGESTION_MODE") === "supabase-cron") {
+    await runNotificationWorker(workerId);
+    return;
+  }
   // A final slow batch may cross the minute boundary. Give the previous
   // worker time to publish and release its lease instead of losing this
   // entire minute's invocation. The database still permits just one owner.

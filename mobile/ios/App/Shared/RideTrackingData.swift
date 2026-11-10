@@ -16,6 +16,15 @@ struct RideTrackingContent: Codable, Hashable {
         ["Clear", "Watch", "Warning", "Stop"].contains(rideState)
     }
 
+    // Reuse the complete last result, including its observation time. On first
+    // use there is no measured state yet; don't invent Clear or show a spinner.
+    static func initial(stateName: String, previous: Self? = nil, now: Date = Date()) -> Self {
+        if let previous, previous.hasKnownRideState { return previous }
+        return Self(aircraft: "Live tracking", distanceNm: nil, rideState: "",
+             message: "", updatedAt: now,
+             validUntil: now.addingTimeInterval(30), stateName: stateName)
+    }
+
     static func waiting(_ message: String, now: Date = Date()) -> Self {
         Self(aircraft: "Nearest aircraft", distanceNm: nil, rideState: "Updating",
              message: message, updatedAt: now, validUntil: now.addingTimeInterval(30))
@@ -72,7 +81,7 @@ struct RideTrackingAircraft: Decodable {
 enum RideTrackingCalculator {
     // Unavailable data must not invent a fresh distance or state. Keep the
     // complete last known result, including its original timestamp/deadline.
-    // A new session waits for its first real result before showing an activity.
+    // A saved result remains visible until another measured result is available.
     static func displayedContent(_ candidate: RideTrackingContent,
                                  previous: RideTrackingContent?) -> RideTrackingContent? {
         if candidate.hasKnownRideState { return candidate }
@@ -131,19 +140,18 @@ enum RideTrackingCalculator {
                 nearest = (plane, distance, positionExpiry)
             }
         }
-        // An unlocated airborne aircraft could be closer than the located contact.
-        if unavailable { return .waiting("Some aircraft positions are unavailable", now: now) }
+        // Use the nearest contact with usable coordinates. A separate aircraft
+        // without a position must not suppress every located aircraft statewide.
         if let nearest {
             expiry = min(expiry, nearest.expiry)
-            let nickname = nearest.plane.nickname?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let identity = "\(nearest.plane.vehicleLabel) \(nearest.plane.tail)"
-            let name = nickname.isEmpty ? identity : "\(nickname) · \(identity)"
+            let name = "\(nearest.plane.vehicleLabel) \(nearest.plane.tail)"
             return RideTrackingContent(aircraft: name, distanceNm: nearest.distance,
                                        rideState: configuration.label(distanceNm: nearest.distance),
                                        message: nearest.plane.model, updatedAt: min(feedDate, locationDate),
                                        validUntil: expiry, aircraftTail: nearest.plane.tail,
                                        vehicleLabel: nearest.plane.vehicleLabel)
         }
+        if unavailable { return .waiting("Some aircraft positions are unavailable", now: now) }
         return RideTrackingContent(aircraft: "No tracked aircraft airborne", distanceNm: nil,
                                    rideState: "Clear", message: configuration.stateName,
                                    updatedAt: min(feedDate, locationDate), validUntil: expiry)

@@ -3,15 +3,22 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { SS_TOKENS } from "@/lib/tokens";
-import { readAircraftAlertStatus } from "@/lib/aircraft-alerts/client";
+import { AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, readAircraftAlertStatus } from "@/lib/aircraft-alerts/client";
 
 export function AlertsStateChip() {
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     readAircraftAlertStatus()
-      .then((status) => setEnabled(status.enabled))
-      .catch(() => setEnabled(false));
+      .then((status) => { if (!cancelled) setEnabled(status.enabled); })
+      .catch(() => { if (!cancelled) setEnabled(false); });
+    const onStatus = (event: Event) => {
+      const status = (event as CustomEvent<{ status?: { enabled: boolean } }>).detail?.status;
+      if (status) { cancelled = true; setEnabled(status.enabled); }
+    };
+    window.addEventListener(AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, onStatus);
+    return () => { cancelled = true; window.removeEventListener(AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, onStatus); };
   }, []);
 
   return (

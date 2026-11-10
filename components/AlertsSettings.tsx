@@ -11,7 +11,6 @@ import {
   disableAircraftAlerts,
   enableAircraftAlerts,
   readAircraftAlertStatus,
-  sendAircraftAlertTest,
   AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT,
 } from "@/lib/aircraft-alerts/client";
 import type { AircraftAlertStatus } from "@/lib/aircraft-alerts/types";
@@ -24,6 +23,7 @@ type DeliveryState =
   | "checking"
   | "off"
   | "on"
+  | "reconnecting"
   | "unsupported"
   | "not_configured"
   | "denied";
@@ -32,7 +32,6 @@ export function AlertsSettings() {
   const [deliveryState, setDeliveryState] =
     useState<DeliveryState>("checking");
   const [busy, setBusy] = useState(false);
-  const [deliveryConfigured, setDeliveryConfigured] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [stateCode, setStateCode] = useState<StateCode>(
     () => getSelectedStateCode(),
@@ -42,7 +41,6 @@ export function AlertsSettings() {
     readAircraftAlertStatus()
       .then((status) => {
         setDeliveryState(deliveryStateFromStatus(status));
-        setDeliveryConfigured(status.configured);
         if (!status.configured) setMessage(aircraftAlertAvailabilityMessage(status, Capacitor.getPlatform() as NotificationPlatform));
       })
       .catch(() => {
@@ -64,7 +62,6 @@ export function AlertsSettings() {
       } else {
         if (detail.status) {
           setDeliveryState(deliveryStateFromStatus(detail.status));
-          setDeliveryConfigured(detail.status.configured);
         }
         setMessage(detail.status && !detail.status.configured
           ? aircraftAlertAvailabilityMessage(detail.status, Capacitor.getPlatform() as NotificationPlatform)
@@ -84,8 +81,7 @@ export function AlertsSettings() {
     try {
       const status = await enableAircraftAlerts({ stateCode });
       setDeliveryState(deliveryStateFromStatus(status));
-      setDeliveryConfigured(status.configured);
-      setMessage(`Takeoff notifications are on for ${stateCode}.`);
+      setMessage(null);
     } catch (error) {
       const next = deliveryStateFromError(error);
       setDeliveryState(next);
@@ -101,8 +97,7 @@ export function AlertsSettings() {
     try {
       const status = await disableAircraftAlerts();
       setDeliveryState(deliveryStateFromStatus(status));
-      setDeliveryConfigured(status.configured);
-      setMessage(status.configured ? "Takeoff notifications are off."
+      setMessage(status.configured ? null
         : aircraftAlertAvailabilityMessage(status, Capacitor.getPlatform() as NotificationPlatform));
     } catch {
       setMessage("Could not turn off notifications. Try again.");
@@ -124,123 +119,72 @@ export function AlertsSettings() {
         : SS_TOKENS.fg1;
 
   return (
-    <SettingsCard title="Takeoff notifications" eyebrow="Alerts">
-      <p style={copyStyle}>
-        Receive one notification when a tracked aircraft assigned to your
-        selected state begins a confirmed flight.
-      </p>
-
-      <label
+    <SettingsCard
+      title="Takeoff notifications"
+      headerAccessory={
+        <strong
+          role="status"
+          aria-label={`Takeoff notifications: ${deliveryLabel(deliveryState)}`}
+          className="ss-mono"
+          style={{ color: statusColor, fontSize: 12, letterSpacing: ".04em", textAlign: "right", paddingTop: 4, maxWidth: 112, overflowWrap: "anywhere" }}
+        >
+          {deliveryLabel(deliveryState)}
+        </strong>
+      }
+    >
+      <div
         style={{
           display: "grid",
           gap: 7,
+          justifyItems: "start",
           color: SS_TOKENS.fg0,
           fontSize: 13,
           fontWeight: 800,
         }}
       >
-        State to track
+        <span>State</span>
         <StateSelector
-          style={{ width: "100%", minHeight: 48, borderRadius: 12 }}
+          style={{ width: 150, minHeight: 76, borderRadius: 12 }}
         />
-        <small
-          style={{
-            color: SS_TOKENS.fg2,
-            fontSize: 12,
-            fontWeight: 600,
-            lineHeight: 1.4,
-          }}
-        >
-          If notifications are on, changing state also updates this device’s
-          subscription.
-        </small>
-      </label>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          minHeight: 48,
-        }}
-      >
-        <span style={{ minWidth: 0, flex: 1 }}>
-          <span
-            className="ss-eyebrow"
-            style={{ display: "block", marginBottom: 4, color: SS_TOKENS.fg2 }}
-          >
-            Delivery
-          </span>
-          <strong
-            className="ss-mono"
-            style={{ color: statusColor, fontSize: 12, letterSpacing: ".04em" }}
-          >
-            {deliveryLabel(deliveryState)}
-          </strong>
-        </span>
-        <button
-          type="button"
-          onClick={deliveryState === "on" ? onDisarm : onArm}
-          disabled={actionDisabled}
-          style={{
-            minHeight: 46,
-            padding: "0 18px",
-            border: 0,
-            borderRadius: 999,
-            background: SS_TOKENS.alert,
-            color: "#050607",
-            fontFamily: "inherit",
-            fontSize: 13,
-            fontWeight: 900,
-            cursor: actionDisabled ? "default" : "pointer",
-            opacity: actionDisabled ? 0.45 : 1,
-            touchAction: "manipulation",
-            WebkitTapHighlightColor: "transparent",
-          }}
-        >
-          {busy
-            ? "Working"
-            : deliveryState === "checking"
-              ? "Checking"
-              : deliveryState === "unsupported" ||
-                  deliveryState === "not_configured"
-                ? "Unavailable"
-                : deliveryState === "on"
-                  ? "Turn off"
-                  : "Turn on"}
-        </button>
       </div>
 
-      <p role={message ? "status" : undefined} style={copyStyle}>
-        {message ?? deliveryDescription(deliveryState)}
-      </p>
+      <button
+        type="button"
+        onClick={deliveryState === "on" || deliveryState === "reconnecting" ? onDisarm : onArm}
+        disabled={actionDisabled}
+        style={{
+          width: "100%",
+          minHeight: 50,
+          padding: "0 18px",
+          border: 0,
+          borderRadius: 999,
+          background: SS_TOKENS.alert,
+          color: "#050607",
+          fontFamily: "inherit",
+          fontSize: 13,
+          fontWeight: 900,
+          cursor: actionDisabled ? "default" : "pointer",
+          opacity: actionDisabled ? 0.45 : 1,
+          touchAction: "manipulation",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        {busy
+          ? "Working"
+          : deliveryState === "checking"
+            ? "Checking"
+            : deliveryState === "unsupported" ||
+                deliveryState === "not_configured"
+              ? "Unavailable"
+              : deliveryState === "on" || deliveryState === "reconnecting"
+                ? "Turn off"
+                : "Turn on"}
+      </button>
 
-      {deliveryState === "on" && deliveryConfigured && (
-        <button
-          type="button"
-          onClick={() => {
-            setMessage(null);
-            void sendAircraftAlertTest()
-              .then(() => setMessage("Test notification sent."))
-              .catch(() => setMessage("Test notification failed."));
-          }}
-          style={{
-            minHeight: 46,
-            padding: "0 16px",
-            borderRadius: 12,
-            border: `1px solid ${SS_TOKENS.hairline2}`,
-            background: SS_TOKENS.bg2,
-            color: SS_TOKENS.fg0,
-            fontFamily: "inherit",
-            fontSize: 13,
-            fontWeight: 800,
-            cursor: "pointer",
-            touchAction: "manipulation",
-            WebkitTapHighlightColor: "transparent",
-          }}
-        >
-          Send test notification
-        </button>
+      {(message ?? deliveryDescription(deliveryState)) && (
+        <p role="status" style={copyStyle}>
+          {message ?? deliveryDescription(deliveryState)}
+        </p>
       )}
     </SettingsCard>
   );
@@ -253,6 +197,7 @@ function deliveryStateFromStatus(
   if (status.enabled) return "on";
   if (!status.configured) return "not_configured";
   if (status.permission === "denied") return "denied";
+  if (status.optedIn) return "reconnecting";
   return "off";
 }
 
@@ -264,8 +209,7 @@ function deliveryStateFromError(error: unknown): DeliveryState {
   return "off";
 }
 
-function deliveryDescription(state: DeliveryState): string {
-  if (state === "checking") return "Checking notification support on this device.";
+function deliveryDescription(state: DeliveryState): string | null {
   if (state === "unsupported") {
     return aircraftAlertErrorMessage(new Error("unsupported"), Capacitor.getPlatform() as NotificationPlatform);
   }
@@ -275,8 +219,8 @@ function deliveryDescription(state: DeliveryState): string {
   if (state === "denied") {
     return notificationPermissionHelp();
   }
-  if (state === "on") return "This device will receive confirmed takeoff notifications.";
-  return "Notifications are off on this device.";
+  if (state === "reconnecting") return "Your alert preference is saved. Delivery will reconnect when the app can reach the notification service.";
+  return null;
 }
 
 function notificationPermissionHelp(): string {

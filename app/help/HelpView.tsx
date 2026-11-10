@@ -6,6 +6,19 @@ import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import { SS_TOKENS } from "@/lib/tokens";
+import { SettingsPageShell } from "@/components/SettingsPageShell";
+
+export function HelpContent({ source }: { source: string }) {
+  const body = source.replace(/^\s*# [^\n]+\n+/, "");
+  return (
+    <SettingsPageShell title="Help" description="How to read each screen, manage tracking, and use OOS.">
+      <article>
+        <HelpMarkdown source={body} />
+      </article>
+      <HelpScrollTopButton />
+    </SettingsPageShell>
+  );
+}
 
 export function HelpMarkdown({ source }: { source: string }) {
   return (
@@ -40,13 +53,11 @@ export function HelpMarkdown({ source }: { source: string }) {
           h2: (props) => (
             <h2
               style={{
-                fontSize: 24,
-                fontWeight: 700,
+                fontSize: 19,
+                fontWeight: 850,
                 color: SS_TOKENS.fg0,
-                marginTop: 48,
-                marginBottom: 16,
-                paddingBottom: 8,
-                borderBottom: `.5px solid ${SS_TOKENS.hairline}`,
+                marginTop: 32,
+                marginBottom: 12,
                 lineHeight: 1.3,
               }}
               {...props}
@@ -55,11 +66,11 @@ export function HelpMarkdown({ source }: { source: string }) {
           h3: (props) => (
             <h3
               style={{
-                fontSize: 18,
-                fontWeight: 600,
+                fontSize: 16,
+                fontWeight: 750,
                 color: SS_TOKENS.fg0,
-                marginTop: 32,
-                marginBottom: 12,
+                marginTop: 24,
+                marginBottom: 10,
                 lineHeight: 1.4,
               }}
               {...props}
@@ -68,9 +79,9 @@ export function HelpMarkdown({ source }: { source: string }) {
           p: (props) => (
             <p
               style={{
-                fontSize: 16,
+                fontSize: 14,
                 color: SS_TOKENS.fg1,
-                lineHeight: 1.7,
+                lineHeight: 1.6,
                 margin: "0 0 16px",
               }}
               {...props}
@@ -85,7 +96,7 @@ export function HelpMarkdown({ source }: { source: string }) {
                 flexDirection: "column",
                 gap: 8,
                 color: SS_TOKENS.fg1,
-                fontSize: 16,
+                fontSize: 14,
                 lineHeight: 1.6,
               }}
               {...props}
@@ -100,7 +111,7 @@ export function HelpMarkdown({ source }: { source: string }) {
                 flexDirection: "column",
                 gap: 8,
                 color: SS_TOKENS.fg1,
-                fontSize: 16,
+                fontSize: 14,
                 lineHeight: 1.6,
               }}
               {...props}
@@ -179,7 +190,7 @@ export function HelpMarkdown({ source }: { source: string }) {
                 borderLeft: `4px solid ${SS_TOKENS.fg3}`,
                 color: SS_TOKENS.fg1,
                 fontStyle: "italic",
-                fontSize: 16,
+                fontSize: 14,
                 lineHeight: 1.6,
               }}
               {...props}
@@ -249,19 +260,18 @@ export function HelpScrollTopButton() {
       className="ss-mono"
       style={{
         position: "fixed",
-        right: 18,
-        bottom: 24,
+        left: "max(18px, env(safe-area-inset-left, 0px))",
+        bottom: "calc(24px + env(safe-area-inset-bottom, 0px))",
         zIndex: 20,
         padding: "10px 14px",
+        minHeight: 44,
         borderRadius: 999,
-        background: "rgba(255,255,255,0.86)",
+        background: SS_TOKENS.bg1,
         border: `.5px solid ${SS_TOKENS.hairline2}`,
-        boxShadow: SS_TOKENS.shadowSm,
+        boxShadow: "none",
         color: SS_TOKENS.fg1,
         fontSize: 11,
         letterSpacing: ".06em",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
         cursor: "pointer",
         touchAction: "manipulation",
         WebkitTapHighlightColor: "transparent",

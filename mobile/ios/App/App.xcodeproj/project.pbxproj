@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A01200000000000000000002 /* Widget Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A01200000000000000000001 /* Widget Assets.xcassets */; };
 		001000000000000000000001 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 001000000000000000000002 /* FirebaseMessaging */; };
 		001000000000000000000003 /* Configuration in Resources */ = {isa = PBXBuildFile; fileRef = 001000000000000000000004 /* Configuration */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
@@ -35,6 +36,13 @@
 		A00900000000000000000008 /* HomeWidgetAppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000007 /* HomeWidgetAppUpdater.swift */; };
 		A0090000000000000000000A /* HomeScreenWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00900000000000000000009 /* HomeScreenWidget.swift */; };
 		A01000000000000000000002 /* LiveTrackingRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01000000000000000000001 /* LiveTrackingRecovery.swift */; };
+		A01100000000000000000002 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A01100000000000000000001 /* PrivacyInfo.xcprivacy */; };
+		A00B00000000000000000002 /* AppBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00B00000000000000000001 /* AppBackend.swift */; };
+		A00B00000000000000000003 /* AppBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00B00000000000000000001 /* AppBackend.swift */; };
+		A01300000000000000000002 /* RideRecorderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01300000000000000000001 /* RideRecorderPlugin.swift */; };
+		A01400000000000000000002 /* RideHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01400000000000000000001 /* RideHistory.swift */; };
+		A01500000000000000000002 /* SharedLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01500000000000000000001 /* SharedLocationService.swift */; };
+		A01500000000000000000004 /* SharedLocationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01500000000000000000003 /* SharedLocationPolicy.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,6 +70,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A01200000000000000000001 /* Widget Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		001000000000000000000004 /* Configuration */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Configuration; sourceTree = "<group>"; };
 		001000000000000000000005 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
@@ -90,6 +99,12 @@
 		A00900000000000000000009 /* HomeScreenWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeScreenWidget.swift; sourceTree = "<group>"; };
 		A0090000000000000000000B /* Widget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widget.entitlements; sourceTree = "<group>"; };
 		A01000000000000000000001 /* LiveTrackingRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTrackingRecovery.swift; sourceTree = "<group>"; };
+		A01100000000000000000001 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		A00B00000000000000000001 /* AppBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBackend.swift; sourceTree = "<group>"; };
+		A01300000000000000000001 /* RideRecorderPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideRecorderPlugin.swift; sourceTree = "<group>"; };
+		A01400000000000000000001 /* RideHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideHistory.swift; sourceTree = "<group>"; };
+		A01500000000000000000001 /* SharedLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLocationService.swift; sourceTree = "<group>"; };
+		A01500000000000000000003 /* SharedLocationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLocationPolicy.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -138,8 +153,12 @@
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				A00500000000000000000002 /* ScreenAwakePlugin.swift */,
 				A00700000000000000000001 /* NotificationSetupPlugin.swift */,
+				A01100000000000000000001 /* PrivacyInfo.xcprivacy */,
 				A00800000000000000000001 /* oos_radar_ping.wav */,
 				A00600000000000000000001 /* LiveTrackingPlugin.swift */,
+				A01300000000000000000001 /* RideRecorderPlugin.swift */,
+				A01500000000000000000003 /* SharedLocationPolicy.swift */,
+				A01500000000000000000001 /* SharedLocationService.swift */,
 				A00900000000000000000007 /* HomeWidgetAppUpdater.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -160,6 +179,7 @@
 			children = (
 				A00600000000000000000009 /* LiveTrackingWidget.swift */,
 				A00900000000000000000009 /* HomeScreenWidget.swift */,
+				A01200000000000000000001 /* Widget Assets.xcassets */,
 				A0090000000000000000000B /* Widget.entitlements */,
 				A0060000000000000000000B /* Info.plist */,
 			);
@@ -171,8 +191,10 @@
 			children = (
 				A00600000000000000000003 /* RideTrackingData.swift */,
 				A01000000000000000000001 /* LiveTrackingRecovery.swift */,
+				A01400000000000000000001 /* RideHistory.swift */,
 				A00900000000000000000001 /* HomeWidgetStore.swift */,
 				A00900000000000000000004 /* HomeWidgetRefresh.swift */,
+				A00B00000000000000000001 /* AppBackend.swift */,
 				A00600000000000000000006 /* RideTrackingAttributes.swift */,
 			);
 			path = Shared;
@@ -273,6 +295,7 @@
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
 				001000000000000000000003 /* Configuration in Resources */,
 				A00800000000000000000002 /* oos_radar_ping.wav in Resources */,
+				A01100000000000000000002 /* PrivacyInfo.xcprivacy in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
@@ -285,6 +308,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A01200000000000000000002 /* Widget Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -300,10 +324,15 @@
 				A00500000000000000000001 /* ScreenAwakePlugin.swift in Sources */,
 				A00700000000000000000002 /* NotificationSetupPlugin.swift in Sources */,
 				A00600000000000000000002 /* LiveTrackingPlugin.swift in Sources */,
+				A01400000000000000000002 /* RideHistory.swift in Sources */,
+				A01300000000000000000002 /* RideRecorderPlugin.swift in Sources */,
+				A01500000000000000000004 /* SharedLocationPolicy.swift in Sources */,
+				A01500000000000000000002 /* SharedLocationService.swift in Sources */,
 				A00600000000000000000004 /* RideTrackingData.swift in Sources */,
 				A01000000000000000000002 /* LiveTrackingRecovery.swift in Sources */,
 				A00900000000000000000002 /* HomeWidgetStore.swift in Sources */,
 				A00900000000000000000005 /* HomeWidgetRefresh.swift in Sources */,
+				A00B00000000000000000002 /* AppBackend.swift in Sources */,
 				A00900000000000000000008 /* HomeWidgetAppUpdater.swift in Sources */,
 				A00600000000000000000007 /* RideTrackingAttributes.swift in Sources */,
 			);
@@ -317,6 +346,7 @@
 				A00600000000000000000005 /* RideTrackingData.swift in Sources */,
 				A00900000000000000000003 /* HomeWidgetStore.swift in Sources */,
 				A00900000000000000000006 /* HomeWidgetRefresh.swift in Sources */,
+				A00B00000000000000000003 /* AppBackend.swift in Sources */,
 				A0090000000000000000000A /* HomeScreenWidget.swift in Sources */,
 				A00600000000000000000008 /* RideTrackingAttributes.swift in Sources */,
 			);
@@ -469,7 +499,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 97;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -477,7 +507,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = live.outofsight.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -494,7 +524,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 97;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -502,7 +532,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = live.outofsight.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
@@ -517,7 +547,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = LiveTrackingWidget/Widget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 97;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LiveTrackingWidget/Info.plist;
@@ -527,7 +557,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = live.outofsight.app.LiveTrackingWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -542,7 +572,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = LiveTrackingWidget/Widget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 97;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LiveTrackingWidget/Info.plist;
@@ -552,7 +582,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = live.outofsight.app.LiveTrackingWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

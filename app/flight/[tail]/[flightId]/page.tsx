@@ -43,14 +43,11 @@ type Props = {
 
 export async function generateMetadata({ params }: Props) {
   const tail = params.tail.toUpperCase();
-  const fleet = await getRegistry();
-  const entry = fleet.find((aircraft) => aircraft.tail === tail);
-  const niceName = entry?.nickname ? ` “${entry.nickname}”` : "";
   return {
-    title: `${tail}${niceName} flight`,
-    description: `Flight track for ${tail}${niceName}, captured by Out Of Sight.`,
+    title: `${tail} flight`,
+    description: `Flight track for ${tail}, captured by Out Of Sight.`,
     openGraph: {
-      title: `${tail}${niceName} flight`,
+      title: `${tail} flight`,
       description: "Aircraft flight track captured by Out Of Sight.",
       url: `${BASE_URL}/flight/${tail}/${params.flightId}`,
       type: "article",
@@ -134,7 +131,6 @@ export default async function FlightDetailPage({ params }: Props) {
               lineHeight: 1.5,
             }}
           >
-            {entry.nickname ? `“${entry.nickname}” · ` : ""}
             {entry.operator} · {entry.model}
           </p>
         </div>

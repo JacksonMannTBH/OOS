@@ -1,0 +1,16 @@
+project_id = "ohhixakjamjocgmatbha"
+
+[functions.oos-ingest]
+# The function validates a random 256-bit cron token against a private hash.
+verify_jwt = false
+
+[functions.oos-api]
+verify_jwt = true
+
+[functions.oos-app]
+# Publishable keys are not JWTs. app-handler.ts validates apikey itself.
+verify_jwt = false
+
+[functions.oos-notifications]
+# Validates its own 256-bit scheduler token against a private database hash.
+verify_jwt = false

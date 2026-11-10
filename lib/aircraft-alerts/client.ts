@@ -11,8 +11,11 @@ import type {
 } from "./types";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
-import { readAircraftTrackingPreferences } from "@/lib/aircraft-tracking";
+import { readNotificationTrackingPreferences } from "./preferences";
 
+import { getDevicePreference, initializeDevicePreferences, updateDevicePreferences } from "@/lib/device-preferences";
+
+const OPT_IN_KEY = "oos_aircraft_alert_opt_in";
 const DEVICE_ID_KEY = "oos_aircraft_alert_device_id";
 export const AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT = "oos-aircraft-alert-preference-sync";
 
@@ -24,19 +27,43 @@ type StateInput = {
   stateCode?: StateCode;
 };
 
-export function getAircraftAlertUserId(): string {
-  if (typeof window === "undefined") return "";
-  const existing = window.localStorage.getItem(DEVICE_ID_KEY);
-  if (existing) return existing;
-  const next =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
+let identityRequest: Promise<string> | null = null;
+export function getAircraftAlertUserId(): Promise<string> {
+  // Concurrent status checks must share one durably saved identity.
+  return identityRequest ??= (async () => {
+    if (typeof window === "undefined") return "";
+    await initializeDevicePreferences();
+    const existing = getDevicePreference(DEVICE_ID_KEY);
+    if (existing) return existing;
+    const next = typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
-  window.localStorage.setItem(DEVICE_ID_KEY, next);
-  return next;
+    await updateDevicePreferences({ [DEVICE_ID_KEY]: next });
+    return next;
+  })().finally(() => { identityRequest = null; });
 }
 
 export async function readAircraftAlertStatus(): Promise<AircraftAlertStatus> {
+  await initializeDevicePreferences();
+  const status = await readAlertStatus();
+  let optedIn = getDevicePreference(OPT_IN_KEY);
+  // Preserve enrollment for users upgrading before this flag existed. An
+  // expired endpoint does not revoke the user's saved opt-in.
+  if (status.enabled && optedIn === null) {
+    await updateDevicePreferences({ [OPT_IN_KEY]: "1" });
+    optedIn = "1";
+  }
+  return { ...status, optedIn: isNativeMobile() && optedIn === "1" };
+}
+
+function publishStatus(status: AircraftAlertStatus): AircraftAlertStatus {
+  if (typeof window !== "undefined" && window.dispatchEvent) {
+    window.dispatchEvent(new CustomEvent(AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, { detail: { status } }));
+  }
+  return status;
+}
+
+async function readAlertStatus(): Promise<AircraftAlertStatus> {
   if (isNativeMobile()) return readNativeAircraftAlertStatus();
   if (!browserSupportsAircraftAlerts()) {
     return {
@@ -47,7 +74,7 @@ export async function readAircraftAlertStatus(): Promise<AircraftAlertStatus> {
       message: "unsupported",
     };
   }
-  const userId = getAircraftAlertUserId();
+  const userId = await getAircraftAlertUserId();
   const res = await fetch(
     `/api/aircraft-alerts/subscription?userId=${encodeURIComponent(userId)}`,
     { cache: "no-store" },
@@ -76,7 +103,7 @@ function queueAlertMutation<T>(work: () => Promise<T>): Promise<T> {
 }
 
 export function enableAircraftAlerts(input: StateInput = {}): Promise<AircraftAlertStatus> {
-  return queueAlertMutation(() => enableAlerts(input));
+  return queueAlertMutation(() => enableAlerts(input)).then(publishStatus);
 }
 
 async function enableAlerts(
@@ -106,13 +133,14 @@ async function enableAlerts(
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      userId: getAircraftAlertUserId(),
+      userId: await getAircraftAlertUserId(),
       subscription: normalizePushSubscription(subscription),
       stateCode,
-      excludedAircraftByState: readAircraftTrackingPreferences(),
+      excludedAircraftByState: readNotificationTrackingPreferences(stateCode),
     }),
   });
   if (!res.ok) throw new Error("subscribe_failed");
+  await updateDevicePreferences({ [OPT_IN_KEY]: "1" });
   return {
     ...(await readAircraftAlertStatus()),
     enabled: true,
@@ -123,11 +151,14 @@ async function enableAlerts(
 }
 
 export function disableAircraftAlerts(): Promise<AircraftAlertStatus> {
-  return queueAlertMutation(disableAlerts);
+  return queueAlertMutation(disableAlerts).then(publishStatus);
 }
 
 async function disableAlerts(): Promise<AircraftAlertStatus> {
-  const userId = getAircraftAlertUserId();
+  const userId = await getAircraftAlertUserId();
+  // Save the user's opt-out before contacting the service so a failed request
+  // can be retried without a foreground refresh enrolling the device again.
+  await updateDevicePreferences({ [OPT_IN_KEY]: "0" });
   const response = await fetch("/api/aircraft-alerts/subscription", {
     method: "DELETE",
     headers: { "content-type": "application/json" },
@@ -157,22 +188,26 @@ async function syncPreferences(
   input: StateInput,
 ): Promise<AircraftAlertStatus | null> {
   const current = await readAircraftAlertStatus();
-  if (!current.enabled) return current;
+  if (getDevicePreference(OPT_IN_KEY) === "0") {
+    return current.enabled ? disableAlerts() : current;
+  }
+  if (!current.enabled && !(isNativeMobile() && current.optedIn)) return current;
   const stateCode = input.stateCode ?? getSelectedStateCode();
   if (isNativeMobile() && current.permission === "granted" && current.configured) {
     // Called on launch/foreground as well as preference changes. Refreshing the
     // FCM token here recovers from token rotation without requesting permission.
     const token = await registerForNativePush();
     await saveNativeSubscription(token, stateCode);
-    return readNativeAircraftAlertStatus();
+    return readAircraftAlertStatus();
   }
+  if (!current.enabled) return current;
   const res = await fetch("/api/aircraft-alerts/subscription", {
     method: "PATCH",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      userId: getAircraftAlertUserId(),
+      userId: await getAircraftAlertUserId(),
       stateCode,
-      excludedAircraftByState: readAircraftTrackingPreferences(),
+      excludedAircraftByState: readNotificationTrackingPreferences(stateCode),
     }),
   });
   if (!res.ok) throw new Error("preference_sync_failed");
@@ -183,7 +218,7 @@ export async function sendAircraftAlertTest(): Promise<void> {
   const res = await fetch("/api/aircraft-alerts/test", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ userId: getAircraftAlertUserId() }),
+    body: JSON.stringify({ userId: await getAircraftAlertUserId() }),
   });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: unknown } | null;
@@ -207,7 +242,7 @@ function isNativeMobile(): boolean {
 async function readNativeAircraftAlertStatus(): Promise<AircraftAlertStatus> {
   const setup = await readNativeNotificationSetup();
   const permission = await PushNotifications.checkPermissions();
-  const userId = getAircraftAlertUserId();
+  const userId = await getAircraftAlertUserId();
   const res = await fetch(
     `/api/aircraft-alerts/subscription?userId=${encodeURIComponent(userId)}&transport=fcm`,
     { cache: "no-store" },
@@ -253,7 +288,7 @@ async function enableNativeAircraftAlerts(
   const stateCode = input.stateCode ?? getSelectedStateCode();
   await saveNativeSubscription(token, stateCode);
   return {
-    ...(await readNativeAircraftAlertStatus()),
+    ...(await readAircraftAlertStatus()),
     enabled: true,
     permission: "granted",
     stateCode,
@@ -266,13 +301,14 @@ async function saveNativeSubscription(token: string, stateCode: StateCode): Prom
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      userId: getAircraftAlertUserId(),
+      userId: await getAircraftAlertUserId(),
       subscription: { transport: "fcm", token },
       stateCode,
-      excludedAircraftByState: readAircraftTrackingPreferences(),
+      excludedAircraftByState: readNotificationTrackingPreferences(stateCode),
     }),
   });
   if (!res.ok) throw new Error("subscribe_failed");
+  await updateDevicePreferences({ [OPT_IN_KEY]: "1" });
 }
 
 async function registerForNativePush(): Promise<string> {

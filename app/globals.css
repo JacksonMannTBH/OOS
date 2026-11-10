@@ -2,12 +2,98 @@
 @tailwind components;
 @tailwind utilities;
 
+.oos-police-popup .maplibregl-popup-content { background: #10151c; border: 1px solid #4da3ff; border-radius: 10px; padding: 9px 38px 9px 12px; box-shadow: 0 4px 16px #0006; }
+.oos-police-popup .maplibregl-popup-close-button { color: #a9c9ed; font-size: 20px; width: 36px; height: 36px; padding: 0; line-height: 1; }
+.oos-police-popup__details { display: grid; gap: 1px; font: 12px/1.4 'IBM Plex Sans', sans-serif; white-space: nowrap; }
+.oos-police-popup__details strong { color: #f5f2e8; font-size: 13px; font-weight: 600; }
+.oos-police-popup__details span { color: #adbac9; }
+.oos-police-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: #4da3ff; }
+.oos-police-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: #4da3ff; }
+.oos-police-popup.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: #4da3ff; }
+.oos-police-popup.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: #4da3ff; }
+.oos-police-marker { appearance: none; -webkit-appearance: none; -webkit-tap-highlight-color: transparent; }
+.oos-police-marker, .oos-police-marker__badge, .oos-police-marker svg { box-shadow: none; filter: none; }
+.oos-police-marker:focus-visible { outline: 2px solid #4da3ff; outline-offset: 2px; }
+
+.ss-police-nearby, .ss-police-report--alerting { color: #4da3ff; animation: oos-police-alert 2.4s ease-in-out infinite; }
+@keyframes oos-police-alert {
+  0%, 30%, 100% { color: #4da3ff; }
+  50%, 80% { color: #ff5a65; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ss-police-nearby, .ss-police-report--alerting { animation: none; }
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans/IBMPlexSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans/IBMPlexSans-Italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans/IBMPlexSans-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans/IBMPlexSans-MediumItalic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans/IBMPlexSans-SemiBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans/IBMPlexSans-SemiBoldItalic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans/IBMPlexSans-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans/IBMPlexSans-BoldItalic.woff2") format("woff2");
+}
+
 :root {
-  --font-brand: Helvetica, "Helvetica Neue", Arial, sans-serif;
-  --font-ui: Helvetica, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: Helvetica, "Helvetica Neue", Arial, sans-serif;
-  --font-header-brand: "Math Bold", "Cambria Math", "STIX Two Math", "Noto Sans Math", "Times New Roman", serif;
-  --font-header-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-ui: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: var(--font-ui);
+  --font-brand: var(--font-ui);
+  --font-header-brand: var(--font-ui);
+  --font-header-ui: var(--font-ui);
   --ss-bg0: #050607;
   --ss-bg1: rgba(13, 14, 11, 0.94);
   --ss-bg2: rgba(246, 196, 49, 0.10);
@@ -101,6 +187,146 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+.ss-home-scroll {
+  min-height: 0;
+  position: relative;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: calc(env(safe-area-inset-top, 0px) + 64px) clamp(14px, 5vw, 20px) 16px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 4vw, 18px);
+}
+
+.ss-home-scroll > * {
+  flex-shrink: 0;
+}
+
+.ss-home-aircraft { min-width: 0; width: 100%; }
+.ss-home-aircraft h1 {
+  margin: 0 0 10px;
+  font-family: var(--font-mono);
+  font-size: clamp(24px, 7.8vw, 32px);
+  font-weight: 800;
+  line-height: 1.3;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+}
+.ss-home-aircraft-scroll { overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.ss-home-aircraft-track {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: max-content;
+  min-width: 100%;
+  padding: 4px;
+}
+.ss-home-aircraft-link {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.ss-home-aircraft-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 32px;
+  border: 1.5px solid;
+  border-radius: 8px;
+  background: rgba(255,255,255,.08);
+}
+
+.ss-home-actions {
+  box-sizing: border-box;
+  position: relative;
+  z-index: 4;
+  background: #000000;
+}
+
+.ss-ride-history {
+  list-style: none;
+  margin: auto 0 0;
+  padding: 16px 0 0;
+}
+
+.ss-ride-history li + li { border-top: 1px solid rgba(255, 255, 255, .12); }
+.ss-ride-history button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 2px;
+  color: #f5f1e6;
+  background: transparent;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ss-ride-date { display: block; font-size: 15px; font-weight: 800; }
+.ss-ride-row-stats { display: block; margin-top: 4px; font-size: 14px; color: #d8d3c8; }
+.ss-ride-error { margin: 8px 0; font-size: 14px; line-height: 1.45; color: #f6c431; overflow-wrap: anywhere; }
+.ss-ride-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(420px, calc(100% - 32px));
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px);
+  box-sizing: border-box;
+  overflow-y: auto;
+  border: 1px solid rgba(246, 196, 49, .4);
+  border-radius: 22px;
+  padding: 24px;
+  background: #10110f;
+  color: #f5f1e6;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.ss-ride-dialog::backdrop { background: rgba(0, 0, 0, .75); }
+.ss-ride-dialog.ss-ride-summary { border: 0; }
+.ss-ride-dialog.ss-ride-consent { border: 0; box-shadow: none; }
+.ss-ride-consent .ss-ride-primary { border: 0; box-shadow: none; }
+.ss-ride-consent .ss-ride-secondary { box-shadow: none; }
+.ss-ride-dialog h2 { margin: 0 0 12px; font-size: 26px; line-height: 1.2; font-weight: 800; }
+.ss-ride-dialog h2:focus { outline: none; }
+.ss-ride-dialog p { margin: 12px 0; }
+.ss-ride-muted { color: #d8d3c8; font-size: 14px; }
+.ss-ride-statistics { display: grid; gap: 14px; margin: 24px 0; }
+.ss-ride-statistics div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ss-ride-statistics dt { font-size: 14px; color: #d8d3c8; }
+.ss-ride-statistics dd { margin: 0; font-size: 26px; font-weight: 800; color: #f6c431; }
+.ss-ride-primary, .ss-ride-secondary {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 16px;
+  border: 1px solid #f6c431;
+  border-radius: 14px;
+  background: #f6c431;
+  color: #050607;
+  font: inherit;
+  font-weight: 800;
+  margin-top: 10px;
+  cursor: pointer;
+}
+.ss-ride-secondary { background: transparent; color: #f5f1e6; border-color: rgba(255,255,255,.2); }
+.ss-ride-primary:disabled, .ss-ride-secondary:disabled { opacity: .6; cursor: wait; }
+.ss-ride-summary .ss-ride-primary { border: 0; }
+.ss-ride-route-map { width: 100%; height: clamp(160px, 28dvh, 240px); overflow: hidden; border-radius: 14px; background: #202526; margin-top: 16px; }
+.ss-ride-route-marker { width: 18px; height: 18px; border: 3px solid white; box-shadow: 0 1px 5px #0009; }
+.ss-ride-route-marker-start { border-radius: 50%; background: #10110f; }
+.ss-ride-route-marker-end { border-radius: 0; background: #fff; }
+
 
 .ss-mono {
   font-family: var(--font-mono);
@@ -452,15 +678,16 @@ body[data-radar-mode="true"] .maplibregl-ctrl-attrib-button {
 }
 
 .ss-plane-popup .maplibregl-popup-content {
-  background: var(--ss-surface) !important;
+  background: #050607 !important;
   color: var(--ss-fg0) !important;
+  padding: 4px 10px;
   border: 0.5px solid var(--ss-hairline-2);
   border-radius: 8px;
   box-shadow: var(--ss-shadow-md);
 }
 
-.ss-plane-popup .maplibregl-popup-close-button {
-  color: var(--ss-fg1);
+.ss-plane-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: #050607;
 }
 
 body[data-theme="dark"] [style*="rgba(255,255,255"],
@@ -711,7 +938,7 @@ body[data-theme="dark"] textarea {
 
 .ss-settings-back {
   width: fit-content;
-  min-height: 40px;
+  min-height: 44px;
   box-sizing: border-box;
   padding: 0 13px 0 9px;
   display: inline-flex;
@@ -728,7 +955,7 @@ body[data-theme="dark"] textarea {
   text-decoration: none;
 }
 
-.ss-settings-back span {
+.ss-settings-back__icon {
   width: 22px;
   height: 22px;
   display: grid;
@@ -736,9 +963,10 @@ body[data-theme="dark"] textarea {
   border-radius: 50%;
   background: var(--ss-alert-dim);
   color: var(--ss-alert);
-  font-size: 20px;
-  line-height: 1;
+  flex-shrink: 0;
+  line-height: 0;
 }
+.ss-settings-back__icon svg { display: block; }
 
 .ss-settings-home-button {
   position: fixed;
@@ -1011,3 +1239,101 @@ body[data-theme="dark"] textarea {
     scroll-behavior: auto !important;
   }
 }
+
+/* Aircraft profiles use the same layout and navigation as Settings. */
+.ss-aircraft-profile .ss-settings-page__intro .ss-aircraft-profile__operator {
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 8px;
+}
+.ss-aircraft-profile__status {
+  width: fit-content;
+  margin-top: 16px;
+  color: var(--ss-fg2);
+  font-size: 14px;
+  font-weight: 800;
+}
+.ss-aircraft-profile__status[data-status="Airborne"] { color: var(--ss-alert); }
+.ss-aircraft-profile__status[data-status="Grounded"] { color: var(--ss-clear); }
+.ss-aircraft-profile .ss-settings-page__intro .ss-aircraft-profile__freshness {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ss-fg2);
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.ss-aircraft-profile__action {
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 12px 16px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  background: var(--ss-alert);
+  border: 0;
+  border-radius: 14px;
+  box-shadow: none;
+  color: #050505;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.ss-aircraft-profile__section { display: grid; gap: 14px; }
+.ss-aircraft-profile__section h2 { margin: 0; font-size: 19px; font-weight: 850; color: var(--ss-fg0); }
+.ss-aircraft-profile__readings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 16px;
+  margin: 0;
+}
+.ss-aircraft-profile__readings > div { padding-top: 12px; border-top: 1px solid var(--ss-hairline); }
+.ss-aircraft-profile__readings dt { color: var(--ss-fg2); font-size: 12px; font-weight: 500; line-height: 1.4; }
+.ss-aircraft-profile__readings dd { color: var(--ss-fg0); margin: 5px 0 0; font-size: clamp(19px, 5vw, 24px); font-weight: 800; overflow-wrap: anywhere; }
+.ss-aircraft-profile__note { margin: 0; font-size: 12px; color: var(--ss-fg2); line-height: 1.5; }
+.ss-aircraft-profile > details, .ss-aircraft-profile__section > details { background: transparent !important; box-shadow: none; }
+.ss-aircraft-profile__registry { display: inline-flex; min-height: 44px; align-items: center; color: var(--ss-alert); font-size: 13px; font-weight: 700; text-decoration: none; }
+
+.ss-ride-navigation {
+  width: min(100%, 420px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.ss-ride-navigation__home {
+  width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 999px;
+  background: rgba(0,0,0,.38);
+  color: #f6c431;
+  text-decoration: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.ss-ride-navigation__estimate {
+  width: fit-content;
+  min-width: 0;
+  max-width: calc(100% - 54px);
+  box-sizing: border-box;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(0,0,0,.38);
+  color: #f5f2e8;
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.ss-police-dialog { border-color: #4da3ff; padding-top: 48px; }
+.ss-police-dialog--vote h2 { text-align: center; }
+.ss-police-dialog__close { position: absolute; right: 8px; top: 8px; width: 40px; height: 40px; border: 0; background: transparent; color: #adbac9; font-size: 30px; line-height: 1; }
+.ss-police-dialog__positive { background: #4da3ff; border-color: #4da3ff; }
+.ss-police-dialog__vote { min-height: 68px; font-size: 22px; }

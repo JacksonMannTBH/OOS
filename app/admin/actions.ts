@@ -94,8 +94,7 @@ function readEntryFromForm(formData: FormData): {
   const operatorOther = s(formData, "operator_other");
   const operator = operatorRaw === "Other" ? operatorOther : operatorRaw;
   const model = s(formData, "model");
-  const nicknameRaw = s(formData, "nickname");
-  const nickname = nicknameRaw || null;
+  const nickname = null;
   const hexRaw = s(formData, "hex").toUpperCase();
   const hex = hexRaw || null;
   const base = s(formData, "base");

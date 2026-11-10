@@ -7,12 +7,11 @@
 // paths. The layer also listens for the LAYER_VISIBILITY_CHANGE_EVENT
 // broadcast so controls stay in sync.
 //
-// Source: /api/flight-paths returns one GeoJSON LineString per tail-day
-// with >= 5 points, filtered by the selected state.
-// Edge-cached for 5 min so flipping filters is cheap.
+// Source: the shared backend live channel, filtered by selected state.
 
 import { useEffect, useRef, useState } from "react";
 import type { Map as MaplibreMap, GeoJSONSource } from "maplibre-gl";
+import { subscribeLiveState } from "@/lib/live-data-client";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
 import {
   STATE_CHANGE_EVENT,
@@ -110,31 +109,20 @@ export function FlightPathLayer({ map, airborneTails }: Props) {
     };
   }, []);
 
-  // Fetch the polyline FeatureCollection on filter / state change.
+  // Render pushed current-flight points using the existing layer appearance.
   useEffect(() => {
-    let cancelled = false;
-    const filteredAirborneTails = airborneTailKey ? airborneTailKey.split(",") : [];
-    if (filteredAirborneTails.length === 0) {
-      setFeatures([]);
-      return;
-    }
-    const qs = buildQueryString(stateCode, filteredAirborneTails);
-    (async () => {
-      try {
-        const r = await fetch(`/api/flight-paths?${qs}`, {
-          cache: "no-store",
-        });
-        if (!r.ok) return;
-        const d = (await r.json()) as { features?: GeoJSON.Feature[] };
-        if (cancelled) return;
-        setFeatures(Array.isArray(d.features) ? colorizeFeatures(d.features) : []);
-      } catch {
-        // best-effort
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    const allowed = new Set(airborneTailKey ? airborneTailKey.split(",") : []);
+    if (!allowed.size) { setFeatures([]); return; }
+    return subscribeLiveState(stateCode, update => {
+      const lines: GeoJSON.Feature[] = Object.entries(update.trails)
+        .filter(([tail, points]) => allowed.has(tail) && points.length >= 2)
+        .map(([tail, points]) => ({
+          type: "Feature",
+          geometry: { type: "LineString", coordinates: points.map(p => [p.lon, p.lat]) },
+          properties: { tail, count: points.length },
+        }));
+      setFeatures(colorizeFeatures(lines));
+    });
   }, [stateCode, airborneTailKey]);
 
   // Add the source + layer once the map is ready. Same retry-on-data

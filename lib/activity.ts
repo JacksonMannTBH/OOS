@@ -31,7 +31,7 @@ export function describeEvent(
   squawk?: string | null,
   role: FleetRole = "unknown",
 ): string {
-  const name = nickname ?? tail;
+  const name = tail;
   if (kind === "takeoff") {
     if (role === "fixed_wing") return `${name} off the deck`;
     if (role === "sar") return `${name} on a run`;

@@ -74,7 +74,7 @@ export function RideSettings() {
 
   return (
     <>
-      <SettingsCard title="Wake mode" eyebrow="Device">
+      <SettingsCard title="Wake mode">
         <label
           style={{
             minHeight: 52,
@@ -120,14 +120,14 @@ export function RideSettings() {
         </label>
       </SettingsCard>
 
-      <SettingsCard title="Speedometer" eyebrow="Ride mode">
+      <SettingsCard title="Speedometer">
         <label style={{ minHeight: 52, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, color: SS_TOKENS.fg0, cursor: "pointer" }}>
           <span><strong style={{ display: "block", fontSize: 14, fontWeight: 800 }}>Show speedometer</strong><small style={{ display: "block", marginTop: 4, color: SS_TOKENS.fg2, fontSize: 12, lineHeight: 1.4 }}>Display your speed in miles per hour in Ride mode.</small></span>
           <input type="checkbox" checked={showSpeedometer} onChange={event => writeSpeedometerVisible(event.target.checked)} style={{ width: 22, height: 22, flexShrink: 0, accentColor: SS_TOKENS.alert, cursor: "pointer" }} />
         </label>
       </SettingsCard>
 
-      <SettingsCard title="Distance bands" eyebrow="Ride mode">
+      <SettingsCard title="Distance bands">
         <p
           style={{
             margin: 0,

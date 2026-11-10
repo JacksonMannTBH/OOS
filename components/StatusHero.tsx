@@ -7,6 +7,7 @@ type Props = {
   frameless?: boolean;
   loading?: boolean;
   unavailable?: boolean;
+  compact?: boolean;
 };
 
 export function StatusHero({
@@ -15,6 +16,7 @@ export function StatusHero({
   frameless = false,
   loading = false,
   unavailable = false,
+  compact = false,
 }: Props) {
   const isAlert = status.kind === "alert";
   return (
@@ -25,7 +27,7 @@ export function StatusHero({
       style={{
         position: "relative",
         overflow: "hidden",
-        minHeight: frameless ? "clamp(240px, 66vw, 310px)" : "clamp(304px, 82vw, 370px)",
+        minHeight: compact ? 0 : frameless ? "clamp(240px, 66vw, 310px)" : "clamp(304px, 82vw, 370px)",
         padding: frameless ? "clamp(8px, 2.8vw, 12px) 4px" : "clamp(18px, 4.8vw, 24px)",
         display: "flex",
         flexDirection: "column",
@@ -45,7 +47,7 @@ export function StatusHero({
         style={{
           position: "relative",
           zIndex: 1,
-          marginTop: frameless ? "clamp(28px, 6vw, 40px)" : 0,
+          marginTop: frameless && !compact ? "clamp(28px, 6vw, 40px)" : 0,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -61,7 +63,7 @@ export function StatusHero({
             margin: showPill ? "clamp(26px, 7.2vw, 44px) 0 0" : "0",
             color: "#ffffff",
             fontFamily: "var(--font-brand)",
-            fontSize: frameless ? "clamp(42px, 12vw, 68px)" : "clamp(48px, 13vw, 74px)",
+            fontSize: compact ? "clamp(32px, 10vw, 48px)" : frameless ? "clamp(42px, 12vw, 68px)" : "clamp(48px, 13vw, 74px)",
             fontWeight: 800,
             letterSpacing: 0,
             lineHeight: frameless ? 1.14 : 1.06,

@@ -5,10 +5,11 @@ import { createPortal } from "react-dom";
 import { Capacitor } from "@capacitor/core";
 import { SS_TOKENS } from "@/lib/tokens";
 import {
+  AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT,
   enableAircraftAlerts,
   readAircraftAlertStatus,
 } from "@/lib/aircraft-alerts/client";
-import { getSelectedStateCode } from "@/lib/app-states";
+import { getAppState, getSelectedStateCode } from "@/lib/app-states";
 import { aircraftAlertErrorMessage, shouldPromoteAircraftAlerts, type NotificationPlatform } from "@/lib/aircraft-alerts/presentation";
 
 const DISMISS_KEY = "oos_alerts_promo_dismissed_at";
@@ -26,19 +27,29 @@ export function AlertsOptInCard() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     setMounted(true);
-    const dismissed = Number(window.localStorage.getItem(DISMISS_KEY) ?? 0);
+    let dismissed = 0;
+    try { dismissed = Number(window.localStorage.getItem(DISMISS_KEY) ?? 0); }
+    catch { /* Native alert enrollment is independent of web storage. */ }
     if (Number.isFinite(dismissed) && Date.now() - dismissed < COOLDOWN_MS) {
       setPhase("hidden");
       return;
     }
+    let cancelled = false;
     readAircraftAlertStatus()
-      .then((status) => setPhase(shouldPromoteAircraftAlerts(status) ? "show" : "hidden"))
-      .catch(() => setPhase("hidden"));
+      .then((status) => { if (!cancelled) setPhase(shouldPromoteAircraftAlerts(status) ? "show" : "hidden"); })
+      .catch(() => { if (!cancelled) setPhase("hidden"); });
+    const onStatus = (event: Event) => {
+      const status = (event as CustomEvent<{ status?: { enabled: boolean; optedIn?: boolean } }>).detail?.status;
+      if (status?.enabled || status?.optedIn) { cancelled = true; setPhase("hidden"); }
+    };
+    window.addEventListener(AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, onStatus);
+    return () => { cancelled = true; window.removeEventListener(AIRCRAFT_ALERT_PREFERENCE_SYNC_EVENT, onStatus); };
   }, []);
 
   const onDismiss = useCallback(() => {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
+      try { window.localStorage.setItem(DISMISS_KEY, String(Date.now())); }
+      catch { /* Still dismiss for this session. */ }
     }
     setPhase("hidden");
   }, []);
@@ -86,22 +97,12 @@ export function AlertsOptInCard() {
           boxSizing: "border-box",
           padding: "24px 22px 20px",
           borderRadius: 24,
-          border: `1px solid ${SS_TOKENS.hairline2}`,
+          border: 0,
           background: "rgba(13, 14, 11, 0.98)",
-          boxShadow: "0 28px 80px rgba(0, 0, 0, 0.62)",
+          boxShadow: "none",
           color: SS_TOKENS.fg0,
         }}
       >
-        <div
-          aria-hidden
-          style={{
-            width: 42,
-            height: 4,
-            marginBottom: 18,
-            borderRadius: 999,
-            background: SS_TOKENS.alert,
-          }}
-        />
         <h2
           id={titleId}
           style={{
@@ -111,7 +112,7 @@ export function AlertsOptInCard() {
             lineHeight: 1.08,
           }}
         >
-          Stay ahead of takeoffs
+          Turn on Notifications?
         </h2>
         <p
           id={descriptionId}
@@ -122,7 +123,7 @@ export function AlertsOptInCard() {
             lineHeight: 1.5,
           }}
         >
-          Get a notification when tracked aircraft in your selected state launch.
+          Get notified when aircraft you track in {getAppState(getSelectedStateCode()).label} take flight.
         </p>
         {message && (
           <p
@@ -150,7 +151,7 @@ export function AlertsOptInCard() {
             border: 0,
             background: SS_TOKENS.alert,
             color: "#050607",
-            boxShadow: "0 12px 30px rgba(246, 196, 49, 0.18)",
+            boxShadow: "none",
             fontFamily: "var(--font-brand)",
             fontSize: 16,
             fontWeight: 900,
@@ -160,7 +161,7 @@ export function AlertsOptInCard() {
             WebkitTapHighlightColor: "transparent",
           }}
         >
-          {busy ? "Arming" : "Arm alerts"}
+          {busy ? "Turning on…" : "Notify me"}
         </button>
         <button
           type="button"

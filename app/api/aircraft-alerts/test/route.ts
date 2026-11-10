@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import {
   deleteAircraftAlertSubscriber,
   getAircraftAlertSubscriber,
@@ -12,16 +11,16 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "not_configured" }, { status: 503 });
+    return Response.json({ error: "not_configured" }, { status: 503 });
   }
   const body = (await req.json().catch(() => null)) as { userId?: unknown } | null;
   const userId = typeof body?.userId === "string" ? body.userId : null;
   if (!userId || !/^[a-f0-9-]{20,80}$/i.test(userId)) {
-    return NextResponse.json({ error: "invalid_user" }, { status: 400 });
+    return Response.json({ error: "invalid_user" }, { status: 400 });
   }
   const subscriber = await getAircraftAlertSubscriber(userId);
   if (!subscriber?.enabled) {
-    return NextResponse.json({ error: "not_subscribed" }, { status: 404 });
+    return Response.json({ error: "not_subscribed" }, { status: 404 });
   }
 
   const payload = {
@@ -38,11 +37,11 @@ export async function POST(req: Request) {
     if (result.reason === "expired") {
       await deleteAircraftAlertSubscriber(userId);
     }
-    return NextResponse.json(
+    return Response.json(
       { error: result.reason, statusCode: result.statusCode },
       { status: result.reason === "not_configured" ? 503 : 502 },
     );
   }
 
-  return NextResponse.json({ ok: true });
+  return Response.json({ ok: true });
 }

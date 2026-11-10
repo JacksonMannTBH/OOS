@@ -19,6 +19,46 @@ takeoff notifications.
 
 ## Local setup
 
+The deployed WA/CA/TX ADSB.lol backend is documented in
+[cloud-backend/README.md](cloud-backend/README.md), including its API and app
+connection settings. It runs on Supabase every 30 seconds without a local process.
+
+### ADSB.lol Washington / California trial
+
+Run `npm run trial:adsblol` to start the independent local test backend at
+`http://127.0.0.1:3031/aircraft`. It sends one combined ADSB.lol ICAO lookup
+immediately, then every 30 seconds while the process is running. All 29 WA
+and 230 CA aircraft in the bundled OOS public-safety catalog are included,
+regardless of device selections or whether they are airborne. These are home
+state assignments, not every aircraft geographically inside either state.
+Live admin catalog edits are not loaded by this trial.
+
+- `/aircraft` returns all catalog rows plus fresh observations.
+- `/aircraft?state=WA` and `/aircraft?state=CA` filter the cached results.
+- `/health` returns request counts, latency, freshness and failure information;
+  it returns HTTP 503 until a successful response and whenever unhealthy.
+- `npm run trial:adsblol:once` performs one lookup and prints a snapshot.
+
+Reading an endpoint never triggers an upstream request. Observations or
+positions older than 60 seconds are not presented as current; missing data
+means unknown, not landed. On failures the poller backs off from 60 seconds
+to five minutes and honors longer `Retry-After` instructions. Successful
+requests restore the 30-second cadence. Requests time out after ten seconds.
+
+Latest observations are held in memory. Request summaries (without position
+history) append to daily files under `.local/adsblol-trial/`; these persist
+across restarts and can be deleted after testing. Set `ADSBLOL_TRIAL_PORT` or
+`ADSBLOL_TRIAL_LOG_DIR` to override the port or log directory. Stop with Ctrl-C.
+This is a local service, not a Netlify scheduled function: the process and
+computer must remain running. No database credentials are needed, and the
+trial does not write to production or send notifications.
+
+Data: [ADSB.lol](https://www.adsb.lol/docs/open-data/api/), ODbL 1.0.
+API: [documentation](https://api.adsb.lol/docs). The provider's rate limits
+are dynamic; this trial measures reliability at the requested cadence.
+
+### Main application
+
 1. Copy `.env.example` to `.env.local`.
 2. Create a Supabase project and apply the files in `supabase/migrations/`
    in filename order.

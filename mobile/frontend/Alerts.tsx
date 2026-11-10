@@ -14,7 +14,7 @@ export default function Alerts() {
     void getAircraftCatalogEntries().then(value => { if (!cancelled) setCatalog(value); }).catch(() => { if (!cancelled) setError(true); });
     return () => { cancelled = true; };
   }, [attempt]);
-  return <SettingsPageShell eyebrow="Settings · Alerts" title="Notifications & state" description="Choose the state you track and whether this device receives confirmed takeoff notifications.">
+  return <SettingsPageShell title="Notifications & state" description="Choose the state you track and whether this device receives confirmed takeoff notifications.">
     <AlertsSettings />
     {catalog ? <SelectedStateAircraftList catalog={catalog} /> : <SettingsCard title="Tracked aircraft"><p role="status">{error ? "Aircraft data is unavailable. Check your connection." : "Loading aircraft…"}</p>{error && <button onClick={() => setAttempt(value => value + 1)}>Try again</button>}</SettingsCard>}
   </SettingsPageShell>;

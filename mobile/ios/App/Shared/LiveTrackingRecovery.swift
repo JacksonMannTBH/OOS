@@ -5,6 +5,7 @@ struct SavedLiveTrackingSession: Codable {
     var activityID: String?
     var configuration: RideTrackingConfiguration?
     var startedAt: Date?
+    var stopReason: String?
 }
 
 struct RecoverableLiveActivity {
@@ -24,8 +25,8 @@ enum LiveTrackingRecovery {
 }
 
 enum LiveTrackingStopReason: String {
-    case userStop, systemEnded, systemDismissed
-    var shouldRemoveActivity: Bool { self == .userStop }
+    case userStop, appClosed, systemEnded, systemDismissed
+    var shouldRemoveActivity: Bool { self == .userStop || self == .appClosed }
 }
 
 struct LiveTrackingDiagnostic: Codable {

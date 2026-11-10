@@ -221,6 +221,16 @@ export async function buildFleetBatchSnapshot(
   ), live);
 }
 
+/** Owner-selected ingestion supplier. A failed ADSB.fi request must not
+ * silently change suppliers. Keep fleet requests within its batch limits. */
+export async function buildAdsbFiIngestionSnapshot(catalog: AircraftCatalogEntry[]): Promise<Snapshot> {
+  const fleet = catalog.map(entry => entry.aircraft);
+  const raw = await fetchAircraftBatches(fleet.map(fleetHex), fetchAdsbFi);
+  return joinFleetWithLiveData(fleet, new Map(
+    catalog.map(entry => [entry.aircraft.tail.toUpperCase(), entry.homeStateCode]),
+  ), { raw, source: "adsbfi", sourceOk: true });
+}
+
 async function buildSnapshotUncached(
   stateCode: StateCode,
 ): Promise<Snapshot> {

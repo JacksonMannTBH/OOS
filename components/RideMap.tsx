@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { PoliceSighting } from "@/lib/police-sightings";
+import { PoliceSightingLayer } from "./PoliceSightingLayer";
 import maplibregl, {
   GeoJSONSource,
   Map as MaplibreMap,
@@ -17,6 +19,7 @@ import {
 } from "@/lib/brand/helicopter-sprite";
 import { MAP_STYLE_URL } from "@/lib/map-style";
 import { darkMapStyle } from "@/lib/dark-map-style";
+import { rideMapBounds } from "@/lib/ride-map-camera";
 import type {
   RideContact,
   RideStatus,
@@ -26,6 +29,7 @@ import type {
 type RiderPoint = { lat: number; lon: number };
 
 type Props = {
+  policeSightings?: PoliceSighting[];
   status: RideStatus;
   rider: RiderPoint | null;
   contacts: RideContact[];
@@ -88,7 +92,7 @@ export default function RideMap(props: Props) {
     <section
       aria-label={ariaLabel}
       style={{
-        width: "min(70vw, 320px, 42dvh)",
+        width: "100%",
         aspectRatio: "1",
         position: "relative",
         flex: "0 0 auto",
@@ -168,6 +172,7 @@ function OffMapAircraftArrow({ bearingDeg }: { bearingDeg: number }) {
 }
 
 function RideMapCanvas(props: RideMapState) {
+  const [policeMap, setPoliceMap] = useState<MaplibreMap | null>(null);
   const { contacts, distanceBands, rider, status } = props;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MaplibreMap | null>(null);
@@ -183,7 +188,8 @@ function RideMapCanvas(props: RideMapState) {
     const map = new maplibregl.Map({
       container,
       center: [initial.rider.lon, initial.rider.lat],
-      zoom: 10,
+      bounds: rideMapBounds(initial.rider, initial.distanceBands.watchNm),
+      fitBoundsOptions: { padding: CAMERA_PADDING_PX, maxZoom: 16 },
       bearing: 0,
       pitch: 0,
       interactive: false,
@@ -197,6 +203,7 @@ function RideMapCanvas(props: RideMapState) {
     );
     collapseMapAttribution(container);
     mapRef.current = map;
+    setPoliceMap(map);
     map.setStyle(MAP_STYLE_URL, { transformStyle: (_, style) => darkMapStyle(style, "ride") });
     let disposed = false;
     let animationFrame: number | null = null;
@@ -235,7 +242,8 @@ function RideMapCanvas(props: RideMapState) {
       icons.forEach(({ key, image }) => map.addImage(key, image));
       addRideLayers(map);
       readyRef.current = true;
-      updateRideMap(map, latestRef.current, false);
+      updateRideMap(map, latestRef.current);
+      setCamera(map, latestRef.current, false);
       syncHelicopterAnimation();
       collapseMapAttribution(container);
     };
@@ -260,7 +268,6 @@ function RideMapCanvas(props: RideMapState) {
     updateRideMap(
       map,
       { contacts, distanceBands, rider, status },
-      true,
     );
   }, [
     contacts,
@@ -269,15 +276,20 @@ function RideMapCanvas(props: RideMapState) {
     status,
   ]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (map && readyRef.current) setCamera(map, latestRef.current, true);
+  }, [rider.lat, rider.lon, distanceBands.watchNm]);
+
   return (
-    <div
+    <><PoliceSightingLayer map={policeMap} sightings={props.policeSightings ?? []} /><div
       ref={containerRef}
       style={{
         position: "absolute",
         inset: 0,
         background: "#111514",
       }}
-    />
+    /></>
   );
 }
 
@@ -306,12 +318,10 @@ function LocationPlaceholder() {
 function updateRideMap(
   map: MaplibreMap,
   state: RideMapState,
-  animate: boolean,
 ) {
   setRingData(map, state);
   setRiderData(map, state.rider);
   setContactData(map, state);
-  setCamera(map, state, animate);
 }
 
 function addRideLayers(map: MaplibreMap) {
@@ -335,17 +345,6 @@ function addRideLayers(map: MaplibreMap) {
   map.addSource("ride-rider", {
     type: "geojson",
     data: emptyFeatureCollection(),
-  });
-  map.addLayer({
-    id: "ride-rider-halo",
-    type: "circle",
-    source: "ride-rider",
-    paint: {
-      "circle-radius": 14,
-      "circle-color": "#8bd2ff",
-      "circle-opacity": 0.2,
-      "circle-blur": 0.35,
-    },
   });
   map.addLayer({
     id: "ride-rider",
@@ -481,14 +480,8 @@ function setContactData(map: MaplibreMap, state: RideMapState) {
 }
 
 function setCamera(map: MaplibreMap, state: RideMapState, animate: boolean) {
-  const watchNm = state.distanceBands.watchNm;
-  const dLat = watchNm / 60;
-  const dLon = dLat / Math.max(0.01, Math.cos((state.rider.lat * Math.PI) / 180));
   const camera = map.cameraForBounds(
-    [
-      [state.rider.lon - dLon, state.rider.lat - dLat],
-      [state.rider.lon + dLon, state.rider.lat + dLat],
-    ],
+    rideMapBounds(state.rider, state.distanceBands.watchNm),
     { padding: CAMERA_PADDING_PX, maxZoom: 16 },
   );
   if (!camera) return;

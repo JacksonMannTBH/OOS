@@ -11,6 +11,7 @@ import { SpeedWarning } from "@/components/SpeedWarning";
 import { SkipLink } from "@/components/SkipLink";
 import { RadarShell } from "@/components/RadarShell";
 import { RideModeShell } from "@/components/RideModeShell";
+import { DataLoadingScreen } from "@/components/DataLoadingScreen";
 import { STARTING_SNAPSHOT, getSpeedWarningEnabled } from "./data";
 import { navigate, useLocation, useRevision } from "./navigation";
 import Alerts from "./Alerts";
@@ -21,15 +22,13 @@ type PageModule = { default: (props: PageProps) => ReactNode | Promise<ReactNode
 type Route = { pattern: RegExp; load: () => Promise<unknown>; names?: string[]; async?: boolean };
 const routes: Route[] = [
   { pattern: /^\/home$/, load: () => import("../../app/(tabs)/home/page") },
-  { pattern: /^\/settings$/, load: () => import("../../app/(tabs)/settings/page") },
+  { pattern: /^\/settings$/, load: () => import("./Settings") },
   { pattern: /^\/settings\/display$/, load: () => import("../../app/(tabs)/settings/display/page") },
   { pattern: /^\/aircraft$/, load: () => import("../../app/(tabs)/aircraft/page"), async: true },
   { pattern: /^\/plane\/([A-Za-z0-9]{2,12})$/, names: ["tail"], load: () => import("../../app/(tabs)/plane/[tail]/page"), async: true },
   { pattern: /^\/flight\/([A-Za-z0-9]{2,12})\/(\d{8}T\d{4})$/, names: ["tail", "flightId"], load: () => import("../../app/flight/[tail]/[flightId]/page"), async: true },
-  { pattern: /^\/forecast$/, load: () => import("../../app/(tabs)/forecast/page"), async: true },
   { pattern: /^\/about$/, load: () => import("../../app/(tabs)/about/page") },
   { pattern: /^\/legal$/, load: () => import("../../app/(tabs)/legal/page") },
-  { pattern: /^\/store$/, load: () => import("../../app/(tabs)/store/page") },
 ];
 
 function Failure({ message, retry }: { message: string; retry?: () => void }) {
@@ -55,7 +54,7 @@ function Page({ route, props }: { route: Route; props: PageProps }) {
     return () => { cancelled = true; };
   }, [route, props, attempt]);
   if (error) return <Failure message={error} retry={() => setAttempt(value => value + 1)} />;
-  return content ?? <main role="status" style={{ padding: 32 }}>Loading…</main>;
+  return content ?? <DataLoadingScreen />;
 }
 function RouteScreen({ location }: { location: string }) {
   const url = new URL(location, "https://local.oos");
@@ -64,8 +63,9 @@ function RouteScreen({ location }: { location: string }) {
     if (pathname === "/") navigate("/home", true);
     else if (pathname === "/radar") navigate("/map", true);
     else if (pathname === "/settings/ride") navigate("/settings/display", true);
+    else if (pathname === "/store") navigate("/settings", true);
   }, [pathname]);
-  if (pathname === "/" || pathname === "/radar" || pathname === "/settings/ride") return null;
+  if (pathname === "/" || pathname === "/radar" || pathname === "/settings/ride" || pathname === "/store") return null;
   if (pathname === "/map") return <RadarShell initial={STARTING_SNAPSHOT} initialFocusTail={url.searchParams.get("tail")?.toUpperCase()} />;
   if (pathname === "/ride") return <RideModeShell initial={STARTING_SNAPSHOT} />;
   if (pathname === "/help") return <Help />;

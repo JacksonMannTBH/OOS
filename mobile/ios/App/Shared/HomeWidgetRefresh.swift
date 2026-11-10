@@ -6,10 +6,8 @@ enum HomeWidgetRefresh {
     static func refresh(configuration: RideTrackingConfiguration, forWidget: Bool) async -> Bool {
         let locator = HomeWidgetLocationRequest()
         guard let location = await locator.location(forWidget: forWidget), !Task.isCancelled else { return false }
-        var url = URLComponents(string: "https://outofsight.live/api/aircraft")!
         // Distance is calculated on-device; the request contains no rider coordinates.
-        url.queryItems = [URLQueryItem(name: "state", value: configuration.stateCode),
-                          URLQueryItem(name: "_", value: String(Int(Date().timeIntervalSince1970 * 1000)))]
+        let request = AppBackend.aircraftRequest(stateCode: configuration.stateCode)
         let options = URLSessionConfiguration.ephemeral
         options.timeoutIntervalForRequest = 10
         options.timeoutIntervalForResource = 12
@@ -17,7 +15,7 @@ enum HomeWidgetRefresh {
         let session = URLSession(configuration: options)
         defer { session.invalidateAndCancel() }
         do {
-            let (data, response) = try await session.data(from: url.url!)
+            let (data, response) = try await session.data(for: request)
             guard !Task.isCancelled, (response as? HTTPURLResponse)?.statusCode == 200 else { return false }
             let snapshot = try JSONDecoder().decode(RideTrackingSnapshot.self, from: data)
             var content = RideTrackingCalculator.summarize(snapshot: snapshot,

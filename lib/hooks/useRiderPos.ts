@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { watchDevicePosition } from "@/lib/device-location";
+import { setAutomaticallyDetectedCaliforniaRegion } from "@/lib/california-regions";
 
 export type RiderPos = {
   lat: number;
@@ -25,9 +26,9 @@ const WATCH_OPTS: PositionOptions = {
 };
 
 /**
- * Subscribes to device location. Mounting this hook is
- * what triggers the permission prompt — only do that on rider-facing pages
- * (/map), never on the home glanceable.
+ * Subscribes to foreground location for aircraft distances and the map.
+ * The shared location boundary suspends this watch when the app is hidden.
+ * On iOS, recording and Live Tracking share its native location source.
  */
 export function useRiderPos(): RiderState {
   const [pos, setPos] = useState<RiderPos | null>(null);
@@ -36,6 +37,8 @@ export function useRiderPos(): RiderState {
   useEffect(() => {
     return watchDevicePosition(
       (p) => {
+        void setAutomaticallyDetectedCaliforniaRegion(p.coords.latitude, p.coords.longitude)
+          .catch(() => { /* Retry on the next location fix if saving is unavailable. */ });
         setPos({
           lat: p.coords.latitude,
           lon: p.coords.longitude,

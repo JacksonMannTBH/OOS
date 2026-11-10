@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import { isStateCode, stateIdForCode, type StateCode } from "@/lib/app-states";
+import { isSupportedStateCode, stateIdForCode, type StateCode } from "@/lib/app-states";
 import {
   deleteAircraftAlertSubscriber,
   getAircraftAlertSubscriber,
@@ -27,15 +26,15 @@ type SubscriptionBody = {
 
 export async function GET(req: Request) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(baseStatus({ enabled: false, message: "database_not_configured" }));
+    return Response.json(baseStatus({ enabled: false, message: "database_not_configured" }));
   }
   const userId = new URL(req.url).searchParams.get("userId");
   if (!isValidUserId(userId)) {
-    return NextResponse.json(baseStatus({ enabled: false, message: "missing_user" }));
+    return Response.json(baseStatus({ enabled: false, message: "missing_user" }));
   }
   const subscriber = await getAircraftAlertSubscriber(userId);
   const requestedTransport = new URL(req.url).searchParams.get("transport");
-  return NextResponse.json(
+  return Response.json(
     baseStatus({
       enabled: Boolean(subscriber?.enabled),
       stateCode: subscriber?.stateCode,
@@ -45,18 +44,18 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "not_configured" }, { status: 503 });
+    return Response.json({ error: "not_configured" }, { status: 503 });
   }
   const body = (await req.json().catch(() => null)) as SubscriptionBody | null;
   const parsed = parseSubscriptionBody(body);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: 400 });
+    return Response.json({ error: parsed.error }, { status: 400 });
   }
   const subscriber = await upsertAircraftAlertSubscriber({
     ...parsed.value,
     userAgent: req.headers.get("user-agent"),
   });
-  return NextResponse.json(
+  return Response.json(
     baseStatus(
       { enabled: true, stateCode: subscriber.stateCode },
       subscriber.subscription.transport === "fcm" ? "fcm" : "web_push",
@@ -66,32 +65,32 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "not_configured" }, { status: 503 });
+    return Response.json({ error: "not_configured" }, { status: 503 });
   }
   const body = (await req.json().catch(() => null)) as SubscriptionBody | null;
   const userId = typeof body?.userId === "string" ? body.userId : null;
-  if (!isValidUserId(userId) || !isStateCode(body?.stateCode)) {
-    return NextResponse.json({ error: "invalid_request" }, { status: 400 });
+  if (!isValidUserId(userId) || !isSupportedStateCode(body?.stateCode)) {
+    return Response.json({ error: "invalid_request" }, { status: 400 });
   }
   const preferences = body.excludedAircraftByState === undefined ? undefined : parseAircraftTrackingPreferences(body.excludedAircraftByState);
   if (preferences === null) {
-    return NextResponse.json({ error: "invalid_aircraft_preferences" }, { status: 400 });
+    return Response.json({ error: "invalid_aircraft_preferences" }, { status: 400 });
   }
   const subscriber = await updateAircraftAlertSubscriberPreferences(userId, {
     stateCode: body.stateCode.toUpperCase() as StateCode,
     ...(preferences !== undefined ? { excludedAircraftByState: preferences } : {}),
   });
   if (!subscriber) {
-    return NextResponse.json({ error: "not_subscribed" }, { status: 404 });
+    return Response.json({ error: "not_subscribed" }, { status: 404 });
   }
-  return NextResponse.json(
-    baseStatus({ enabled: subscriber.enabled, stateCode: subscriber.stateCode }),
+  return Response.json(
+    baseStatus({ enabled: subscriber.enabled, stateCode: subscriber.stateCode }, subscriber.subscription.transport),
   );
 }
 
 export async function DELETE(req: Request) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json(baseStatus({ enabled: false }));
+    return Response.json(baseStatus({ enabled: false }));
   }
   const url = new URL(req.url);
   let userId = url.searchParams.get("userId");
@@ -100,10 +99,10 @@ export async function DELETE(req: Request) {
     userId = typeof body?.userId === "string" ? body.userId : null;
   }
   if (!isValidUserId(userId)) {
-    return NextResponse.json({ error: "invalid_user" }, { status: 400 });
+    return Response.json({ error: "invalid_user" }, { status: 400 });
   }
   await deleteAircraftAlertSubscriber(userId);
-  return NextResponse.json(baseStatus({ enabled: false }));
+  return Response.json(baseStatus({ enabled: false }));
 }
 
 function baseStatus(update: {
@@ -138,7 +137,7 @@ function parseSubscriptionBody(body: SubscriptionBody | null):
   if (!isPushSubscription(body?.subscription)) {
     return { ok: false, error: "invalid_subscription" };
   }
-  if (!isStateCode(body?.stateCode)) {
+  if (!isSupportedStateCode(body?.stateCode)) {
     return { ok: false, error: "invalid_state" };
   }
   const preferences = body?.excludedAircraftByState === undefined ? undefined : parseAircraftTrackingPreferences(body.excludedAircraftByState);

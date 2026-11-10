@@ -8,7 +8,7 @@ const output = path.join(mobile, "www");
 fs.copyFileSync(path.join(mobile, "frontend/offline.html"), path.join(output, "offline.html"));
 const manifest = fs.readFileSync(path.join(output, ".vite/manifest.json"));
 fs.writeFileSync(path.join(output, "bundle-info.json"), JSON.stringify({
-  interface: "bundled", backend: "https://outofsight.live",
+  interface: "bundled", backend: JSON.parse(fs.readFileSync(path.join(mobile, "backend.json"), "utf8")).url,
   manifestSha256: createHash("sha256").update(manifest).digest("hex"),
 }, null, 2) + "\n");
 console.log("Packaged OOS screens, Help, and assets. Live data uses the HTTPS backend.");

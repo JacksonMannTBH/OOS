@@ -71,7 +71,6 @@ if (fs.existsSync(ROUTES_JSON)) {
   ROUTES = [
     { name: "home-default", path: "/", settleMs: 1500 },
     { name: "map", path: "/map", settleMs: 3500 },
-    { name: "forecast", path: "/forecast", settleMs: 1500 },
     { name: "about", path: "/about", settleMs: 1000 },
     { name: "legal", path: "/legal", settleMs: 1000 },
     { name: "help", path: "/help", settleMs: 1000 },

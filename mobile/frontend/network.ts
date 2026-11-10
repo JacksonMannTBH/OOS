@@ -1,4 +1,4 @@
-import { PUBLIC_WEB_ORIGIN } from "../../lib/public-url";
+import backend from "../backend.json";
 
 export function sameAppOrigin(left: URL, right: URL): boolean {
   return left.protocol === right.protocol && left.host === right.host;
@@ -6,7 +6,8 @@ export function sameAppOrigin(left: URL, right: URL): boolean {
 export function backendUrl(input: string, localBase: string): string {
   const local = new URL(input, localBase);
   if (sameAppOrigin(local, new URL(localBase)) && local.pathname.startsWith("/api/")) {
-    return `${PUBLIC_WEB_ORIGIN}${local.pathname}${local.search}`;
+    if (local.pathname === "/api/police") return `${backend.url.replace(/\/oos-app$/, "/oos-police")}${local.search}`;
+    return `${backend.url}${local.pathname.slice(4)}${local.search}`;
   }
   return input;
 }
@@ -16,10 +17,15 @@ export function backendUrl(input: string, localBase: string): string {
 export function connectBackend(): void {
   const transport = window.fetch.bind(window);
   window.fetch = (input, init) => {
+    const original = input instanceof Request ? input.url : String(input);
+    const mapped = backendUrl(original, window.location.href);
+    if (mapped === original) return transport(input, init);
+    const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+    headers.set("apikey", backend.publishableKey);
+    const options = { ...init, headers };
     if (input instanceof Request) {
-      const mapped = backendUrl(input.url, window.location.href);
-      return transport(mapped === input.url ? input : new Request(mapped, input), init);
+      return transport(new Request(mapped, input), options);
     }
-    return transport(backendUrl(String(input), window.location.href), init);
+    return transport(mapped, options);
   };
 }

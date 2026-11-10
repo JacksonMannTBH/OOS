@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useCaliforniaRegion } from "@/lib/hooks/useCaliforniaRegion";
+import { aircraftMatchesCaliforniaRegion } from "@/lib/california-regions";
 import { getAppState } from "@/lib/app-states";
 import { STATE_AIRCRAFT_COVERAGE_NOTES } from "@/lib/state-aircraft-coverage";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
@@ -16,10 +18,11 @@ export function AircraftCatalogView({
   catalog: AircraftCatalogEntry[];
 }) {
   const stateId = useSelectedStateId();
+  const region = useCaliforniaRegion();
   const selectedState = getAppState(stateId);
   const preferences = useAircraftTracking();
   const rows = catalog.filter(
-    (entry) => entry.homeStateCode === selectedState.code && isAircraftTracked(preferences, selectedState.code, entry.aircraft.tail),
+    (entry) => entry.homeStateCode === selectedState.code && (selectedState.code !== "CA" || aircraftMatchesCaliforniaRegion(entry.aircraft.tail, region)) && isAircraftTracked(preferences, selectedState.code, entry.aircraft.tail),
   );
   const headingId = `catalog-${selectedState.id}`;
 
@@ -279,10 +282,10 @@ export function AircraftCatalogView({
       <div className="ss-catalog-context">
         <span className="ss-eyebrow">Reference</span>
         <div className="ss-catalog-context-actions">
-          <label className="ss-catalog-state-picker">
-            State
+          <div className="ss-catalog-state-picker">
+            <span>State</span>
             <StateSelector />
-          </label>
+          </div>
           <SettingsBackLink />
         </div>
       </div>
@@ -318,7 +321,7 @@ export function AircraftCatalogView({
                   <Link
                     href={`/plane/${aircraft.tail}`}
                     className="ss-catalog-row"
-                    aria-label={`View ${aircraft.nickname ?? aircraft.tail} aircraft profile`}
+                    aria-label={`View ${aircraft.tail} aircraft profile`}
                   >
                     <span className="ss-catalog-copy">
                       <span className="ss-catalog-primary">
@@ -326,7 +329,7 @@ export function AircraftCatalogView({
                           {aircraft.tail}
                         </span>
                         <span className="ss-catalog-name">
-                          {aircraft.nickname ?? aircraft.model}
+                          {aircraft.model}
                         </span>
                       </span>
                       <span className="ss-catalog-meta">

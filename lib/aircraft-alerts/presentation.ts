@@ -3,7 +3,7 @@ import type { AircraftAlertStatus } from "./types";
 export type NotificationPlatform = "ios" | "android" | "web";
 
 export function canArmAircraftAlerts(status: AircraftAlertStatus | null): boolean {
-  return Boolean(status?.supported && status.configured && !status.enabled);
+  return Boolean(status?.supported && status.configured && !status.enabled && !status.optedIn);
 }
 
 export function shouldPromoteAircraftAlerts(status: AircraftAlertStatus): boolean {

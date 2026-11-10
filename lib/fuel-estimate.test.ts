@@ -27,7 +27,7 @@ test("estimateFuelRemaining hides unknown and grounded aircraft", () => {
     estimateFuelRemaining({
       tail: "N00000",
       airborne: true,
-      detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+      tracking_started_at: "2026-08-08T12:00:00.000Z",
       takeoff_confidence: "high",
       as_of: "2026-08-08T12:05:00.000Z",
     }),
@@ -37,7 +37,7 @@ test("estimateFuelRemaining hides unknown and grounded aircraft", () => {
     estimateFuelRemaining({
       tail: "N305DK",
       airborne: false,
-      detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+      tracking_started_at: "2026-08-08T12:00:00.000Z",
       takeoff_confidence: "high",
       as_of: "2026-08-08T12:05:00.000Z",
     }),
@@ -45,7 +45,7 @@ test("estimateFuelRemaining hides unknown and grounded aircraft", () => {
   );
 });
 
-test("estimateFuelRemaining requires exact takeoff and as-of timestamps", () => {
+test("estimateFuelRemaining requires first-observed and as-of timestamps", () => {
   assert.equal(
     estimateFuelRemaining({
       tail: "N305DK",
@@ -61,7 +61,7 @@ test("estimateFuelRemaining clamps exhausted duration at zero", () => {
   const estimate = estimateFuelRemaining({
     tail: "N305DK",
     airborne: true,
-    detected_takeoff_at: "2026-08-01T00:00:00.000Z",
+    tracking_started_at: "2026-08-01T00:00:00.000Z",
     takeoff_confidence: "high",
     as_of: "2026-08-08T00:00:00.000Z",
   });
@@ -77,7 +77,7 @@ test("estimateFuelRemaining subtracts exact elapsed time from the catalog upper 
   const estimate = estimateFuelRemaining({
     tail: "N422CT",
     airborne: true,
-    detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+    tracking_started_at: "2026-08-08T12:00:00.000Z",
     takeoff_confidence: "high",
     as_of: "2026-08-08T12:05:00.000Z",
   });
@@ -99,7 +99,7 @@ test("estimateFuelRemaining uses mean duration for aircraft with duration ranges
   const estimate = estimateFuelRemaining({
     tail: "N9446P",
     airborne: true,
-    detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+    tracking_started_at: "2026-08-08T12:00:00.000Z",
     takeoff_confidence: "medium",
     as_of: "2026-08-08T12:42:00.000Z",
   });
@@ -116,7 +116,7 @@ test("estimateFuelRemaining floors only the final display after 5m59s", () => {
   const estimate = estimateFuelRemaining({
     tail: "N422CT",
     airborne: true,
-    detected_takeoff_at: "2026-08-08T12:00:00.000Z",
+    tracking_started_at: "2026-08-08T12:00:00.000Z",
     takeoff_confidence: "high",
     as_of: "2026-08-08T12:05:59.000Z",
     time_aloft_min: 9_999,
@@ -132,18 +132,28 @@ test("estimateFuelRemaining floors only the final display after 5m59s", () => {
   );
 });
 
-test("estimateFuelRemaining suppresses low-confidence and unknown takeoffs", () => {
-  const exactTimes = {
-    tail: "N422CT",
-    airborne: true,
-    detected_takeoff_at: "2026-08-08T12:00:00.000Z",
-    as_of: "2026-08-08T12:05:59.000Z",
-    time_aloft_min: 5,
+test("estimateFuelRemaining always uses first observation regardless of takeoff confidence", () => {
+  const times = {
+    tail: "N422CT", airborne: true,
+    tracking_started_at: "2026-08-08T12:00:00.000Z",
+    detected_takeoff_at: "2026-08-08T11:45:00.000Z",
+    as_of: "2026-08-08T12:05:00.000Z",
   } as const;
+  for (const takeoff_confidence of ["low", "medium", "high", null] as const) {
+    assert.equal(estimateFuelRemaining({ ...times, takeoff_confidence })?.minutesRemaining, 235);
+  }
+  assert.equal(estimateFuelRemaining({ ...times, detected_takeoff_at: null })?.minutesRemaining, 235);
+  assert.equal(estimateFuelRemaining({ ...times, tracking_started_at: null }), null);
+});
 
-  assert.equal(
-    estimateFuelRemaining({ ...exactTimes, takeoff_confidence: "low" }),
-    null,
-  );
-  assert.equal(estimateFuelRemaining(exactTimes), null);
+test("remaining time continues from the same flight start after a data gap and resets for a new flight", () => {
+  const flight = { tail: "N422CT", airborne: true,
+    tracking_started_at: "2026-08-08T12:00:00.000Z" };
+  assert.equal(estimateFuelRemaining({ ...flight, as_of: "2026-08-08T12:01:00Z" })?.minutesRemaining, 239);
+  assert.equal(estimateFuelRemaining({ ...flight, as_of: "2026-08-08T12:04:00Z" })?.minutesRemaining, 236);
+  assert.equal(estimateFuelRemaining({ ...flight, tracking_started_at: "2026-08-08T13:00:00Z",
+    as_of: "2026-08-08T13:01:00Z" })?.minutesRemaining, 239);
+  for (const tracking_started_at of ["invalid", "2026-08-08T14:00:00Z"]) {
+    assert.equal(estimateFuelRemaining({ ...flight, tracking_started_at, as_of: "2026-08-08T13:01:00Z" }), null);
+  }
 });

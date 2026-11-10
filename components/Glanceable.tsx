@@ -4,19 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 import type { ActivityEntry } from "@/lib/activity";
-import type { LearningState } from "@/lib/learning";
 import { SS_TOKENS } from "@/lib/tokens";
 import { fmtAgoTs } from "@/lib/time";
 import { filterOpsAircraftByState } from "@/lib/aircraft-directory";
 import { useAircraft } from "@/lib/hooks/useAircraft";
+import { useCaliforniaRegion } from "@/lib/hooks/useCaliforniaRegion";
+import { filterAircraftByCaliforniaRegion } from "@/lib/california-regions";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { useAircraftTracking } from "@/lib/hooks/useAircraftTracking";
 import { filterTrackedAircraft } from "@/lib/aircraft-tracking";
 import { getAppState } from "@/lib/app-states";
+import { isVisibleFlight } from "@/lib/aircraft-freshness";
 import { computeStatus } from "@/lib/status";
 import { Card } from "./Card";
 import { PlaneIcon } from "./PlaneIcon";
-import { PredictionCard } from "./PredictionCard";
 import { FreshnessLabel } from "./FreshnessLabel";
 import { ArmAlertsCallout } from "./ArmAlertsCallout";
 import { TakeOffButton } from "./TakeOffButton";
@@ -32,12 +33,6 @@ type Props = {
   initial: Snapshot;
   mockOn?: boolean;
   initialActivity?: ActivityEntry[];
-  learning?: LearningState;
-  hour12?: boolean;
-  /** Optional historical-context phrase rendered under the Hero
-   *  ("usually up at this hour. 67% of weeks."). Server computes,
-   *  passes the string in. null = hide. */
-  contextLine?: string | null;
   /** Milliseconds since epoch for the most recent database observation. */
   lastSampleMs?: number | null;
 };
@@ -46,18 +41,16 @@ export function Glanceable({
   initial,
   mockOn = false,
   initialActivity = [],
-  learning,
-  hour12 = false,
-  contextLine = null,
   lastSampleMs = null,
 }: Props) {
   const snap = useAircraft(initial, mockOn);
   const stateId = useSelectedStateId();
+  const region = useCaliforniaRegion();
   const preferences = useAircraftTracking();
   const [activity, setActivity] = useState<ActivityEntry[]>(initialActivity);
   const stateActivity = useMemo(
-    () => filterTrackedAircraft(filterOpsAircraftByState(activity, stateId), preferences, getAppState(stateId).code),
-    [activity, stateId, preferences],
+    () => filterTrackedAircraft(filterAircraftByCaliforniaRegion(filterOpsAircraftByState(activity, stateId), stateId, region), preferences, getAppState(stateId).code),
+    [activity, stateId, preferences, region],
   );
 
   // Poll /api/activity every 30s so the strip stays current without
@@ -114,7 +107,7 @@ export function Glanceable({
   // excludes the lead.
   const leadTail = status.lead?.aircraft.tail ?? null;
   const others = stateAircraft.filter(
-    (a) => a.airborne && a.tail !== leadTail,
+    (a) => isVisibleFlight(a) && a.tail !== leadTail,
   );
   const latestActivity =
     stateActivity.length > 0 &&
@@ -129,7 +122,7 @@ export function Glanceable({
         minHeight: "100dvh",
         // 180 px bottom padding clears the tab bar (66) + the iOS
         // install prompt overlay (~80) + breathing room. Without this
-        // the LearningPanel and last activity row hid behind the
+        // the last activity row hid behind the
         // fixed-position prompt on /.
         padding: "22px 20px 170px",
         display: "flex",
@@ -144,28 +137,11 @@ export function Glanceable({
 
       <SettingsButton />
 
-      {contextLine && (
-        <p
-          className="ss-mono"
-          style={{
-            fontSize: 12,
-            color: SS_TOKENS.fg2,
-            margin: "-4px 4px 0",
-            letterSpacing: ".02em",
-            lineHeight: 1.4,
-          }}
-        >
-          {contextLine}
-        </p>
-      )}
-
       {latestActivity && <ActivityStrip latest={latestActivity} />}
 
       <ArmAlertsCallout />
 
       {others.length > 0 && <Others others={others} />}
-
-      <PredictionCard learning={learning} hour12={hour12} />
 
       <div style={{ marginTop: 4, paddingLeft: 4 }}>
         <FreshnessLabel lastSampleMs={lastSampleMs ?? snap.fetched_at} />
@@ -190,21 +166,21 @@ function Footer() {
     >
       Aircraft data from{" "}
       <a
-        href="https://adsb.fi"
+        href="https://www.adsb.lol"
         target="_blank"
         rel="noopener noreferrer"
         style={FOOTER_LINK}
       >
-        adsb.fi
+        ADSB.lol
       </a>{" "}
       ·{" "}
       <a
-        href="https://opensky-network.org"
+        href="https://opendatacommons.org/licenses/odbl/1-0/"
         target="_blank"
         rel="noopener noreferrer"
         style={FOOTER_LINK}
       >
-        OpenSky Network
+        ODbL 1.0
       </a>
       <br />
       <Link href="/about" style={FOOTER_LINK}>
@@ -277,7 +253,6 @@ function ActivityStrip({ latest }: { latest: ActivityEntry }) {
 
 function LeadIdentity({
   tail,
-  nickname,
   operator,
 }: {
   tail: string;
@@ -286,12 +261,12 @@ function LeadIdentity({
 }) {
   // Lead-identity line under the stat chips so a rider knows which tracked
   // aircraft is currently active. Tappable — drills into /plane/[tail].
-  const middle = nickname ? ` · "${nickname}" · ` : " · ";
+  const middle = " · ";
   return (
     <Link
       href={`/plane/${tail}`}
       prefetch={false}
-      aria-label={`View ${nickname ?? tail} details`}
+      aria-label={`View ${tail} details`}
       className="ss-mono"
       style={{
         display: "inline-block",
@@ -333,7 +308,7 @@ function Others({ others }: { others: Aircraft[] }) {
             key={p.tail}
             href={`/plane/${p.tail}`}
             prefetch={false}
-            aria-label={`View ${p.nickname ?? p.tail} details`}
+            aria-label={`View ${p.tail} details`}
             style={{
               display: "flex",
               alignItems: "center",
@@ -354,17 +329,6 @@ function Others({ others }: { others: Aircraft[] }) {
                 style={{ fontSize: 13, fontWeight: 600 }}
               >
                 {p.tail}
-                {p.nickname && (
-                  <span
-                    style={{
-                      color: SS_TOKENS.fg1,
-                      fontWeight: 400,
-                      marginLeft: 6,
-                    }}
-                  >
-                    &ldquo;{p.nickname}&rdquo;
-                  </span>
-                )}
               </div>
               <div
                 style={{ fontSize: 11, color: SS_TOKENS.fg2, marginTop: 1 }}

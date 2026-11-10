@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useCaliforniaRegion } from "@/lib/hooks/useCaliforniaRegion";
+import { aircraftMatchesCaliforniaRegion } from "@/lib/california-regions";
 import { getAppState } from "@/lib/app-states";
 import type { AircraftCatalogEntry } from "@/lib/aircraft-data";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
@@ -12,30 +14,36 @@ import { isAircraftTracked, readAircraftTrackingPreferences, saveAircraftTrackin
 
 export function SelectedStateAircraftList({ catalog }: { catalog: AircraftCatalogEntry[] }) {
   const stateId = useSelectedStateId();
+  const region = useCaliforniaRegion();
   const state = getAppState(stateId);
   const preferences = useAircraftTracking();
   const [error, setError] = useState<string | null>(null);
-  const save = (tail: string | null, tracked = true) => {
+  const [saving, setSaving] = useState(false);
+  const save = async (tail: string | null, tracked = true) => {
+    if (saving) return;
+    setSaving(true);
     try {
       const current = readAircraftTrackingPreferences();
-      saveAircraftTrackingPreferences(tail === null
+      await saveAircraftTrackingPreferences(tail === null
         ? withStateAircraftExclusions(current, state.code, [])
         : withAircraftTracked(current, state.code, tail, tracked));
       setError(null);
     } catch {
       setError("Could not save aircraft selections on this device. Try again.");
+    } finally {
+      setSaving(false);
     }
   };
   const aircraft = catalog
-    .filter((entry) => entry.homeStateCode === state.code)
+    .filter((entry) => entry.homeStateCode === state.code && (state.code !== "CA" || aircraftMatchesCaliforniaRegion(entry.aircraft.tail, region)))
     .sort((a, b) => a.aircraft.tail.localeCompare(b.aircraft.tail));
 
   return (
-    <SettingsCard title={`${state.label} aircraft`} eyebrow="Tracked fleet">
+    <SettingsCard title={`${state.label} aircraft`}>
       <p style={{ margin: 0, color: "var(--ss-fg2)", fontSize: 13 }}>
         Choose which aircraft to track. Reset selects all aircraft in this state.
       </p>
-      <button className="ss-aircraft-reset" type="button" onClick={() => save(null)} disabled={!(preferences[state.code]?.length)}>
+      <button className="ss-aircraft-reset" type="button" onClick={() => save(null)} disabled={saving || !(preferences[state.code]?.length)}>
         Reset
       </button>
       {error && <p role="alert">{error}</p>}
@@ -46,6 +54,7 @@ export function SelectedStateAircraftList({ catalog }: { catalog: AircraftCatalo
               <div className="ss-settings-aircraft-row">
                 <input
                   type="checkbox"
+                  disabled={saving}
                   aria-label={`Track ${plane.tail}`}
                   checked={isAircraftTracked(preferences, state.code, plane.tail)}
                   onChange={(event) => save(plane.tail, event.target.checked)}

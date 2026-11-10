@@ -92,7 +92,6 @@ export function Editor({
                 <Th>HEX</Th>
                 <Th>OPERATOR</Th>
                 <Th>MODEL</Th>
-                <Th>NICKNAME</Th>
                 <Th>BASE</Th>
                 <Th>MISSION</Th>
                 <Th>CLASS</Th>
@@ -463,11 +462,6 @@ function FlightRow({
         >
           {flight.tail}
         </div>
-        {flight.nickname && (
-          <div style={{ fontSize: 11, color: SS_TOKENS.fg1, marginTop: 2 }}>
-            {flight.nickname}
-          </div>
-        )}
       </Link>
       <Link
         href={`/admin/tracks/${flight.tail}/${flight.date}`}
@@ -664,7 +658,6 @@ function ReadRow({
       <Td mono dim>{(entry.hex ?? "â€”").toUpperCase()}</Td>
       <Td>{entry.operator}</Td>
       <Td>{entry.model}</Td>
-      <Td dim>{entry.nickname ?? "â€”"}</Td>
       <Td>{entry.base}</Td>
       <Td dim>{entry.roleDescription}</Td>
       <Td dim>
@@ -716,7 +709,7 @@ function EditRow({
         background: "rgba(245,184,64,0.04)",
       }}
     >
-      <td colSpan={9} style={{ padding: 10 }}>
+      <td colSpan={8} style={{ padding: 10 }}>
         <form
           action={updateTailAction}
           style={{
@@ -733,7 +726,6 @@ function EditRow({
             otherDefault={isCustomOperator ? entry.operator : ""}
           />
           <Field label="Model" name="model" defaultValue={entry.model} required />
-          <Field label="Nickname" name="nickname" defaultValue={entry.nickname ?? ""} />
           <Field label="Base" name="base" defaultValue={entry.base} required />
           <Field label="Mission (free text)" name="roleDescription" defaultValue={entry.roleDescription} />
           <RoleSelect
@@ -786,7 +778,6 @@ function AddForm({ onCancel }: { onCancel: () => void }) {
       <Field label="Hex (auto if blank)" name="hex" mono />
       <OperatorSelect />
       <Field label="Model (e.g. Cessna 182T)" name="model" required />
-      <Field label="Nickname (optional)" name="nickname" />
       <Field label="Base (e.g. KOLM Olympia)" name="base" required />
       <Field label="Mission (free text, optional)" name="roleDescription" />
       <RoleSelect label="Mission class" name="role" required />

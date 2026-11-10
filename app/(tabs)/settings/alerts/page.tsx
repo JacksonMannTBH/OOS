@@ -20,7 +20,6 @@ async function StateAircraftCatalog() {
 export default function AlertsPage() {
   return (
     <SettingsPageShell
-      eyebrow="Settings · Alerts"
       title="Notifications & state"
       description="Choose the state you track and whether this device receives confirmed takeoff notifications."
     >

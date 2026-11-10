@@ -83,7 +83,7 @@ public class LiveTrackingPlugin: CAPPlugin, CAPBridgedPlugin {
 @MainActor
 final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDelegate {
     static let shared = LiveTrackingSession()
-    private let locationManager = CLLocationManager()
+    private var locationManager: CLLocationManager { SharedLocationService.shared.manager }
     private let network: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 12
@@ -107,22 +107,12 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
     private var errorMessage = ""
     private var stopping = false
     private var startedAt: Date?
-    private var backgroundActivitySession: AnyObject?
-    private var backgroundDiagnostics: Task<Void, Never>?
     private var lifecycleObservers: [NSObjectProtocol] = []
     private var lastHeartbeat = Date.distantPast
-    private var creationRetryAfter = Date.distantPast
     private let persistence = LiveTrackingPersistence.shared
 
     override init() {
         super.init()
-        // Core Location delivers callbacks on the run loop where this manager was created (main).
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-        locationManager.distanceFilter = kCLDistanceFilterNone
-        locationManager.activityType = .fitness
-        locationManager.pausesLocationUpdatesAutomatically = false
-        locationManager.showsBackgroundLocationIndicator = true
         persistence.record("process_started")
         for name in [UIApplication.didEnterBackgroundNotification, UIApplication.didBecomeActiveNotification,
                      UIApplication.protectedDataWillBecomeUnavailableNotification] {
@@ -144,13 +134,18 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
 
     var status: [String: Any] {
         ["supported": true, "enabled": ActivityAuthorizationInfo().areActivitiesEnabled,
-         "active": sessionID != nil && !stopping, "message": errorMessage]
+         "active": sessionID != nil && activity != nil && !stopping, "message": errorMessage]
     }
 
     func recoverExistingActivity(fallbackConfiguration: RideTrackingConfiguration? = nil) {
         guard sessionID == nil, !stopping else { return }
         let saved = persistence.load()
         let activities = Activity<RideTrackingAttributes>.activities
+        if saved?.stopReason == LiveTrackingStopReason.appClosed.rawValue, !activities.isEmpty {
+            // A force-close can interrupt ActivityKit's asynchronous dismissal.
+            Task { await self.stop(reason: .appClosed) }
+            return
+        }
         let identities = activities.map { RecoverableLiveActivity(id: $0.id,
             canUpdate: $0.activityState == .active || $0.activityState == .stale,
             updatedAt: $0.content.state.updatedAt) }
@@ -162,6 +157,9 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
         sessionID = UUID()
         startedAt = saved?.startedAt ?? Date()
         lastScheduledContent = existing.content.state
+        HomeWidgetStore.shared.configure(config)
+        HomeWidgetStore.shared.publish(existing.content.state, for: config)
+        scheduleContent(HomeWidgetStore.shared.read().liveContent(for: config))
         persistence.record("activity_recovered", detail: existing.activityState == .stale ? "stale" : "active")
         persistSession()
         beginTimer()
@@ -185,23 +183,36 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
             throw failure("Allow location access for OOS in iPhone Settings to start live tracking.")
         }
         if sessionID != nil { configure(config); return }
+        // Create synchronously while foregrounded, before GPS/network callbacks
+        // or permission prompts. Live only reports active after this succeeds.
+        let initial = HomeWidgetStore.shared.read().liveContent(for: config)
+        let current: Activity<RideTrackingAttributes>
+        do {
+            current = try Activity.request(attributes: RideTrackingAttributes(stateName: config.stateName),
+                content: ActivityContent(state: initial, staleDate: nil), pushType: nil)
+        } catch {
+            persistence.record("activity_creation_failed", detail: "\((error as NSError).domain):\((error as NSError).code)")
+            throw error
+        }
         errorMessage = ""
         configuration = config
+        activity = current
+        lastScheduledContent = initial
         sessionID = UUID()
         startedAt = Date()
-        creationRetryAfter = .distantPast
         persistence.record("user_started")
+        persistence.record("activity_created")
         persistSession()
         beginTimer()
-        if locationManager.authorizationStatus == .notDetermined {
-            locationManager.requestWhenInUseAuthorization()
-        } else { beginLocationUpdates() }
+        monitor(current)
+        beginLocationUpdates()
         refresh()
     }
 
     func configure(_ config: RideTrackingConfiguration) {
         recoverExistingActivity(fallbackConfiguration: config)
         guard sessionID != nil, !stopping else { return }
+        let changed = configuration != config
         if configuration?.stateCode != config.stateCode {
             request?.cancel()
             request = nil
@@ -210,16 +221,34 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
             lastFetch = .distantPast
         }
         configuration = config
+        HomeWidgetStore.shared.configure(config)
+        if changed {
+            // Never carry a previous region or excluded aircraft into new settings.
+            scheduleContent(HomeWidgetStore.shared.read().liveContent(for: config))
+        }
         persistSession()
         refresh()
     }
 
     func stop(reason: LiveTrackingStopReason = .userStop) async {
         guard !stopping else { return }
+        let oldActivity = prepareToStop(reason: reason)
+        await dismissStoppedActivity(oldActivity, reason: reason)
+        stopping = false
+    }
+
+    func stopForApplicationTermination() {
+        guard !stopping else { return }
+        // Save the stop and release GPS synchronously before iOS exits.
+        let oldActivity = prepareToStop(reason: .appClosed)
+        Task { await self.dismissStoppedActivity(oldActivity, reason: .appClosed) }
+    }
+
+    private func prepareToStop(reason: LiveTrackingStopReason) -> Activity<RideTrackingAttributes>? {
         stopping = true
         persistence.record("session_stopped", detail: reason.rawValue)
         // Persist Stop before awaiting, so relaunch cannot restart a stopped session.
-        persistence.save(SavedLiveTrackingSession(enabled: false))
+        persistence.save(SavedLiveTrackingSession(enabled: false, stopReason: reason.rawValue))
         let oldActivity = activity
         // Invalidate the session before awaiting so late requests can't resurrect it.
         activity = nil
@@ -235,51 +264,35 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
         publishing = nil
         pendingContent = nil
         lastScheduledContent = nil
-        locationManager.stopUpdatingLocation()
-        locationManager.allowsBackgroundLocationUpdates = false
-        invalidateBackgroundSession()
+        SharedLocationService.shared.unsubscribe("live-tracking")
         snapshot = nil
         position = nil
         configuration = nil
         lastFetch = .distantPast
         startedAt = nil
+        return oldActivity
+    }
+
+    private func dismissStoppedActivity(_ oldActivity: Activity<RideTrackingAttributes>?, reason: LiveTrackingStopReason) async {
         if reason.shouldRemoveActivity {
             if let oldActivity { await oldActivity.end(nil, dismissalPolicy: .immediate) }
             for other in Activity<RideTrackingAttributes>.activities where other.id != oldActivity?.id {
                 await other.end(nil, dismissalPolicy: .immediate)
             }
         }
-        stopping = false
     }
 
     private func beginLocationUpdates() {
         guard sessionID != nil, !stopping else { return }
-        guard CLLocationManager.locationServicesEnabled(),
-              locationManager.authorizationStatus == .authorizedAlways || locationManager.authorizationStatus == .authorizedWhenInUse else { return }
         errorMessage = ""
-        if #available(iOS 17.0, *), backgroundActivitySession == nil {
-            let background = CLBackgroundActivitySession()
-            backgroundActivitySession = background
-            persistence.record("background_session_started")
-            if #available(iOS 18.0, *) {
-                backgroundDiagnostics = Task { [weak self] in
-                    var previous = ""
-                    do {
-                        for try await diagnostic in background.diagnostics {
-                            guard !Task.isCancelled, let self else { return }
-                            let detail = "denied=\(diagnostic.authorizationDenied);global=\(diagnostic.authorizationDeniedGlobally);restricted=\(diagnostic.authorizationRestricted);inUse=\(!diagnostic.insufficientlyInUse)"
-                            if detail != previous { self.persistence.record("background_diagnostic", detail: detail); previous = detail }
-                        }
-                    } catch {
-                        if !Task.isCancelled {
-                            self?.persistence.record("background_diagnostic_error", detail: "\((error as NSError).domain):\((error as NSError).code)")
-                        }
-                    }
-                }
-            }
-        }
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.startUpdatingLocation()
+        SharedLocationService.shared.subscribe("live-tracking", background: true,
+            locations: { [weak self] fixes in
+                self?.locationManager(SharedLocationService.shared.manager, didUpdateLocations: fixes)
+            }, error: { [weak self] error in
+                self?.locationManager(SharedLocationService.shared.manager, didFailWithError: error)
+            }, authorization: { [weak self] in
+                self?.locationManagerDidChangeAuthorization(SharedLocationService.shared.manager)
+            })
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -289,9 +302,6 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
         case .denied, .restricted:
             errorMessage = "Allow location access in Settings to resume Live updates. The last aircraft result is retained."
             persistence.record("location_permission_unavailable", detail: String(manager.authorizationStatus.rawValue))
-            locationManager.stopUpdatingLocation()
-            locationManager.allowsBackgroundLocationUpdates = false
-            invalidateBackgroundSession()
             position = nil
         default: break
         }
@@ -318,10 +328,8 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
               locationManager.authorizationStatus == .authorizedWhenInUse || locationManager.authorizationStatus == .authorizedAlways else { return }
         guard request == nil, Date().timeIntervalSince(lastFetch) >= 15 else { return }
         lastFetch = Date()
-        var url = URLComponents(string: "https://outofsight.live/api/aircraft")!
-        // The phone calculates distance locally; coordinates never enter this request.
-        url.queryItems = [URLQueryItem(name: "state", value: config.stateCode),
-                          URLQueryItem(name: "_", value: String(Int(Date().timeIntervalSince1970 * 1000)))]
+        // Distance is calculated on-device; the request contains no rider coordinates.
+        let aircraftRequest = AppBackend.aircraftRequest(stateCode: config.stateCode)
         let stateCode = config.stateCode
         let fetchID = UUID()
         requestID = fetchID
@@ -336,7 +344,7 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
                 if self.requestID == fetchID { self.request = nil; self.requestID = nil }
             }
             do {
-                let (data, response) = try await self.network.data(from: url.url!)
+                let (data, response) = try await self.network.data(for: aircraftRequest)
                 guard !Task.isCancelled, self.sessionID == id, self.requestID == fetchID,
                       self.configuration?.stateCode == stateCode,
                       (response as? HTTPURLResponse)?.statusCode == 200 else { return }
@@ -355,42 +363,27 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
     }
 
     private func publish() {
-        guard let config = configuration, let id = sessionID else { return }
+        guard let config = configuration, sessionID != nil else { return }
         var candidate = RideTrackingCalculator.summarize(snapshot: snapshot,
             lat: position?.coordinate.latitude, lon: position?.coordinate.longitude,
             locationDate: position?.timestamp, configuration: config)
         candidate.stateName = config.stateName
-        HomeWidgetAppUpdater.shared.publish(candidate, configuration: config)
         let previous = lastScheduledContent ?? activity?.content.state
         guard let content = RideTrackingCalculator.displayedContent(candidate, previous: previous) else { return }
-        if activity == nil {
-            lastScheduledContent = content
-            // ActivityKit requires foreground creation. Returning to the app
-            // reconciles preferences and retries if the first fix arrived later.
-            guard UIApplication.shared.applicationState == .active, Date() >= creationRetryAfter else { return }
-            do {
-                let current = try Activity.request(attributes: RideTrackingAttributes(stateName: content.stateName),
-                    content: ActivityContent(state: content, staleDate: content.validUntil), pushType: nil)
-                activity = current
-                lastScheduledContent = content
-                persistence.record("activity_created")
-                persistSession()
-                monitor(current)
-            } catch {
-                errorMessage = error.localizedDescription
-                creationRetryAfter = Date().addingTimeInterval(30)
-                persistence.record("activity_creation_failed", detail: "\((error as NSError).domain):\((error as NSError).code)")
-            }
-            return
-        }
+        scheduleContent(content)
+    }
+
+    private func scheduleContent(_ content: RideTrackingContent) {
+        guard let config = configuration, let id = sessionID else { return }
         guard let current = activity else { return }
         // Updating every GPS callback is unnecessary; distance is shown to one decimal.
-        let previousContent = previous ?? current.content.state
+        let previousContent = lastScheduledContent ?? current.content.state
         if previousContent.aircraft == content.aircraft, previousContent.rideState == content.rideState,
            previousContent.message == content.message,
            previousContent.stateName == content.stateName,
            rounded(previousContent.distanceNm) == rounded(content.distanceNm),
            abs(previousContent.validUntil.timeIntervalSince(content.validUntil)) < 10 { return }
+        HomeWidgetStore.shared.publish(content, for: config)
         pendingContent = content
         lastScheduledContent = content
         guard publishing == nil else { return }
@@ -416,13 +409,6 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
     private func persistSession() {
         persistence.save(SavedLiveTrackingSession(enabled: sessionID != nil,
             activityID: activity?.id, configuration: configuration, startedAt: startedAt))
-    }
-
-    private func invalidateBackgroundSession() {
-        backgroundDiagnostics?.cancel()
-        backgroundDiagnostics = nil
-        if #available(iOS 17.0, *) { (backgroundActivitySession as? CLBackgroundActivitySession)?.invalidate() }
-        backgroundActivitySession = nil
     }
 
     private func monitor(_ current: Activity<RideTrackingAttributes>) {

@@ -76,7 +76,6 @@ export default async function TracksOverviewPage({
           <thead>
             <tr>
               <Th>TAIL</Th>
-              <Th>NICKNAME</Th>
               <Th>SAMPLES</Th>
               <Th>DAYS</Th>
               <Th>LAST SAMPLE</Th>
@@ -96,7 +95,6 @@ export default async function TracksOverviewPage({
                   <Td mono bold>
                     {entry.tail}
                   </Td>
-                  <Td>{entry.nickname ?? "—"}</Td>
                   <Td mono dim={!has}>
                     {summary.totalSamples}
                   </Td>

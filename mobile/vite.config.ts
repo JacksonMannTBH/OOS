@@ -17,7 +17,7 @@ const packagedAssets: Plugin = {
   generateBundle(_, bundle) {
     for (const file of Object.values(bundle)) {
       if (file.type !== "chunk") continue;
-      for (const id of Object.keys(file.modules)) if (/\/lib\/(supabase\/|admin-auth|aircraft-data\.ts|registry\.ts|flights\.ts|learning\.ts|predictor\.ts)/.test(id) || id.includes("@supabase/")) throw new Error("Server data access must stay out of the mobile bundle: " + id);
+      for (const id of Object.keys(file.modules)) if (/\/lib\/(supabase\/|admin-auth|aircraft-data\.ts|registry\.ts|flights\.ts)/.test(id) || /@supabase\/(?!(?:realtime-js|phoenix)(?:\/|$))/.test(id)) throw new Error("Server data access must stay out of the mobile bundle: " + id);
     }
   },
 };
@@ -27,12 +27,15 @@ export default defineConfig({
   publicDir: path.join(root, "public"),
   envDir: frontend,
   plugins: [packagedAssets],
+  define: {
+    "process.env.NEXT_PUBLIC_MAP_STYLE_URL": JSON.stringify(process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? ""),
+  },
   resolve: {
     dedupe: ["react", "react-dom", "@capacitor/core"],
     alias: [
       alias("next/navigation", "navigation.tsx"), alias("next/link", "navigation.tsx"),
       alias("next/image", "compat/image.tsx"), alias("next/dynamic", "compat/dynamic.tsx"),
-      ...["aircraft-data", "registry", "snapshot", "flights", "learning", "predictor", "flags"].map(name => alias("@/lib/" + name, "data.ts")),
+      ...["aircraft-data", "registry", "snapshot", "flights", "flags"].map(name => alias("@/lib/" + name, "data.ts")),
       alias("@/lib/user-prefs", "preferences.ts"), alias("@/app/(tabs)/settings/actions", "preferences.ts"),
       alias("@/components/TimeFormatSetting", "PreferenceSettings.tsx"), alias("@/components/ContrastSetting", "PreferenceSettings.tsx"),
       alias("@/lib/config", "config.ts"), { find: "@", replacement: root },

@@ -152,7 +152,6 @@ export default async function FleetHealthPage({
               <Th>TAIL</Th>
               <Th>OPERATOR</Th>
               <Th>ROLE</Th>
-              <Th>NICKNAME</Th>
               <Th align="right">30D POINTS</Th>
               <Th align="right">DAYS</Th>
               <Th>LAST SEEN</Th>
@@ -180,7 +179,6 @@ export default async function FleetHealthPage({
                   </Td>
                   <Td>{r.operator}</Td>
                   <Td mono>{r.role}</Td>
-                  <Td>{r.nickname ?? "—"}</Td>
                   <Td mono dim={r.totalSamples === 0} align="right">
                     {r.totalSamples}
                   </Td>

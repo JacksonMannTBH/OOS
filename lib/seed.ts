@@ -17,9 +17,9 @@ import { ADDITIONAL_FLEET } from "./aircraft-directory";
 // readable mission summary shown on /about and /plane/[tail].
 export const FLEET: FleetEntry[] = [
   // Washington State Patrol — Olympia (all WSP fixed-wing are fixed_wing)
-  { tail: "N305DK", hex: "A3323A", operator: "WSP",          model: "Cessna 206H Stationair (FLIR)", nickname: "Bird 4",          roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "Bird 4 — WSP fixed-wing FLIR" },
+  { tail: "N305DK", hex: "A3323A", operator: "WSP",          model: "Cessna 206H Stationair (FLIR)", nickname: null,          roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "Bird 4 — WSP fixed-wing FLIR" },
   { tail: "N305RC", hex: "A3335F", operator: "WSP",          model: "Cessna 182T Skylane",            nickname: null,                roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "WSP fixed-wing speed enforcement" },
-  { tail: "N2446X", hex: null,     operator: "WSP",          model: "Cessna 206H Stationair (FLIR)", nickname: "Bird 3",          roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "Bird 3 — WSP fixed-wing FLIR" },
+  { tail: "N2446X", hex: null,     operator: "WSP",          model: "Cessna 206H Stationair (FLIR)", nickname: null,          roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "Bird 3 — WSP fixed-wing FLIR" },
   { tail: "N102LP", hex: "A00D2A", operator: "WSP",          model: "Cessna 182T Skylane",            nickname: null,                roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "WSP fixed-wing speed enforcement" },
   { tail: "N3532K", hex: null,     operator: "WSP",          model: "Cessna 182T Skylane",            nickname: null,                roleDescription: "Speed enforcement",            base: "KOLM Olympia",                          role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "WSP fixed-wing speed enforcement" },
 
@@ -30,10 +30,10 @@ export const FLEET: FleetEntry[] = [
   { tail: "N207HB", hex: "A1ACB5", operator: "State of WA",  model: "Beechcraft B200 Super King Air", nickname: null,                roleDescription: "Transport / multi-mission (all-weather)", base: "KOLM Olympia (WSP-operated)",          role: "transport", roleConfidence: "tentative", roleNote: "WSP-flown all-weather King Air; owned by State of WA" },
 
   // King County Sheriff — Renton
-  { tail: "N422CT", hex: "A50351", operator: "KCSO",         model: "Bell 407GXi",                    nickname: "Guardian One",       roleDescription: "Patrol / pursuit / SAR",       base: "KRNT Renton",                           role: "patrol",    roleConfidence: "confirmed", roleNote: "Guardian One — multi-role" },
-  { tail: "N407KS", hex: "A4C794", operator: "KCSO",         model: "Bell 407",                        nickname: "Guardian One (legacy)", roleDescription: "Patrol / pursuit (backup)", base: "KRNT Renton",                       role: "patrol",    roleConfidence: "tentative", roleNote: "Guardian One legacy airframe" },
+  { tail: "N422CT", hex: "A50351", operator: "KCSO",         model: "Bell 407GXi",                    nickname: null,       roleDescription: "Patrol / pursuit / SAR",       base: "KRNT Renton",                           role: "patrol",    roleConfidence: "confirmed", roleNote: "Guardian One — multi-role" },
+  { tail: "N407KS", hex: "A4C794", operator: "KCSO",         model: "Bell 407",                        nickname: null, roleDescription: "Patrol / pursuit (backup)", base: "KRNT Renton",                       role: "patrol",    roleConfidence: "tentative", roleNote: "Guardian One legacy airframe" },
   { tail: "N411KS", hex: null,     operator: "KCSO",         model: "Bell 206B JetRanger",             nickname: null,                roleDescription: "Patrol / training",            base: "KRNT Renton",                           role: "patrol",    roleConfidence: "tentative", roleNote: "Former KCSO Bell 206B / JetRanger" },
-  { tail: "N790RJ", hex: "AAB985", operator: "KCSO",         model: "Bell UH-1H Iroquois",            nickname: "Guardian Two",       roleDescription: "SAR / SWAT insertion",         base: "KRNT Renton",                           role: "sar",       roleConfidence: "tentative", roleNote: "Guardian Two — likely SAR/SWAT" },
+  { tail: "N790RJ", hex: "AAB985", operator: "KCSO",         model: "Bell UH-1H Iroquois",            nickname: null,       roleDescription: "SAR / SWAT insertion",         base: "KRNT Renton",                           role: "sar",       roleConfidence: "tentative", roleNote: "Guardian Two — likely SAR/SWAT" },
   { tail: "N71KP",  hex: "A97AA3", operator: "KCSO",         model: "Bell UH-1H Iroquois",            nickname: null,                roleDescription: "SAR / SWAT (reserve)",         base: "KRNT Renton",                           role: "sar",       roleConfidence: "tentative", roleNote: "KCSO reserve Huey" },
   { tail: "N67817", hex: null,     operator: "KCSO",         model: "Bell 206B / TH-67A Creek",       nickname: null,                roleDescription: "Patrol / training",            base: "KRNT Renton",                           role: "patrol",    roleConfidence: "tentative", roleNote: "KCSO Bell 206/TH-67" },
   { tail: "N67880", hex: "A8FCF9", operator: "KCSO",         model: "Bell 206B / TH-67A Creek",       nickname: null,                roleDescription: "Patrol / training",            base: "KRNT Renton",                           role: "patrol",    roleConfidence: "tentative", roleNote: "KCSO Bell 206/TH-67" },
@@ -45,10 +45,10 @@ export const FLEET: FleetEntry[] = [
   // grant in cooperation with the Port of Tacoma. Pierce Two (older
   // Cessna 206 from 1980s drug seizure) operates as backup but no
   // confirmed tail number publicly — omitted here.
-  { tail: "N9446P", hex: null,     operator: "Pierce SO",    model: "Cessna T206H Stationair (FLIR)", nickname: "Pierce One",        roleDescription: "Patrol / SAR / port security", base: "KPLU Thun Field, Puyallup",             role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "Pierce One — Cessna T206H FLIR (2012)" },
+  { tail: "N9446P", hex: null,     operator: "Pierce SO",    model: "Cessna T206H Stationair (FLIR)", nickname: null,        roleDescription: "Patrol / SAR / port security", base: "KPLU Thun Field, Puyallup",             role: "fixed_wing",    roleConfidence: "confirmed", roleNote: "Pierce One — Cessna T206H FLIR (2012)" },
 
   // Snohomish County Sheriff
-  { tail: "N815SC", hex: "AB1D82", operator: "Snohomish SO", model: "Bell UH-1H Iroquois Plus",       nickname: "SnoHawk 10",        roleDescription: "Mountain SAR / hoist / SWAT",  base: "Taylor's Landing",                      role: "sar",       roleConfidence: "tentative", roleNote: "SnoHawk 10 — likely SAR" },
+  { tail: "N815SC", hex: "AB1D82", operator: "Snohomish SO", model: "Bell UH-1H Iroquois Plus",       nickname: null,        roleDescription: "Mountain SAR / hoist / SWAT",  base: "Taylor's Landing",                      role: "sar",       roleConfidence: "tentative", roleNote: "SnoHawk 10 — likely SAR" },
 
   // Spokane County Sheriff — Felts Field
   // SRASU historical fleet: two Bell OH-58s (Air 1 / Air 2, ex-Army
@@ -56,7 +56,7 @@ export const FLEET: FleetEntry[] = [
   // Bell 505 added in 2024 (BJA grant 15PBJA-23-GG-00183-BRND); likely
   // assumed the Air 1 designation. OH-58 / UH-1H tails not publicly
   // confirmed — omitted to avoid mis-labeling.
-  { tail: "N509DV", hex: "A65BBE", operator: "Spokane SO",   model: "Bell 505 Jet Ranger X",          nickname: "Air 1",             roleDescription: "Patrol / SAR / fugitive apprehension", base: "KSFF Felts Field, Spokane",     role: "patrol",    roleConfidence: "tentative", roleNote: "Spokane SO Bell 505 — likely Air 1 since 2024" },
+  { tail: "N509DV", hex: "A65BBE", operator: "Spokane SO",   model: "Bell 505 Jet Ranger X",          nickname: null,             roleDescription: "Patrol / SAR / fugitive apprehension", base: "KSFF Felts Field, Spokane",     role: "patrol",    roleConfidence: "tentative", roleNote: "Spokane SO Bell 505 — likely Air 1 since 2024" },
 
   // US Coast Guard — Air Station Port Angeles, KCLM
   // Non-FAA registered (military serial); hex is authoritative. Air Station
@@ -65,7 +65,7 @@ export const FLEET: FleetEntry[] = [
   // mode-S hex. Other airframes intentionally omitted until confirmed.
   // Role = sar because USCG missions are search & rescue, not enforcement
   // against motorists. Status still turns BIRD UP when airborne.
-  { tail: "CGNR6594", hex: "AE26B4", operator: "USCG",       model: "Eurocopter MH-65E Dolphin",      nickname: "Dolphin 6594",      roleDescription: "Maritime search and rescue",   base: "KCLM Port Angeles",                     role: "sar",       roleConfidence: "confirmed", roleNote: "CGAS Port Angeles MH-65E (Jan 2021 delivery)" },
+  { tail: "CGNR6594", hex: "AE26B4", operator: "USCG",       model: "Eurocopter MH-65E Dolphin",      nickname: null,      roleDescription: "Maritime search and rescue",   base: "KCLM Port Angeles",                     role: "sar",       roleConfidence: "confirmed", roleNote: "CGAS Port Angeles MH-65E (Jan 2021 delivery)" },
   ...ADDITIONAL_FLEET,
 ];
 

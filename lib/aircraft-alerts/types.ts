@@ -32,6 +32,7 @@ export type AircraftAlertSubscriber = {
 };
 
 export type AircraftAlertStatus = {
+  optedIn?: boolean;
   supported: boolean;
   configured: boolean;
   enabled: boolean;

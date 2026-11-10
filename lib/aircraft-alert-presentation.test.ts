@@ -10,6 +10,7 @@ test("alert offers wait for readiness and never promote enabled or denied notifi
   assert.equal(canArmAircraftAlerts({ ...ready, configured: false }), false);
   assert.equal(canArmAircraftAlerts({ ...ready, supported: false }), false);
   assert.equal(canArmAircraftAlerts(ready), true);
+  assert.equal(shouldPromoteAircraftAlerts({ ...ready, optedIn: true }), false);
   assert.equal(shouldPromoteAircraftAlerts(ready), true);
   assert.equal(shouldPromoteAircraftAlerts({ ...ready, enabled: true }), false);
   assert.equal(shouldPromoteAircraftAlerts({ ...ready, permission: "denied" }), false);

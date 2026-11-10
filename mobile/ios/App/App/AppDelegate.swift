@@ -63,4 +63,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MessagingDelegate {
         config.delegateClass = SceneDelegate.self
         return config
     }
+
+    func applicationWillTerminate(_ application: UIApplication) {
+        if #available(iOS 16.2, *) { LiveTrackingSession.shared.stopForApplicationTermination() }
+    }
 }

@@ -8,12 +8,18 @@ if (!outputPath) {
   throw new Error("Usage: tsx scripts/generate-aircraft-seed.ts <migration.sql>");
 }
 
+const requestedStates = process.argv[3]?.split(",").map((state) => state.trim().toUpperCase());
+const fleet = requestedStates ? FLEET.filter((entry) => requestedStates.includes(
+  stateCodeForId(stateIdForOpsAircraftTail(entry.tail) ?? "washington"),
+)) : FLEET;
+if (!fleet.length) throw new Error("No aircraft match the requested states");
+
 function sqlString(value: string | null | undefined): string {
   if (value == null) return "null";
   return `'${value.replaceAll("'", "''")}'`;
 }
 
-const aircraftRows = FLEET.map((entry) => {
+const aircraftRows = fleet.map((entry) => {
   const stateId = stateIdForOpsAircraftTail(entry.tail) ?? "washington";
   return `  (${[
     sqlString(entry.tail.toUpperCase()),
@@ -30,7 +36,7 @@ const aircraftRows = FLEET.map((entry) => {
   ].join(", ")})`;
 });
 
-const durationRows = FLEET.flatMap((entry) => {
+const durationRows = fleet.flatMap((entry) => {
   const minutes = AIRCRAFT_DURATION_MINUTES[entry.tail];
   return minutes ? [`  (${sqlString(entry.tail.toUpperCase())}, ${minutes})`] : [];
 });
@@ -93,7 +99,7 @@ on conflict (aircraft_id) do update set
 writeFile(outputPath, migration, "utf8")
   .then(() => {
     console.log(
-      `Wrote ${FLEET.length} aircraft and ${durationRows.length} performance profiles to ${outputPath}`,
+      `Wrote ${fleet.length} aircraft and ${durationRows.length} performance profiles to ${outputPath}`,
     );
   })
   .catch((error: unknown) => {

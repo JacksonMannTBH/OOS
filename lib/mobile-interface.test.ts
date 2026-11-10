@@ -3,12 +3,13 @@ import { test } from "node:test";
 import { backendUrl, connectBackend } from "../mobile/frontend/network";
 import { hrefString } from "../mobile/frontend/navigation";
 import { parseMobileDataRequest } from "./mobile-data-request";
+import backend from "../mobile/backend.json";
 import { publicPageUrl } from "./public-url";
 
 test("local iOS and Android API requests use the HTTPS backend", () => {
   for (const base of ["capacitor://localhost/ride", "https://localhost/plane/N123?state=WA"]) {
-    assert.equal(backendUrl("/api/aircraft?state=WA&_=123", base), "https://outofsight.live/api/aircraft?state=WA&_=123");
-    assert.equal(backendUrl(new URL("/api/mobile?kind=catalog", base).href, base), "https://outofsight.live/api/mobile?kind=catalog");
+    assert.equal(backendUrl("/api/aircraft?state=WA&_=123", base), backend.url + "/aircraft?state=WA&_=123");
+    assert.equal(backendUrl(new URL("/api/mobile?kind=catalog", base).href, base), backend.url + "/mobile?kind=catalog");
     for (const path of ["/assets/index.js", "/home", "https://tiles.example.com/api/tile", "https://outofsight.live/api/aircraft"]) assert.equal(backendUrl(path, base), path);
   }
 });
@@ -24,17 +25,21 @@ test("native fetch remapping preserves alert POST bodies, headers, and overrides
   const payload = JSON.stringify({ enabled: true, deviceId: "test-device" });
   const signal = new AbortController().signal;
   await localWindow.fetch("/api/aircraft-alerts/subscription", { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, signal });
-  assert.equal(calls[0]!.input, "https://outofsight.live/api/aircraft-alerts/subscription");
+  assert.equal(calls[0]!.input, backend.url + "/aircraft-alerts/subscription");
   assert.equal(calls[0]!.init?.body, payload);
   assert.equal(calls[0]!.init?.signal, signal);
+  assert.equal(new Headers(calls[0]!.init?.headers).get("apikey"), backend.publishableKey);
   const request = new Request("capacitor://localhost/api/aircraft-alerts/test", { method: "POST", headers: { "Content-Type": "application/json", "X-Test": "preserved" }, body: payload });
   await localWindow.fetch(request, { cache: "no-store" });
   const sent = calls[1]!.input as Request;
-  assert.equal(sent.url, "https://outofsight.live/api/aircraft-alerts/test");
+  assert.equal(sent.url, backend.url + "/aircraft-alerts/test");
   assert.equal(sent.method, "POST");
   assert.equal(sent.headers.get("X-Test"), "preserved");
   assert.equal(await sent.text(), payload);
   assert.equal(calls[1]!.init?.cache, "no-store");
+  assert.equal(new Headers(calls[1]!.init?.headers).get("apikey"), backend.publishableKey);
+  await localWindow.fetch("https://tiles.example.com/style.json", { headers: { "X-Test": "external" } });
+  assert.equal(new Headers(calls[2]!.init?.headers).has("apikey"), false);
 });
 
 test("mobile navigation and sharing retain aircraft state and flight identifiers", () => {

@@ -1,20 +1,14 @@
 "use client";
 
-// Diagnostic badge that surfaces the /api/trails layer's data state in
-// plain English at the bottom-left of /map. Lets a non-technical
-// rider confirm the trail data path is healthy without opening dev
-// tools — pairs with the [trail] console.debug logs in
-// AircraftTrailLayer.tsx during the PROMPT_19C strip-back diagnostic.
-//
-// Polls the same endpoint as AircraftTrailLayer at the same cadence
-// (independent fetch — small price for a focused state machine the
-// badge can render without coupling to the layer's internals).
+// Summarizes the same pushed trail data used by the map.
 
 import { useEffect, useState } from "react";
+import { subscribeLiveState } from "@/lib/live-data-client";
+import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
+import { stateCodeForId } from "@/lib/app-states";
 import { SS_TOKENS } from "@/lib/tokens";
 import type { Aircraft } from "@/lib/types";
 
-const POLL_MS = 10_000;
 
 type Status =
   | { kind: "idle" }
@@ -31,51 +25,16 @@ export function TrailStatusBadge({ airborne }: { airborne: Aircraft[] }) {
     .join(",");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
 
+  const stateCode = stateCodeForId(useSelectedStateId());
   useEffect(() => {
-    let cancelled = false;
-    if (!tailsKey) {
-      setStatus({ kind: "no-airborne" });
-      return;
-    }
-    const tick = async () => {
-      if (cancelled) return;
-      setStatus({ kind: "fetching" });
-      try {
-        const r = await fetch(
-          `/api/trails?tails=${tailsKey}`,
-          { cache: "no-store" },
-        );
-        if (!r.ok) {
-          if (!cancelled) setStatus({ kind: "error", message: `${r.status}` });
-          return;
-        }
-        const d = (await r.json()) as {
-          trails: Record<string, unknown[]>;
-        };
-        if (cancelled) return;
-        const trails = d.trails ?? {};
-        const tails = Object.keys(trails).length;
-        const points = Object.values(trails).reduce(
-          (acc, pts) => acc + pts.length,
-          0,
-        );
-        setStatus({ kind: "ok", tails, points });
-      } catch (e) {
-        if (!cancelled) {
-          setStatus({
-            kind: "error",
-            message: e instanceof Error ? e.message : "unknown",
-          });
-        }
-      }
-    };
-    void tick();
-    const id = window.setInterval(tick, POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [tailsKey]);
+    if (!tailsKey) { setStatus({ kind: "no-airborne" }); return; }
+    setStatus({ kind: "fetching" });
+    const allowed = new Set(tailsKey.split(","));
+    return subscribeLiveState(stateCode, update => {
+      const trails = Object.entries(update.trails).filter(([tail]) => allowed.has(tail));
+      setStatus({ kind: "ok", tails: trails.length, points: trails.reduce((sum, [, points]) => sum + points.length, 0) });
+    });
+  }, [tailsKey, stateCode]);
 
   const label =
     status.kind === "idle"

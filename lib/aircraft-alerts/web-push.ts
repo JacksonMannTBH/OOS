@@ -24,6 +24,16 @@ export function getAircraftAlertPublicKey(): string {
   return getPublicKey();
 }
 
+// Offline runtime check for the Edge Function: signs and encrypts a synthetic
+// request without contacting a push provider or using any subscriber endpoint.
+export function verifyAircraftAlertPushRuntime(): void {
+  if (!configureWebPush()) throw new Error("Browser push credentials unavailable");
+  webpush.generateRequestDetails({
+    endpoint: "https://example.invalid/push-runtime-check",
+    keys: { p256dh: getPublicKey(), auth: "AAAAAAAAAAAAAAAAAAAAAA" },
+  }, "runtime-check");
+}
+
 export async function sendAircraftAlertPush(
   subscription: AircraftAlertWebPushSubscription,
   payload: AircraftAlertPushPayload,
@@ -37,6 +47,7 @@ export async function sendAircraftAlertPush(
       {
         TTL: 60 * 30,
         urgency: "high",
+        timeout: 8_000,
       },
     );
     return { ok: true };

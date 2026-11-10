@@ -96,11 +96,6 @@ export default async function TailTracksPage({ params, searchParams }: Props) {
           >
             {entry.tail}
           </span>
-          {entry.nickname && (
-            <span style={{ fontSize: 14, color: SS_TOKENS.fg1, fontStyle: "italic" }}>
-              &ldquo;{entry.nickname}&rdquo;
-            </span>
-          )}
         </div>
         <div
           className="ss-mono"
