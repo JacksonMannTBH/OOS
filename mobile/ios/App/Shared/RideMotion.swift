@@ -3,7 +3,10 @@ import Foundation
 struct RideGForceReading: Equatable {
     var timestamp: Double
     var longitudinalG: Double
+    // Sensor-derived acceleration, positive along calibrated horizontal right.
     var lateralG: Double
+    // Displayed load points opposite acceleration. Positive means right-side G.
+    var rightwardLoadG: Double { -lateralG }
     var combinedG: Double { hypot(longitudinalG, lateralG) }
 
     var payload: [String: Any] {
@@ -19,6 +22,15 @@ struct RideGForceSummary: Codable, Equatable {
     var maxLeftG = 0.0
     var maxRightG = 0.0
     var sampleCount = 0
+    // Missing in build 145 archives, which stored turn-direction peaks instead.
+    // Optional decoding preserves that distinction; newly recorded peaks use load.
+    var lateralReference: String? = "load"
+
+    mutating func normalizeLoadDirections() {
+        guard lateralReference != "load" else { return }
+        (maxLeftG, maxRightG) = (maxRightG, maxLeftG)
+        lateralReference = "load"
+    }
 
     var payload: [String: Any] {
         ["calibratedAt": calibratedAt, "maxAccelerationG": maxAccelerationG,

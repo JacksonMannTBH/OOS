@@ -6,6 +6,11 @@ button opens Stats from either view and returns to the map. There is no G-force
 button; swiping accesses G-force. Swiping
 from Stats opens G-force. No navigation button is added.
 
+Opening G-force from Map or Stats uses the same 220 ms turn-and-fade entrance
+as the Stats panel. It runs when the panel mounts, so live readings do not
+restart the transition. The circle's final size and layout stay unchanged.
+Reduced Motion switches views immediately without this animation.
+
 The G-force circle uses the same shared responsive diameter as the ride map
 (`min(100%, 310px, 38dvh)`). BRAKE sits at the top with peak braking below it;
 ACCEL sits at the bottom with peak acceleration above it, and left/right peaks below L and R. L and R sit closer to the
@@ -39,7 +44,9 @@ Directional accuracy assumes a portrait phone facing the rider and aligned
 with the bike, as described in Settings.
 
 Positive longitudinal G is acceleration; negative is braking. Positive lateral
-G is rightward; negative is leftward. The live total is the magnitude of these
+`lateralG` is rightward device acceleration; its negative is rightward load.
+`maxLeftG` and `maxRightG` record the load direction shown by the dot. These
+are left/right G readings, with no turn-direction meaning. The live total is the magnitude of these
 two horizontal components. It excludes gravity and vertical bumps and reads
 approximately 0 G at rest. This is movement G, not total felt load.
 
@@ -51,8 +58,15 @@ recalibration, and peak resets discard unfinished candidates. Confirmed peaks
 remain saved; older ride summaries keep their existing values. This reduces
 brief mount-vibration peaks without changing the G scale.
 
-The dot moves up under braking and down under acceleration, matching the
-labels. The visible dot eases toward the latest reading with a 200 ms time constant,
+The dot shows outward inertial load: right in a left turn, left in a right
+turn, up under braking and down under acceleration. Previously only the
+sideways display followed bike acceleration, mixing conventions across axes.
+The L/R numbers use the same load direction: rightward load raises `maxRightG`,
+leftward load raises `maxLeftG`. Thus a left turn normally moves the dot right
+and raises right G. The native tracker retains its existing acceleration
+coordinates; the recorder negates lateral acceleration for load peaks. No
+turn classification or steering input is involved. See the [circular-motion explanation](https://openstax.org/books/physics/pages/6-2-uniform-circular-motion).
+The visible dot eases toward the latest reading with a 200 ms time constant,
 using elapsed time on each animation frame so response is consistent across
 screen refresh rates. Scale changes ease with the dot; a smaller target scale
 must remain appropriate for one second before shrinking, avoiding repeated
@@ -75,6 +89,14 @@ dashes; a measured zero displays `0.00 G`. Acceleration, braking, left and right
 peaks are saved locally at most every two seconds and on pause/end, and appear
 in the circle and completed ride summaries. Angle peak resets do not reset G-force.
 Raw sensor streams are neither stored nor uploaded.
+
+Build 145 and earlier local G-force archives stored lateral peaks by turn
+direction. On loading, missing `gForce.lateralReference` identifies that older
+meaning: swap only the stored left/right values and mark the summary `"load"`.
+New summaries persist that marker immediately. Both active and finished rides
+are normalized before their bridge payloads are returned, and later saves
+retain the marker so reloads cannot swap them again. Magnitudes, timestamps,
+sample counts, acceleration/braking and angle peaks are preserved.
 
 The refresh icon at the top right of the G-force view clears only the active
 ride's four G-force peaks. It saves the reset before reporting success and keeps

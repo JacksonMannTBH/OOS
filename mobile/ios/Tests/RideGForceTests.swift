@@ -65,8 +65,8 @@ enum RideGForceTests {
             hold(&core, from: braking.timestamp, longitudinal: braking.longitudinalG, lateral: braking.lateralG)
             near(core.archive.active!.gForce!.maxAccelerationG, 0.6)
             near(core.archive.active!.gForce!.maxBrakingG, 0.4)
-            near(core.archive.active!.gForce!.maxLeftG, 0)
             near(core.archive.active!.gForce!.maxRightG, 0)
+            near(core.archive.active!.gForce!.maxLeftG, 0)
             let saved = try core.finish(id: core.archive.active!.id, now: 2000)
             precondition((saved.payload["gForce"] as? [String: Any])?["maxAccelerationG"] as? Double == 0.6)
             precondition((saved.payload["gForce"] as? [String: Any])?["maxBrakingG"] as? Double == 0.4)
@@ -80,6 +80,37 @@ enum RideGForceTests {
                 gravity: down, timestamp: 2)!
             near(left.longitudinalG, 0); near(left.lateralG, -0.5)
             near(right.longitudinalG, 0); near(right.lateralG, 0.7)
+        }
+        try check("sustained cornering records outward left/right G matching the dot at either lean and mount tilt") {
+            for tilt in [-65.0, 0, 60] {
+                for direction in [-1.0, 1] {
+                    let roll = direction * 30
+                    var tracker = RideMotionTracker()
+                    precondition(tracker.calibrate(gravity: phone(down, tilt: tilt, cant: 20)))
+                    var core = RideRecorderCore()
+                    try core.start(now: 1000, consent: true)
+                    try core.calibrateMotion(now: 1100)
+                    for sample in 0...5 {
+                        // v=10 m/s, radius=20 m: inward acceleration is 5 m/s².
+                        // A left turn is negative world x, even though the load
+                        // dot is displayed on the right. Include a vertical bump
+                        // to verify it cannot add to the horizontal turn peak.
+                        let physical = RideMotionVector(x: direction * 5 / 9.81, y: 0.3, z: 0)
+                        let reading = tracker.gForce(
+                            acceleration: phone(physical, roll: roll, tilt: tilt, cant: 20).scaled(-1),
+                            gravity: phone(down, roll: roll, tilt: tilt, cant: 20),
+                            timestamp: 1 + Double(sample) * 0.04)!
+                        near(reading.lateralG, direction * 5 / 9.81)
+                        near(reading.rightwardLoadG, -direction * 5 / 9.81)
+                        near(reading.longitudinalG, 0)
+                        core.acceptGForce(reading)
+                    }
+                    let peaks = core.archive.active!.gForce!
+                    near(peaks.maxRightG, direction < 0 ? 5 / 9.81 : 0)
+                    near(peaks.maxLeftG, direction > 0 ? 5 / 9.81 : 0)
+                    near(peaks.maxAccelerationG, 0); near(peaks.maxBrakingG, 0)
+                }
+            }
         }
         check("lean, pitch and mounting tilt preserve horizontal G and exclude vertical load") {
             for tilt in [-75.0, 0, 65] {
@@ -116,14 +147,14 @@ enum RideGForceTests {
             ] { core.acceptGForce(reading) }
             let summary = core.archive.active!.gForce!
             near(summary.maxAccelerationG, 0); near(summary.maxBrakingG, 0)
-            near(summary.maxLeftG, 0); near(summary.maxRightG, 0)
+            near(summary.maxRightG, 0); near(summary.maxLeftG, 0)
             precondition(summary.sampleCount == 3)
             hold(&core, from: 2, longitudinal: 0.6, lateral: -0.4)
             hold(&core, from: 3, longitudinal: -0.7, lateral: 0.5)
             near(core.archive.active!.gForce!.maxAccelerationG, 0.6)
             near(core.archive.active!.gForce!.maxBrakingG, 0.7)
-            near(core.archive.active!.gForce!.maxLeftG, 0.4)
-            near(core.archive.active!.gForce!.maxRightG, 0.5)
+            near(core.archive.active!.gForce!.maxRightG, 0.4)
+            near(core.archive.active!.gForce!.maxLeftG, 0.5)
             try core.calibrateMotion(now: 1300, recordAngles: true)
             precondition(core.archive.active?.gForce?.maxAccelerationG == 0.6)
             core.acceptMotion(RideMotionAngles(left: 30, right: 40, noseUp: 15))
@@ -151,10 +182,10 @@ enum RideGForceTests {
                     longitudinalG: spike ? 3.4 : 0.5, lateralG: spike ? -2 : -0.3))
             }
             near(core.archive.active!.gForce!.maxAccelerationG, 0.5)
-            near(core.archive.active!.gForce!.maxLeftG, 0.3)
+            near(core.archive.active!.gForce!.maxRightG, 0.3)
             hold(&core, from: 2, longitudinal: 0.8, lateral: -0.6)
             near(core.archive.active!.gForce!.maxAccelerationG, 0.8)
-            near(core.archive.active!.gForce!.maxLeftG, 0.6)
+            near(core.archive.active!.gForce!.maxRightG, 0.6)
         }
         try check("rapid direction changes and sensor gaps cannot confirm a peak") {
             var core = RideRecorderCore()
@@ -170,10 +201,10 @@ enum RideGForceTests {
             }
             let peaks = core.archive.active!.gForce!
             near(peaks.maxAccelerationG, 0); near(peaks.maxBrakingG, 0)
-            near(peaks.maxLeftG, 0); near(peaks.maxRightG, 0)
+            near(peaks.maxRightG, 0); near(peaks.maxLeftG, 0)
             hold(&core, from: 3, longitudinal: -0.7, lateral: 0.6)
             near(core.archive.active!.gForce!.maxBrakingG, 0.7)
-            near(core.archive.active!.gForce!.maxRightG, 0.6)
+            near(core.archive.active!.gForce!.maxLeftG, 0.6)
         }
         try check("pause, invalid readings, recalibration and peak reset discard unfinished candidates") {
             for interruption in ["pause", "invalid", "calibrate", "reset"] {
@@ -192,10 +223,10 @@ enum RideGForceTests {
                 }
                 core.acceptGForce(RideGForceReading(timestamp: 1.2, longitudinalG: 0.9, lateralG: -0.8))
                 near(core.archive.active!.gForce!.maxAccelerationG, 0)
-                near(core.archive.active!.gForce!.maxLeftG, 0)
+                near(core.archive.active!.gForce!.maxRightG, 0)
                 hold(&core, from: 1.24, longitudinal: 0.4, lateral: -0.3)
                 near(core.archive.active!.gForce!.maxAccelerationG, 0.4)
-                near(core.archive.active!.gForce!.maxLeftG, 0.3)
+                near(core.archive.active!.gForce!.maxRightG, 0.3)
             }
         }
         try check("duplicates and out-of-order readings cannot qualify or inflate peaks") {
@@ -214,7 +245,7 @@ enum RideGForceTests {
                 core.acceptGForce(RideGForceReading(timestamp: time, longitudinalG: 0.5, lateralG: 0))
             }
             near(core.archive.active!.gForce!.maxAccelerationG, 0.5)
-            near(core.archive.active!.gForce!.maxRightG, 0)
+            near(core.archive.active!.gForce!.maxLeftG, 0)
         }
         try check("G-force reset preserves calibration, angles, ride stats and saved rides, and persists") {
             var core = RideRecorderCore()
@@ -248,7 +279,7 @@ enum RideGForceTests {
             let ride = try core.finish(id: id, now: 7000)
             let peaks = ride.gForce!
             near(peaks.maxAccelerationG, 0.2); near(peaks.maxBrakingG, 0.1)
-            near(peaks.maxLeftG, 0.15); near(peaks.maxRightG, 0.25)
+            near(peaks.maxRightG, 0.15); near(peaks.maxLeftG, 0.25)
             precondition(peaks.sampleCount == 12 && peaks.calibratedAt == 3100)
             precondition(ride.motion == expected.active!.motion)
         }
@@ -283,6 +314,48 @@ enum RideGForceTests {
             core.acceptGForce(RideGForceReading(timestamp: 1, longitudinalG: 0, lateralG: 0))
             precondition(core.archive.active?.gForce?.sampleCount == 1)
             precondition(core.archive.active?.gForce?.maxAccelerationG == 0)
+        }
+        try check("legacy active and completed G peaks migrate to load direction once and survive disk reloads") {
+            let legacyPeak: [String: Any] = ["calibratedAt": 1100, "maxAccelerationG": 0.8,
+                "maxBrakingG": 0.7, "maxLeftG": 0.6, "maxRightG": 0.4, "sampleCount": 20]
+            let oldRide: [String: Any] = ["id": "old", "startedAt": 1000, "updatedAt": 2000,
+                "endedAt": 2000, "distanceMeters": 10, "sampleCount": 3,
+                "hasGaps": false, "interrupted": false, "gForce": legacyPeak]
+            var active = oldRide; active["id"] = "active"; active.removeValue(forKey: "endedAt")
+            var current = oldRide; current["id"] = "current"
+            var currentPeak = legacyPeak; currentPeak["lateralReference"] = "load"
+            current["gForce"] = currentPeak
+            let data = try JSONSerialization.data(withJSONObject: ["version": 1,
+                "consentGiven": true, "active": active, "rides": [oldRide, current]])
+            let decoded = try JSONDecoder().decode(RideArchive.self, from: data)
+            precondition(decoded.active!.gForce!.lateralReference == nil)
+            var core = RideRecorderCore(archive: decoded)
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: folder) }
+            let store = RideHistoryStore(url: folder.appendingPathComponent("rides.json"))
+            for _ in 0..<3 {
+                for peak in [core.archive.active!.gForce!, core.archive.rides[0].gForce!] {
+                    near(peak.maxLeftG, 0.4); near(peak.maxRightG, 0.6)
+                    near(peak.maxAccelerationG, 0.8); near(peak.maxBrakingG, 0.7)
+                    precondition(peak.calibratedAt == 1100 && peak.sampleCount == 20)
+                    precondition(peak.lateralReference == "load")
+                    near(peak.payload["maxLeftG"] as! Double, 0.4)
+                    near(peak.payload["maxRightG"] as! Double, 0.6)
+                }
+                let alreadyLoad = core.archive.rides[1].gForce!
+                near(alreadyLoad.maxLeftG, 0.6); near(alreadyLoad.maxRightG, 0.4)
+                try store.write(core.archive)
+                let reread = try store.read()
+                precondition(reread == core.archive)
+                core = RideRecorderCore(archive: reread)
+            }
+            // New readings extend the migrated load peaks on the correct side.
+            hold(&core, from: 3, longitudinal: 0, lateral: -0.9)
+            near(core.archive.active!.gForce!.maxRightG, 0.9)
+            near(core.archive.active!.gForce!.maxLeftG, 0.4)
+            hold(&core, from: 4, longitudinal: 0, lateral: 0.8)
+            near(core.archive.active!.gForce!.maxLeftG, 0.8)
+            near(core.archive.active!.gForce!.maxRightG, 0.9)
         }
         check("unobservable vertical orientation is unavailable and finite data stays serializable") {
             var tracker = RideMotionTracker()

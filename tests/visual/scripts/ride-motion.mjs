@@ -185,16 +185,40 @@ try {
     if (!click.defaultPrevented) throw new Error("A swipe must suppress its following click");
   });
   const meter = page.getByRole("region", { name: "G-force meter", exact: true });
+  const checkGForceEntrance = async from => {
+    await meter.waitFor();
+    const entrance = await meter.evaluate(element => {
+      const style = getComputedStyle(element);
+      const animation = element.getAnimations().find(animation => animation.effect?.target === element);
+      let midpoint = null;
+      if (animation) {
+        animation.pause();
+        animation.currentTime = 110;
+        midpoint = { opacity: Number(getComputedStyle(element).opacity), transform: getComputedStyle(element).transform };
+        animation.finish();
+      }
+      return { name: style.animationName, duration: style.animationDuration, midpoint };
+    });
+    assert.equal(entrance.name, "ss-ride-panel-reveal", `${from} opens G-force with the shared panel entrance`);
+    assert.equal(entrance.duration, "0.22s");
+    assert(entrance.midpoint, `${from} has an active entrance animation`);
+    if (entrance.midpoint) {
+      assert(entrance.midpoint.opacity > 0 && entrance.midpoint.opacity < 1, `${from} fades G-force in`);
+      assert.notEqual(entrance.midpoint.transform, "none", `${from} turns G-force into view`);
+    }
+    await page.waitForFunction(() => getComputedStyle(document.querySelector(".ss-gforce-view")).transform === "none");
+  };
   await swipe();
-  await meter.waitFor();
+  await checkGForceEntrance("Stats");
   assert.equal(await page.getByRole("region", { name: "Current ride stats", exact: true }).count(), 0, "Swiping opens G-force instead of Stats");
   await meter.locator(".ss-gforce-dot").waitFor();
-  assert.equal(Number(await meter.locator(".ss-gforce-dot").getAttribute("cx")), 206);
+  assert.equal(Number(await meter.locator(".ss-gforce-dot").getAttribute("cx")), 94, "Rightward bike acceleration moves the load dot left");
   assert.equal(Number(await meter.locator(".ss-gforce-dot").getAttribute("cy")), 192);
   const dialSize = await meter.locator(".ss-gforce-dial").boundingBox();
   const mapDiameter = await page.locator(".ss-ride-map-link").evaluate(el => parseFloat(getComputedStyle(el).width));
   assert(Math.abs(dialSize.width - mapDiameter) < 0.1 && Math.abs(dialSize.height - mapDiameter) < 0.1, "G-force and map circles have the same diameter");
   assert.deepEqual(await meter.locator(".ss-gforce-peak").allTextContents(), ["0.70 G", "0.80 G", "0.60 G", "0.50 G"]);
+  assert.equal(await meter.getByRole("img", { name: /left G-force 0\.60 G, right G-force 0\.50 G/ }).count(), 1, "The meter names load directions, not turn directions");
   assert.equal(await meter.locator("h2, output, dl").count(), 0, "The circle has no heading, current reading, or separate peak list");
   assert.equal(await meter.getByText("Swipe for map", { exact: true }).count(), 0);
   assert.equal(await meter.getByRole("status").count(), 0, "The calibrated meter has no explanatory text");
@@ -204,25 +228,32 @@ try {
     const started = performance.now();
     const sample = () => {
       const x = Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx"));
-      if (x < 205 && x > 67) return resolve(x);
+      if (x > 95 && x < 233) return resolve(x);
       if (performance.now() - started > 3000) return reject(new Error("Dot did not animate through intermediate positions"));
       requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
   }));
-  assert(intermediate > 66 && intermediate < 206, "The dot glides instead of jumping to the next reading");
-  await page.waitForFunction(() => Math.abs(Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) - 66) < 0.1);
+  assert(intermediate > 94 && intermediate < 234, "The dot glides instead of jumping to the next reading");
+  await page.waitForFunction(() => Math.abs(Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) - 234) < 0.1);
+  assert.equal(await meter.evaluate(element => element.getAnimations().filter(animation => animation.effect?.target === element).length), 0, "Live readings do not restart the entrance animation");
+  assert(Number(await meter.locator(".ss-gforce-dot").getAttribute("cy")) > 150, "A left turn while accelerating moves the dot right and down");
   await page.evaluate(() => { window.motionFixture.gForceReading = { timestamp: 3, longitudinalG: 0, lateralG: 1.2, combinedG: 1.2 }; });
-  await page.waitForFunction(() => Math.abs(Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) - 262) < 0.1);
+  await page.waitForFunction(() => Math.abs(Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) - 38) < 0.1);
   await page.evaluate(() => { window.motionFixture.gForceReading = { timestamp: 4, longitudinalG: 0, lateralG: 0.4, combinedG: 0.4 }; });
   await page.waitForTimeout(600);
   const heldPosition = Number(await meter.locator(".ss-gforce-dot").getAttribute("cx"));
-  assert(heldPosition > 187 && heldPosition < 206, "Scale holds briefly before shrinking");
-  await page.waitForFunction(() => Math.abs(Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) - 206) < 0.1);
+  assert(heldPosition > 94 && heldPosition < 113, "Scale holds briefly before shrinking");
+  await page.waitForFunction(() => Math.abs(Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) - 94) < 0.1);
   assert.deepEqual(await meter.locator(".ss-gforce-peak").allTextContents(), ["0.70 G", "0.80 G", "0.60 G", "0.50 G"], "Display smoothing does not change recorded peaks");
   await page.emulateMedia({ reducedMotion: "reduce" });
+  assert.equal(await meter.evaluate(element => getComputedStyle(element).animationName), "none", "Reduced Motion disables the panel animation");
   await page.evaluate(() => { window.motionFixture.gForceReading = { timestamp: 5, longitudinalG: 0, lateralG: -0.4, combinedG: 0.4 }; });
-  await page.waitForFunction(() => Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) === 94);
+  await page.waitForFunction(() => Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) === 206);
+  await page.evaluate(() => { window.motionFixture.gForceReading = { timestamp: 6, longitudinalG: -0.5, lateralG: 0.4, combinedG: Math.hypot(0.5, 0.4) }; });
+  await page.waitForFunction(() => Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) === 94
+    && Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cy")) === 80);
+  assert.deepEqual(await meter.locator(".ss-gforce-peak").allTextContents(), ["0.70 G", "0.80 G", "0.60 G", "0.50 G"], "Left load and braking move the dot left/up without altering previously recorded load peaks");
   await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.evaluate(() => { window.motionFixture.gForcePaused = true; });
   await meter.getByText("Waiting for motion readings…", { exact: true }).waitFor();
@@ -304,7 +335,7 @@ try {
   await meter.waitFor({ state: "detached" });
   await page.getByRole("link", { name: "Open map, keep ride active", exact: true }).waitFor({ state: "visible" });
   await swipe();
-  await meter.waitFor();
+  await checkGForceEntrance("Map");
   assert.equal(await page.getByRole("button", { name: "Show ride stats", exact: true }).count(), 1, "The G-force view keeps the Stats button");
   await swipe();
   await meter.waitFor({ state: "detached" });
@@ -313,10 +344,20 @@ try {
   await page.waitForTimeout(200);
   assert.equal(await page.evaluate(() => window.motionFixture.gForceRequests), requestsOnMap, "The map does not poll the live meter");
   await page.locator(".ss-ride-view").focus();
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.keyboard.press("ArrowLeft");
   await meter.waitFor();
+  assert.equal(await meter.evaluate(element => getComputedStyle(element).animationName), "none", "Reduced Motion opens G-force immediately from Map");
   await page.keyboard.press("ArrowRight");
   await meter.waitFor({ state: "detached" });
+  await page.getByRole("button", { name: "Show ride stats", exact: true }).click();
+  await peaks.waitFor();
+  await swipe();
+  await meter.waitFor();
+  assert.equal(await meter.evaluate(element => getComputedStyle(element).animationName), "none", "Reduced Motion opens G-force immediately from Stats");
+  await swipe();
+  await meter.waitFor({ state: "detached" });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.getByRole("button", { name: "Show ride stats", exact: true }).click();
   assert.equal(await calibrationPrompt.count(), 0, "Successful calibration restores peak readings");
   await peaks.getByText("32°", { exact: true }).waitFor();
@@ -382,6 +423,8 @@ try {
   await summary.waitFor();
   for (const degrees of ["11°", "12°", "13°"]) await summary.getByText(degrees, { exact: true }).waitFor();
   await summary.getByRole("region", { name: "Peak G-force", exact: true }).getByText("0.80", { exact: false }).waitFor();
+  const savedGPeaks = summary.getByRole("region", { name: "Peak G-force", exact: true });
+  assert.deepEqual(await savedGPeaks.locator("dt").allTextContents(), ["Acceleration", "Braking", "Left", "Right"], "Saved G peaks use load directions, not turn labels");
   assert.equal(await summary.getByRole("button", { name: "Reset peak angles" }).count(), 0, "Saved summaries have no reset button");
   assert.equal(await summary.getByRole("button", { name: "Reset peak G-force" }).count(), 0);
   assert.equal(await summary.locator(".ss-ride-statistics + p").count(), 0, "The summary has no bottom note");

@@ -10,6 +10,7 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { glyphRoleFor } from "@/lib/brand/aircraft-glyphs";
+import { aircraftColorForTail } from "@/lib/aircraft-colors";
 import {
   HELICOPTER_ICON_SIZE,
   helicopterFrameSrc,
@@ -118,14 +119,14 @@ export default function RideMap(props: Props) {
         )}
       </div>
 
-      {offMapBearingDeg != null && (
-        <OffMapAircraftArrow bearingDeg={offMapBearingDeg} />
+      {offMapBearingDeg != null && nearestOffMap && (
+        <OffMapAircraftArrow bearingDeg={offMapBearingDeg} color={aircraftColorForTail(nearestOffMap.plane.tail)} />
       )}
     </section>
   );
 }
 
-function OffMapAircraftArrow({ bearingDeg }: { bearingDeg: number }) {
+function OffMapAircraftArrow({ bearingDeg, color }: { bearingDeg: number; color: string }) {
   const radians = ((bearingDeg - 90) * Math.PI) / 180;
   const radiusPercent = 55;
   const left = 50 + Math.cos(radians) * radiusPercent;
@@ -143,10 +144,10 @@ function OffMapAircraftArrow({ bearingDeg }: { bearingDeg: number }) {
         width: 28,
         height: 28,
         borderRadius: "50%",
-        border: "1.5px solid #f6c431",
+        border: `1.5px solid ${color}`,
         background: "#050505",
         boxShadow:
-          "0 0 0 3px rgba(246,196,49,0.18), 0 0 16px rgba(246,196,49,0.68)",
+          `0 0 0 3px ${color}2e, 0 0 16px ${color}ad`,
         display: "grid",
         placeItems: "center",
         pointerEvents: "none",
@@ -160,7 +161,7 @@ function OffMapAircraftArrow({ bearingDeg }: { bearingDeg: number }) {
           height: 0,
           borderLeft: "5px solid transparent",
           borderRight: "5px solid transparent",
-          borderBottom: "13px solid #f6c431",
+          borderBottom: `13px solid ${color}`,
           transform: "translateY(-1px)",
         }}
       />
@@ -429,7 +430,6 @@ function setRiderData(map: MaplibreMap, rider: RiderPoint) {
 function setContactData(map: MaplibreMap, state: RideMapState) {
   const source = map.getSource("ride-contacts") as GeoJSONSource | undefined;
   if (!source) return;
-  const statusColor = STATUS_COLORS[state.status];
   const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
 
   state.contacts.forEach((contact, index) => {
@@ -450,7 +450,7 @@ function setContactData(map: MaplibreMap, state: RideMapState) {
           : RIDE_PLANE_ICON_KEY,
         track: contact.plane.heading ?? 0,
         nearest: index === 0,
-        color: index === 0 ? statusColor : "#f6c431",
+        color: aircraftColorForTail(contact.plane.tail),
       },
     });
   });

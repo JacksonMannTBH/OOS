@@ -20,7 +20,7 @@ export function RideGForcePeaks({ summary }: {
   return <dl className="ss-ride-statistics ss-gforce-peaks" aria-label="Peak G-force readings">
     {([
       ["Acceleration", summary?.maxAccelerationG], ["Braking", summary?.maxBrakingG],
-      ["Left turn", summary?.maxLeftG], ["Right turn", summary?.maxRightG],
+      ["Left", summary?.maxLeftG], ["Right", summary?.maxRightG],
     ] as const).map(([label, value]) => <div key={label}>
       <dt>{label}</dt><dd>{summary?.sampleCount && value != null && Number.isFinite(value) ? value.toFixed(2) : "—"} <small>G</small></dd>
     </div>)}
@@ -36,7 +36,7 @@ export function RideGForce({ status, onReset, resetting, resetDisabled, resetErr
     : status.message || (!status.calibrated ? "Calibrate your phone" : !reading ? "Waiting for motion readings…" : "");
   return <section className="ss-gforce-view" aria-label="G-force meter">
     <svg className="ss-gforce-dial" viewBox="0 0 300 300" role="img" aria-label={
-      `Peak acceleration ${peak(status?.peaks?.maxAccelerationG)}, braking ${peak(status?.peaks?.maxBrakingG)}, left turn ${peak(status?.peaks?.maxLeftG)}, right turn ${peak(status?.peaks?.maxRightG)}`}>
+      `Peak acceleration ${peak(status?.peaks?.maxAccelerationG)}, braking ${peak(status?.peaks?.maxBrakingG)}, left G-force ${peak(status?.peaks?.maxLeftG)}, right G-force ${peak(status?.peaks?.maxRightG)}`}>
       <circle cx="150" cy="150" r="70" className="ss-gforce-ring ss-gforce-ring--inner" />
       <path d="M10 150h280M150 10v280" className="ss-gforce-crosshair" />
       {reading && <AnimatedGForcePlot reading={reading} />}
@@ -100,8 +100,10 @@ function AnimatedGForcePlot({ reading }: { reading: RideGForceReading }) {
       if (Math.abs(latest.longitudinalG - longitudinal) < 0.0001) longitudinal = latest.longitudinalG;
       if (Math.abs(latest.lateralG - lateral) < 0.0001) lateral = latest.lateralG;
       if (Math.abs(targetScale - scale) < 0.0001) scale = targetScale;
-      setPosition("cx", 150 + lateral / scale * 140);
-      // The dot moves down under acceleration and up under braking.
+      // Show outward inertial load, opposite the bike's horizontal acceleration:
+      // left turn -> right, right turn -> left, acceleration -> down, brake -> up.
+      // The L/R peaks use this same load direction.
+      setPosition("cx", 150 - lateral / scale * 140);
       setPosition("cy", 150 + longitudinal / scale * 140);
       lastTime = time;
       frame = requestAnimationFrame(animate);
@@ -110,6 +112,6 @@ function AnimatedGForcePlot({ reading }: { reading: RideGForceReading }) {
     return () => cancelAnimationFrame(frame);
   }, [initial]);
   return <circle ref={dot} className="ss-gforce-dot"
-    cx={150 + initial.reading.lateralG / initial.scale * 140}
+    cx={150 - initial.reading.lateralG / initial.scale * 140}
     cy={150 + initial.reading.longitudinalG / initial.scale * 140} r="8" />;
 }

@@ -1,5 +1,37 @@
 # Out Of Sight App Store release
 
+## Phone review 1.0.2 (147) — November 14, 2026
+
+Installed and launched in the regular Out Of Sight app. G-force now opens from
+Map and Stats with the shared 220 ms turn-and-fade entrance. Live readings do
+not restart the animation, and Reduced Motion switches immediately.
+
+Root/mobile type checks, the packaged interface build and the browser motion
+flow passed, including both entry paths and Reduced Motion. The signed app
+and widget report 1.0.2 (147); all 211 packaged interface files match the
+generated interface. Evidence is in `.local/phone-build-147/`.
+This includes the prior build 146 fixes. At the owner's subsequent request on
+November 14, the source and Android handoff notes were saved to
+`android/build-145`. The backend remains unchanged. No App Store upload or
+submission was made.
+
+## Phone review 1.0.2 (146) — November 14, 2026
+
+Installed and launched in the regular Out Of Sight app at the owner's request.
+The G-force dot and L/R peaks now share the outward load direction; saved ride
+summaries use Left/Right labels and old turn-direction peaks migrate once.
+Yellow/amber aircraft colors, glyph accents, trail fallbacks and ride-map
+indicators are replaced so aircraft remain separate from road colors.
+
+All 53 native motion/G-force/history checks, root/mobile type checks, browser
+motion checks and packaged interface build passed. Both aircraft-color checks
+passed. The signed app and widget report 1.0.2 (146), and all 211 packaged
+interface files match the generated interface. Evidence is in
+`.local/phone-build-146/` and `.local/post145-load-directions-20261114/`.
+The live backend is unchanged. At this installation, the remote Android
+handoff branch still contained build 145. No App Store archive, upload,
+review submission or release is part of this phone installation.
+
 ## App Store candidate 1.0.2 (145) — November 13, 2026 — phone review first
 
 The owner requested a regular-app phone build to review UI/UX before continuing

@@ -1,6 +1,6 @@
 // aircraft-glyphs.ts — top-down map icons for the Out Of Sight map.
 //
-// Vendored 1:1 from design/brand/aircraft-glyphs.js. Geometry is byte-
+// Geometry vendored from design/brand/aircraft-glyphs.js. Geometry is byte-
 // identical to the source — every test render in
 // design/brand/aircraft-glyphs-*.png was generated from those paths.
 //
@@ -9,10 +9,9 @@
 //   Family B — HELICOPTER → patrol, sar
 //
 // COLOR STRATEGY:
-//   tracked aircraft fill #F2F4F7, stroke #f4c430 1.0px
+//   tracked aircraft fill #F2F4F7, blue stroke 1.0px
 //
-// White fill + amber stroke borrows ATC display convention so every airborne
-// tracked glyph survives the amber heat layer.
+// White fill + blue stroke keeps aircraft separate from yellow/amber roads.
 //
 // VIEWBOX: 24×24, icon centered to ~80% of the box.
 // HEADING: glyphs face NORTH (up). Consumer applies
@@ -23,7 +22,7 @@
 // HTML-marker wrapper that pulses opacity around the icon. Our radar
 // uses a MapLibre symbol layer, not HTML markers, so we keep the
 // existing layer-level opacity pulse (RadarMap.tsx startPulse). The
-// alert glyphs already include their own amber nose-blip "alive" cue
+// alert glyphs already include their own blue nose-blip "alive" cue
 // via planeBlip()/heliBlip(); the layer pulse adds breath on top.
 // If we ever switch RadarMap to HTML markers, port the wrapper
 // approach from the rationale doc verbatim.
@@ -32,9 +31,9 @@ import type { FleetRole } from "@/lib/types";
 
 export const AIRCRAFT_COLORS = {
   ALERT_FILL: "#F2F4F7",
-  ALERT_STROKE: "#f4c430",
+  ALERT_STROKE: "#4da3ff",
   MUTED_FILL: "#6B7380",
-  RADAR_FILL: "#f4c430",
+  RADAR_FILL: "#4da3ff",
   RADAR_STROKE: "#050505",
   RADAR_BLIP: "#050505",
 } as const;

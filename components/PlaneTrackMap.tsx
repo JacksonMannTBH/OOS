@@ -23,6 +23,7 @@ import maplibregl, {
   NavigationControl,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { aircraftColorForTail } from "@/lib/aircraft-colors";
 import { MAP_STYLE_URL } from "@/lib/map-style";
 import { darkMapStyle } from "@/lib/dark-map-style";
 import { SS_TOKENS } from "@/lib/tokens";
@@ -140,12 +141,12 @@ export default function PlaneTrackMap({
         source: "track",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#f6c431",
+          "line-color": aircraftColorForTail(tail),
           "line-width": 3,
         },
       });
 
-      // Endpoint dots — start green, end amber. Re-rendered on each
+      // Endpoint dots — start green, end red. Re-rendered on each
       // coords change via the data-update useEffect below.
       map.addSource("endpoints", {
         type: "geojson",

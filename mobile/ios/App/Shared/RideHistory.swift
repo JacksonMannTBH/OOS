@@ -107,6 +107,12 @@ struct RideRecorderCore {
 
     init(archive: RideArchive = RideArchive()) {
         self.archive = archive
+        // Migrate earlier turn-direction records to the load direction used by
+        // the dot and L/R peaks. The marker makes subsequent loads a no-op.
+        self.archive.active?.gForce?.normalizeLoadDirections()
+        for index in self.archive.rides.indices {
+            self.archive.rides[index].gForce?.normalizeLoadDirections()
+        }
         if self.archive.lifetimeStats == nil {
             var stats = RideLifetimeStats()
             var included = Set<String>()
@@ -182,11 +188,11 @@ struct RideRecorderCore {
             // Only save force sustained throughout the last 200 ms. Taking the
             // directional minimum prevents a brief spike from raising a peak.
             let longitudinal = gForceCandidates.map(\.longitudinalG)
-            let lateral = gForceCandidates.map(\.lateralG)
+            let rightwardLoad = gForceCandidates.map(\.rightwardLoadG)
             summary.maxAccelerationG = max(summary.maxAccelerationG, longitudinal.min()!)
             summary.maxBrakingG = max(summary.maxBrakingG, -longitudinal.max()!)
-            summary.maxLeftG = max(summary.maxLeftG, -lateral.max()!)
-            summary.maxRightG = max(summary.maxRightG, lateral.min()!)
+            summary.maxLeftG = max(summary.maxLeftG, -rightwardLoad.max()!)
+            summary.maxRightG = max(summary.maxRightG, rightwardLoad.min()!)
         }
         summary.sampleCount += 1
         ride.gForce = summary

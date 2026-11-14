@@ -1,11 +1,13 @@
 import type { FleetRole } from "@/lib/types";
 
+// Keep the slot count/order stable so only aircraft assigned the removed
+// amber/yellow colors change. Roads retain those hues; aircraft use other ones.
 export const AIRCRAFT_PATH_COLORS = [
   "#ff8a3d",
   "#4da3ff",
   "#2dd4a3",
   "#e879f9",
-  "#fbbf24",
+  "#e2e8f0",
   "#22d3ee",
   "#fb7185",
   "#a78bfa",
@@ -14,7 +16,7 @@ export const AIRCRAFT_PATH_COLORS = [
   "#2dd4bf",
   "#818cf8",
   "#f472b6",
-  "#f59e0b",
+  "#c084fc",
   "#38bdf8",
   "#34d399",
 ] as const;

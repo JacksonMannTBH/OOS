@@ -22,6 +22,7 @@ export type RideGForceSummary = {
   calibratedAt: number;
   maxAccelerationG: number;
   maxBrakingG: number;
+  // Outward load direction, matching the meter's dot and L/R labels.
   maxLeftG: number;
   maxRightG: number;
   sampleCount: number;
@@ -29,6 +30,7 @@ export type RideGForceSummary = {
 export type RideGForceReading = {
   timestamp: number;
   longitudinalG: number;
+  // Horizontal device acceleration; negate for rightward load on the meter.
   lateralG: number;
   combinedG: number;
 };

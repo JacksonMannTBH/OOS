@@ -1,7 +1,7 @@
 "use client";
 
 // Flight-path polyline overlay. Threads each tail-day's track samples
-// as a thin amber line so corridors and patrol orbits read as actual
+// as an aircraft-colored line so corridors and patrol orbits read as actual
 // paths. Visibility tracks its own
 // `ss_flight_paths_visible` localStorage key so riders can dim the
 // paths. The layer also listens for the LAYER_VISIBILITY_CHANGE_EVENT
@@ -158,7 +158,7 @@ export function FlightPathLayer({ map, airborneTails }: Props) {
               "line-join": "round",
             },
             paint: {
-              "line-color": ["coalesce", ["get", "color"], "#f6c431"],
+              "line-color": ["coalesce", ["get", "color"], aircraftColorForTail(null)],
               "line-width": [
                 "interpolate",
                 ["linear"],
