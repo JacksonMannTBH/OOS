@@ -55,11 +55,11 @@ test("unsupported performance stays unknown and every state has aircraft or an e
   }
 });
 
-test("seed-backed catalog and snapshots exclude states outside the current rollout", async () => {
+test("restored states return their saved aircraft while documented coverage gaps stay empty", async () => {
   // These unit tests run with no configured remote database, as the existing suite does.
   if (process.env.SUPABASE_URL || process.env.SUPABASE_SERVICE_ROLE_KEY) return;
   for (const code of ["AK", "NY", "UT", "WI", "RI", "VT"] as const) {
-    const expected: unknown[] = [];
+    const expected = FLEET.filter(row => stateIdForOpsAircraftTail(row.tail) === getAppState(code).id);
     const catalog = await getCatalog(code);
     const snapshot = await getDatabaseSnapshot(code);
     assert.equal(catalog.length, expected.length, code);

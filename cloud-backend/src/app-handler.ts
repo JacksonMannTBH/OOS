@@ -6,6 +6,7 @@ import * as activity from "../../app/api/activity/route";
 import * as trails from "../../app/api/trails/route";
 import * as paths from "../../app/api/flight-paths/route";
 import * as live from "../../app/api/live/route";
+import * as mapAircraft from "../../app/api/map-aircraft/route";
 import * as location from "../../app/api/location-state/route";
 import * as subscription from "../../app/api/aircraft-alerts/subscription/route";
 import * as testAlert from "../../app/api/aircraft-alerts/test/route";
@@ -13,6 +14,7 @@ import * as testAlert from "../../app/api/aircraft-alerts/test/route";
 type Handler = (request: Request) => Promise<Response>;
 export const appRoutes: Record<string, Partial<Record<string, Handler>>> = {
   live: { GET: live.GET },
+  "map-aircraft": { GET: mapAircraft.GET },
   aircraft: { GET: async request => {
     const state = new URL(request.url).searchParams.get("state") ?? DEFAULT_STATE_CODE;
     if (!isSupportedStateCode(state)) return Response.json({ error: "invalid_state" }, { status: 400 });

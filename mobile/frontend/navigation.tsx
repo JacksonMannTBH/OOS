@@ -1,4 +1,6 @@
 import { forwardRef, useMemo, useSyncExternalStore, type AnchorHTMLAttributes } from "react";
+import { animateMapNavigation, animateMapReturnNavigation, animateRideNavigation, animateRideReturnNavigation, cancelMapTransition } from "./map-transition";
+import { readMapOpeningCamera, setMapOpeningCamera } from "@/lib/map-opening-camera";
 import { sameAppOrigin } from "./network";
 
 const EVENT = "oos:navigation";
@@ -28,10 +30,29 @@ export function hrefString(href: Href): string {
 export function navigate(href: Href, replace = false, scroll = true) {
   const target = new URL(hrefString(href), window.location.href);
   if (!sameAppOrigin(target, new URL(window.location.href))) { window.location.assign(target.href); return; }
-  window.history[replace ? "replaceState" : "pushState"]({}, "", target.href);
-  window.dispatchEvent(new Event(EVENT));
-  if (target.hash) requestAnimationFrame(() => document.getElementById(decodeURIComponent(target.hash.slice(1)))?.scrollIntoView());
-  else if (scroll) window.scrollTo(0, 0);
+  const update = () => {
+    window.history[replace ? "replaceState" : "pushState"]({}, "", target.href);
+    window.dispatchEvent(new Event(EVENT));
+    if (target.hash) requestAnimationFrame(() => document.getElementById(decodeURIComponent(target.hash.slice(1)))?.scrollIntoView());
+    else if (scroll) window.scrollTo(0, 0);
+  };
+  cancelMapTransition();
+  const fromHome = window.location.pathname === "/home";
+  const fromRide = window.location.pathname === "/ride";
+  const fromMap = window.location.pathname === "/map";
+  const openingMap = (fromHome || fromRide) && target.pathname === "/map";
+  const openingRide = (fromHome || fromMap) && target.pathname === "/ride";
+  // A replaced route without a summary is the inactive-ride recovery, which
+  // should return immediately. The Home button and saved-ride return animate.
+  const returningFromRide = fromRide && target.pathname === "/home" && (!replace || target.searchParams.has("rideSummary"));
+  const returningHome = fromMap && target.pathname === "/home";
+  setMapOpeningCamera(returningHome ? readMapOpeningCamera("map") : openingMap ? readMapOpeningCamera(fromRide ? "ride" : "home") : null);
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (openingMap && !reducedMotion) animateMapNavigation(update, fromRide);
+  else if (openingRide && !reducedMotion) animateRideNavigation(update, fromMap);
+  else if (returningFromRide && !reducedMotion) animateRideReturnNavigation(update);
+  else if (returningHome && !reducedMotion) animateMapReturnNavigation(update);
+  else update();
 }
 const router = { push: (href: string, options?: { scroll?: boolean }) => navigate(href, false, options?.scroll !== false), replace: (href: string, options?: { scroll?: boolean }) => navigate(href, true, options?.scroll !== false), back: () => window.history.back(), forward: () => window.history.forward(), refresh, prefetch: () => {} };
 export function useRouter() { return router; }
@@ -58,6 +79,20 @@ export default Link;
 
 // Map popups and Markdown contain ordinary anchors as well as React links.
 export function connectNavigation() {
+  window.addEventListener("popstate", () => {
+    cancelMapTransition();
+    // Capture the outgoing view before React handles browser/swipe Back.
+    const fromMap = Boolean(document.querySelector(".ss-map-screen"));
+    const fromRide = Boolean(document.querySelector(".ss-ride-screen"));
+    if (window.location.pathname === "/home" && (fromMap || fromRide)) {
+      setMapOpeningCamera(fromMap ? readMapOpeningCamera("map") : null);
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        const update = () => window.dispatchEvent(new Event(EVENT));
+        if (fromMap) animateMapReturnNavigation(update);
+        else animateRideReturnNavigation(update);
+      }
+    }
+  });
   document.addEventListener("click", event => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
     const anchor = event.target instanceof Element ? event.target.closest("a") : null;

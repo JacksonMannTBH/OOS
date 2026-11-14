@@ -9,13 +9,19 @@ async function read(path, init = {}) {
   assert.equal(response.headers.get("Cache-Control"), "no-store");
   return response.json();
 }
-for (const state of ["WA", "CA", "TX"]) {
-  const snapshot = await read(`aircraft?state=${state}`);
-  assert.ok(snapshot.aircraft.length > 0, `${state}: missing aircraft`);
-  console.log(`${state}: ${snapshot.aircraft.length} aircraft`);
-}
+const states = "AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY".split(" ");
 const catalog = await read("mobile?kind=catalog");
-assert.ok(catalog.length >= 343);
+assert.ok(catalog.length >= 1090, "Nationwide catalog must not be truncated at 1000 rows");
+const expected = new Map(states.map(state => [state, catalog.filter(row => row.homeStateCode === state).length]));
+for (let offset = 0; offset < states.length; offset += 5) {
+  await Promise.all(states.slice(offset, offset + 5).map(async state => {
+    const snapshot = await read(`aircraft?state=${state}`);
+    assert.equal(snapshot.aircraft.length, expected.get(state), `${state}: catalog/snapshot mismatch`);
+    if (!["RI", "VT"].includes(state)) assert.ok(snapshot.aircraft.length > 0, `${state}: missing aircraft`);
+    assert.ok(snapshot.aircraft.every(row => row.home_state_code === state), `${state}: wrong home state`);
+    console.log(`${state}: ${snapshot.aircraft.length} aircraft`);
+  }));
+}
 await Promise.all(["mobile?kind=settings", "mobile?kind=recent-flight&tail=N60TX", "activity?limit=1&state_id=texas", "trails?tails=N60TX", "flight-paths?state=TX&tails=N60TX"].map(path => read(path)));
 const status = await read("aircraft-alerts/subscription?userId=11111111-1111-4111-8111-111111111111&transport=fcm");
 for (const [path, expected] of [["predict", 404], ["mobile?kind=forecast", 400]]) {

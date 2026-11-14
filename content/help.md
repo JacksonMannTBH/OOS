@@ -64,6 +64,22 @@ Ride recording works independently of aircraft Live Tracking. Stop each session
 to end its background location use. Ride recording does not require internet;
 aircraft data and map tiles still do.
 
+Swipe the ride map to open the **G-force** meter; swipe again to return to the
+map. The **Stats** button opens ride statistics from either view, and its map
+button returns to the map. Peak acceleration, braking, and left/right
+cornering G appear inside the G-force circle and in saved ride summaries.
+The meter shows movement G,
+approximately **0 G at rest**, with a dot indicating acceleration direction.
+Completed ride summaries retain these peaks locally.
+
+Secure your phone in portrait, facing you and aligned with the bike. Before
+each ride, hold the bike upright and stationary on level ground and tap the
+calibration button beside Home. It blinks until the bike is steady enough.
+Calibrate again after moving the phone. The same control calibrates Lean and
+Pitch when enabled; G-force works with those angles turned off. Motion
+recording pauses when the phone is locked or OOS is in the background, while
+GPS ride recording continues.
+
 ## Police sightings
 
 The police button in Ride Mode lets you report police you see on the road. The

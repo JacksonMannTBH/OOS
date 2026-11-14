@@ -245,6 +245,11 @@ await marker.waitFor();
 assert.equal(await marker.count(), 1);
 await marker.click();
 await page.getByText("4 riders", { exact: true }).waitFor();
+assert.equal(await page.locator(".oos-police-popup .maplibregl-popup-close-button").count(), 0);
+await marker.click();
+assert.equal(await page.locator(".oos-police-popup").count(), 0);
+await marker.click();
+await page.getByText("4 riders", { exact: true }).waitFor();
 const markerEffects = await marker.evaluate(element => [element, ...element.querySelectorAll(".oos-police-marker__badge, svg")].map(node => {
   const style = getComputedStyle(node);
   return { shadow: style.boxShadow, filter: style.filter };
@@ -259,12 +264,15 @@ await page.screenshot({ path: out + "/map-police-details.png" });
 const canvas = page.locator(".maplibregl-canvas");
 await canvas.focus();
 for (let i = 0; i < 3; i++) { await canvas.press("Minus"); await page.waitForTimeout(400); }
+// Sightings now remain visible at the wider view that previously hid them.
+assert.equal(await marker.isVisible(), true);
+for (let i = 0; i < 2; i++) { await canvas.press("Minus"); await page.waitForTimeout(400); }
 await page.locator(".oos-police-marker").waitFor({ state: "hidden" });
 assert.equal(await page.locator(".oos-police-popup").count(), 0);
 await page.evaluate(() => window.dispatchEvent(new Event("oos-police-refresh")));
 await page.waitForTimeout(1100);
 assert.equal(await page.locator(".oos-police-marker").isVisible(), false);
-for (let i = 0; i < 3; i++) { await canvas.press("Equal"); await page.waitForTimeout(400); }
+for (let i = 0; i < 5; i++) { await canvas.press("Equal"); await page.waitForTimeout(400); }
 await marker.waitFor({ state: "visible" });
 assert.equal(await page.locator(".oos-police-popup").count(), 0);
 await marker.click();

@@ -12,22 +12,22 @@ const catalog: AircraftCatalogEntry[] = FLEET.map((aircraft) => ({
 }));
 const first = catalog[0]!;
 
-test("cloud provider sends one request for all WA/CA/TX aircraft and preserves unknown ground state", async () => {
+test("cloud provider sends one request for the entire national catalog and preserves unknown ground state", async () => {
   let calls = 0;
   const snapshot = await fetchAdsbLolSnapshot(catalog, async (input) => {
     calls++;
     const url = new URL(String(input));
     assert.equal(url.hostname, "api.adsb.lol");
-    assert.equal(url.pathname.split("/").at(-1)!.split(",").length, 343);
+    assert.equal(url.pathname.split("/").at(-1)!.split(",").length, catalog.length);
     return Response.json({ now: Date.now(), msg: "No error", ac: [{
       hex: fleetHex(first.aircraft), seen: 1, seen_pos: 120, lat: 47, lon: -122,
     }] });
   });
   assert.equal(calls, 1);
-  assert.equal(snapshot.aircraft.length, 343);
+  assert.equal(snapshot.aircraft.length, catalog.length);
   assert.equal(snapshot.source, "adsblol");
   assert.equal(snapshot.aircraft.filter((row) => row.home_state_code === "TX").length, 84);
-  assert.equal(snapshot.aircraft.some((row) => row.home_state_code === "NY"), false);
+  assert.equal(snapshot.aircraft.some((row) => row.home_state_code === "NY"), true);
   const row = snapshot.aircraft.find((row) => row.tail === first.aircraft.tail)!;
   assert.equal(row.observed, true);
   assert.equal(row.airborne, false);

@@ -52,8 +52,8 @@ export const ALL_STATES = [
   { id: "wyoming", code: "WY", label: "Wyoming", centerLat: 43.0, centerLon: -107.6 },
 ] as const;
 
-// Keep national catalog metadata separate from the states currently offered in the app.
-export const APP_STATES = ALL_STATES.filter((state) => state.code === "WA" || state.code === "CA" || state.code === "TX");
+// States without verified catalog aircraft remain selectable with a coverage note.
+export const APP_STATES = ALL_STATES;
 
 export const SUPPORTED_STATE_CODES = APP_STATES.map((state) => state.code);
 

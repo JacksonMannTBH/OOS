@@ -23,6 +23,7 @@ type Route = { pattern: RegExp; load: () => Promise<unknown>; names?: string[]; 
 const routes: Route[] = [
   { pattern: /^\/home$/, load: () => import("../../app/(tabs)/home/page") },
   { pattern: /^\/settings$/, load: () => import("./Settings") },
+  { pattern: /^\/settings\/stats$/, load: () => import("../../app/(tabs)/settings/stats/page") },
   { pattern: /^\/settings\/display$/, load: () => import("../../app/(tabs)/settings/display/page") },
   { pattern: /^\/aircraft$/, load: () => import("../../app/(tabs)/aircraft/page"), async: true },
   { pattern: /^\/plane\/([A-Za-z0-9]{2,12})$/, names: ["tail"], load: () => import("../../app/(tabs)/plane/[tail]/page"), async: true },

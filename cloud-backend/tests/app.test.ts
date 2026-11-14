@@ -47,7 +47,7 @@ test("native API exposes only explicit routes and methods, with sanitized failur
   const failed = await handler(new Request(path, { headers }));
   assert.equal(failed.status, 503);
   assert.deepEqual(await failed.json(), { error: "request_unavailable" });
-  assert.deepEqual(Object.keys(appRoutes).sort(), ["activity", "aircraft", "aircraft-alerts/subscription", "aircraft-alerts/test", "flight-paths", "live", "location-state", "mobile", "trails"]);
+  assert.deepEqual(Object.keys(appRoutes).sort(), ["activity", "aircraft", "aircraft-alerts/subscription", "aircraft-alerts/test", "flight-paths", "live", "location-state", "map-aircraft", "mobile", "trails"]);
 });
 
 test("removed forecasts cannot be requested through either native API path", async () => {

@@ -135,8 +135,9 @@ export function AlertsSettings() {
       <div
         style={{
           display: "grid",
-          gap: 7,
-          justifyItems: "start",
+          gridTemplateColumns: "auto minmax(0, 1fr)",
+          alignItems: "center",
+          gap: 12,
           color: SS_TOKENS.fg0,
           fontSize: 13,
           fontWeight: 800,
@@ -144,7 +145,15 @@ export function AlertsSettings() {
       >
         <span>State</span>
         <StateSelector
-          style={{ width: 150, minHeight: 76, borderRadius: 12 }}
+          className="ss-notification-state-select"
+          style={{
+            width: 150,
+            height: 60,
+            minHeight: 60,
+            borderRadius: 12,
+            appearance: "none",
+            padding: "0 26px 0 10px",
+          }}
         />
       </div>
 

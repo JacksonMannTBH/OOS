@@ -64,7 +64,7 @@ test("multiple consumers share a connection, healthy updates never poll, reconne
   stop2(); assert.equal(closes, 2);
 });
 
-test("silent connections recover after 15 seconds and ignore aborted bootstrap responses", async () => {
+test("silent connections recover after 60 seconds and ignore aborted bootstrap responses", async () => {
   let now = 100_000, opens = 0, closes = 0, reads = 0;
   const pending: ((update: LiveState) => void)[] = [];
   let joined = () => {};
@@ -74,7 +74,7 @@ test("silent connections recover after 15 seconds and ignore aborted bootstrap r
   }, async () => { reads++; return new Promise(resolve => pending.push(resolve)); }, () => now);
   const stop = stream.subscribe(update => seen.push(update.revision));
   stream.resume(); joined();
-  now += 14_999; stream.checkHealth();
+  now += 59_999; stream.checkHealth();
   assert.equal(opens, 1); assert.equal(closes, 0); assert.equal(reads, 1);
   now += 1; stream.checkHealth();
   assert.equal(opens, 2); assert.equal(closes, 1); assert.equal(reads, 2);

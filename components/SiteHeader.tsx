@@ -105,7 +105,6 @@ export function SiteHeader() {
               fontWeight: 800,
               lineHeight: 1,
               letterSpacing: 0,
-              paddingTop: 12,
               whiteSpace: "nowrap",
               textAlign: "center",
             }}>Settings</h1>
@@ -119,7 +118,6 @@ export function SiteHeader() {
               fontWeight: 800,
               lineHeight: 1,
               letterSpacing: 0,
-              paddingTop: 12,
               whiteSpace: "nowrap",
               textAlign: "center",
               color: "inherit",

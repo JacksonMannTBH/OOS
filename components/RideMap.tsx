@@ -1,5 +1,6 @@
 "use client";
 
+import { MapHeadingCone } from "./MapHeadingCone";
 import { useEffect, useRef, useState } from "react";
 import type { PoliceSighting } from "@/lib/police-sightings";
 import { PoliceSightingLayer } from "./PoliceSightingLayer";
@@ -11,12 +12,11 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { glyphRoleFor } from "@/lib/brand/aircraft-glyphs";
 import {
   HELICOPTER_ICON_SIZE,
-  HELICOPTER_ICON_FRAMES,
   helicopterFrameSrc,
   helicopterIconKeyFor,
-  helicopterFrameAt,
   isHelicopterRole,
 } from "@/lib/brand/helicopter-sprite";
+import { trackMapOpeningCamera } from "@/lib/map-opening-camera";
 import { MAP_STYLE_URL } from "@/lib/map-style";
 import { darkMapStyle } from "@/lib/dark-map-style";
 import { rideMapBounds } from "@/lib/ride-map-camera";
@@ -26,7 +26,7 @@ import type {
   RideStatusThresholds,
 } from "@/lib/ride-mode";
 
-type RiderPoint = { lat: number; lon: number };
+type RiderPoint = { lat: number; lon: number; heading?: number | null };
 
 type Props = {
   policeSightings?: PoliceSighting[];
@@ -107,10 +107,7 @@ export default function RideMap(props: Props) {
           borderRadius: "50%",
           overflow: "hidden",
           border: `3px solid color-mix(in srgb, ${STATUS_COLORS[props.status]} 78%, #f5f2e8)`,
-          background:
-            props.status === "clear"
-              ? "#0a0d0c"
-              : "radial-gradient(circle at 50% 50%, #222820 0%, #0a0b0a 68%, #020202 100%)",
+          background: "#0a0d0c",
           boxShadow: "0 18px 48px rgba(0,0,0,0.48)",
         }}
       >
@@ -143,13 +140,13 @@ function OffMapAircraftArrow({ bearingDeg }: { bearingDeg: number }) {
         zIndex: 5,
         left: `${left}%`,
         top: `${top}%`,
-        width: 38,
-        height: 38,
+        width: 28,
+        height: 28,
         borderRadius: "50%",
-        border: "2px solid #f6c431",
+        border: "1.5px solid #f6c431",
         background: "#050505",
         boxShadow:
-          "0 0 0 5px rgba(246,196,49,0.18), 0 0 24px rgba(246,196,49,0.68)",
+          "0 0 0 3px rgba(246,196,49,0.18), 0 0 16px rgba(246,196,49,0.68)",
         display: "grid",
         placeItems: "center",
         pointerEvents: "none",
@@ -161,9 +158,9 @@ function OffMapAircraftArrow({ bearingDeg }: { bearingDeg: number }) {
         style={{
           width: 0,
           height: 0,
-          borderLeft: "7px solid transparent",
-          borderRight: "7px solid transparent",
-          borderBottom: "18px solid #f6c431",
+          borderLeft: "5px solid transparent",
+          borderRight: "5px solid transparent",
+          borderBottom: "13px solid #f6c431",
           transform: "translateY(-1px)",
         }}
       />
@@ -193,10 +190,12 @@ function RideMapCanvas(props: RideMapState) {
       bearing: 0,
       pitch: 0,
       interactive: false,
+      canvasContextAttributes: { preserveDrawingBuffer: true },
       attributionControl: false,
       renderWorldCopies: false,
       maxPitch: 0,
     });
+    const stopTrackingCamera = trackMapOpeningCamera(map);
     map.addControl(
       new maplibregl.AttributionControl({ compact: true }),
       "bottom-right",
@@ -206,32 +205,11 @@ function RideMapCanvas(props: RideMapState) {
     setPoliceMap(map);
     map.setStyle(MAP_STYLE_URL, { transformStyle: (_, style) => darkMapStyle(style, "ride") });
     let disposed = false;
-    let animationFrame: number | null = null;
-    let lastHelicopterFrame = 0;
-    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-
-    const syncHelicopterAnimation = () => {
-      if (animationFrame != null) cancelAnimationFrame(animationFrame);
-      animationFrame = null;
-      if (!readyRef.current || disposed) return;
-      setHelicopterFrame(map, 0);
-      lastHelicopterFrame = 0;
-      if (motionQuery.matches) return;
-
-      const start = performance.now();
-      const tick = (now: number) => {
-        if (disposed) return;
-        const frame = helicopterFrameAt(now - start);
-        if (frame !== lastHelicopterFrame) {
-          setHelicopterFrame(map, frame);
-          lastHelicopterFrame = frame;
-        }
-        animationFrame = requestAnimationFrame(tick);
-      };
-      animationFrame = requestAnimationFrame(tick);
+    const notifyReady = () => {
+      if (map.isMoving()) return;
+      map.off("render", notifyReady);
+      window.dispatchEvent(new Event("oos:ride-map-ready"));
     };
-    motionQuery.addEventListener("change", syncHelicopterAnimation);
-
     const onLoad = async () => {
       applyRideMapTheme(map);
       const icons = await loadAircraftIcons();
@@ -244,17 +222,18 @@ function RideMapCanvas(props: RideMapState) {
       readyRef.current = true;
       updateRideMap(map, latestRef.current);
       setCamera(map, latestRef.current, false);
-      syncHelicopterAnimation();
       collapseMapAttribution(container);
+      map.on("render", notifyReady);
+      map.triggerRepaint();
     };
 
     map.on("load", onLoad);
     return () => {
       disposed = true;
       readyRef.current = false;
-      if (animationFrame != null) cancelAnimationFrame(animationFrame);
-      motionQuery.removeEventListener("change", syncHelicopterAnimation);
       map.off("load", onLoad);
+      map.off("render", notifyReady);
+      stopTrackingCamera();
       map.remove();
       mapRef.current = null;
     };
@@ -282,7 +261,7 @@ function RideMapCanvas(props: RideMapState) {
   }, [rider.lat, rider.lon, distanceBands.watchNm]);
 
   return (
-    <><PoliceSightingLayer map={policeMap} sightings={props.policeSightings ?? []} /><div
+    <><MapHeadingCone map={policeMap} rider={rider} /><PoliceSightingLayer map={policeMap} sightings={props.policeSightings ?? []} /><div
       ref={containerRef}
       style={{
         position: "absolute",
@@ -585,10 +564,8 @@ async function loadAircraftIcons() {
       `/icons/plane/cessna-body.png?v=${PLANE_ASSET_VERSION}`,
       MAP_ICON_SIZE,
     ).then((image) => ({ key: RIDE_PLANE_ICON_KEY, image })),
-    ...Array.from({ length: HELICOPTER_ICON_FRAMES }, async (_, frame) => ({
-      key: helicopterIconKeyFor(frame),
-      image: await loadImageBitmap(helicopterFrameSrc(frame), HELICOPTER_ICON_SIZE),
-    })),
+    loadImageBitmap(helicopterFrameSrc(0), HELICOPTER_ICON_SIZE)
+      .then((image) => ({ key: helicopterIconKeyFor(0), image })),
   ]);
 }
 
@@ -600,16 +577,6 @@ async function loadImageBitmap(src: string, size: number): Promise<ImageBitmap> 
     resizeWidth: size,
     resizeHeight: size,
   });
-}
-
-function setHelicopterFrame(map: MaplibreMap, frame: number) {
-  if (!map.getLayer("ride-contacts")) return;
-  map.setLayoutProperty("ride-contacts", "icon-image", [
-    "case",
-    ["==", ["get", "iconFamily"], "helicopter"],
-    helicopterIconKeyFor(frame),
-    ["get", "icon"],
-  ]);
 }
 
 function circleRingCoords(

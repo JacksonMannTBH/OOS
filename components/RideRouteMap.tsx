@@ -52,6 +52,7 @@ export function RideRouteMap({ route }: { route?: RideRoutePoint[] }) {
     for (const [index, end] of [[0, false], [coordinates.length - 1, true]] as const) {
       const marker = document.createElement("div");
       marker.className = `ss-ride-route-marker ss-ride-route-marker-${end ? "end" : "start"}`;
+      if (!end) marker.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>';
       marker.setAttribute("role", "img");
       marker.setAttribute("aria-label", end ? "Ride finish" : "Ride start");
       new maplibregl.Marker({ element: marker }).setLngLat(coordinates[index] as [number, number]).addTo(map);

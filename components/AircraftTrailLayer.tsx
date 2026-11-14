@@ -3,13 +3,13 @@
 // Receives live trails for the currently-airborne tail set and renders a
 // polyline + endpoint dots behind each plane on /map.
 //
-// Thin aircraft-colored lines keep a consistent opacity along the full
+// Aircraft-colored lines keep a consistent opacity along the full
 // recorded path. A subtle dark outline separates them from map roads.
 
 import { useEffect, useRef } from "react";
 import { subscribeLiveState } from "@/lib/live-data-client";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
-import { stateCodeForId } from "@/lib/app-states";
+import { isStateCode, stateCodeForId, type StateCode } from "@/lib/app-states";
 import type { Map as MaplibreMap, GeoJSONSource } from "maplibre-gl";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
 import { smoothFlightPath } from "@/lib/flight-path-smoothing";
@@ -119,10 +119,12 @@ export function AircraftTrailLayer({
   map,
   airborne,
   enabled,
+  selectedTail = null,
 }: {
   map: MaplibreMap | null;
   airborne: Aircraft[];
   enabled: boolean;
+  selectedTail?: string | null;
 }) {
   const tailsKey = airborne
     .map((a) => a.tail)
@@ -132,8 +134,25 @@ export function AircraftTrailLayer({
   const tailsKeyRef = useRef(tailsKey);
   tailsKeyRef.current = tailsKey;
   const pulseRef = useRef<number | null>(null);
-  const enabledRef = useRef(enabled);
-  enabledRef.current = enabled;
+  const visible = enabled || selectedTail !== null;
+  const enabledRef = useRef(visible);
+  enabledRef.current = visible;
+  const selectedTailRef = useRef(selectedTail);
+  selectedTailRef.current = selectedTail;
+
+  function applyTrailSelection() {
+    if (!map) return;
+    const tail = selectedTailRef.current;
+    for (const id of TRAIL_LAYER_IDS) {
+      if (!map.getLayer(id)) continue;
+      const selection: import("maplibre-gl").ExpressionSpecification = tail
+        ? ["==", ["get", "tail"], tail]
+        : ["all"];
+      const kind = id === START_DOT_LAYER_ID ? "start" : id === END_DOT_LAYER_ID ? "end" : null;
+      map.setFilter(id, kind ? ["all", selection, ["==", ["get", "kind"], kind]] : selection);
+      map.setLayoutProperty(id, "visibility", enabledRef.current ? "visible" : "none");
+    }
+  }
 
   // Layer attachment — once per map instance.
   useEffect(() => {
@@ -180,18 +199,18 @@ export function AircraftTrailLayer({
             ["linear"],
             ["zoom"],
             8,
-            3.5,
+            5,
             11,
-            4.5,
+            6,
             14,
-            5.5,
+            7.5,
             18,
-            7,
+            9.5,
           ],
           "line-opacity": HALO_OPACITY,
         },
       });
-      // Keep the thin trail equally visible from start to finish.
+      // Keep the trail equally visible from start to finish.
       map.addLayer({
         id: LAYER_ID,
         type: "line",
@@ -208,13 +227,13 @@ export function AircraftTrailLayer({
             ["linear"],
             ["zoom"],
             8,
-            1.6,
+            3,
             11,
-            2.1,
+            4,
             14,
-            2.8,
+            5.5,
             18,
-            3.6,
+            7.5,
           ],
           "line-opacity": TRAIL_OPACITY,
         },
@@ -249,6 +268,7 @@ export function AircraftTrailLayer({
       // exists. If it doesn't yet, the cluster sits at the top of
       // the stack (visible immediately) and the next fetch poll
       // re-runs the reorder once the chevron mounts.
+      applyTrailSelection();
       reorderTrailLayers(map);
       console.debug("[trail] attach: complete", {
         layers: map.getStyle()?.layers?.map((l) => l.id) ?? [],
@@ -313,23 +333,17 @@ export function AircraftTrailLayer({
   }, [map]);
 
   useEffect(() => {
-    if (!map) return;
-    const visibility = enabled ? "visible" : "none";
-    for (const id of TRAIL_LAYER_IDS) {
-      try {
-        if (map.getLayer(id)) {
-          map.setLayoutProperty(id, "visibility", visibility);
-        }
-      } catch {
-        /* layer not yet attached */
-      }
-    }
-  }, [map, enabled]);
+    applyTrailSelection();
+  }, [map, visible, selectedTail]);
 
   const stateCode = stateCodeForId(useSelectedStateId());
-  // Aircraft markers and trail layers share the same state channel.
+  const trailStateKeys = [...new Set(airborne
+    .filter(plane => !selectedTail || plane.tail === selectedTail)
+    .map(plane => isStateCode(plane.home_state_code) ? plane.home_state_code : stateCode))].sort().join(",");
+  // Normally one shared state channel. Nationwide markers can select a flight
+  // from another state without changing the user's notification state.
   useEffect(() => {
-    if (!map || !enabled) return;
+    if (!map || !visible) return;
     const render = (trails: Record<string, TrailPoint[]>) => {
       const line = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
       const endpoints = map.getSource(ENDPOINTS_SOURCE_ID) as GeoJSONSource | undefined;
@@ -339,10 +353,21 @@ export function AircraftTrailLayer({
     };
     if (!tailsKey) { render({}); return; }
     const tails = new Set(tailsKey.split(","));
-    return subscribeLiveState(stateCode, update => {
-      render(Object.fromEntries(Object.entries(update.trails).filter(([tail]) => tails.has(tail))));
-    });
-  }, [map, tailsKey, enabled, stateCode]);
+    const byState = new Map<string, Record<string, TrailPoint[]>>();
+    const unsubscribe: Array<() => void> = [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    render({});
+    for (const [index, state] of trailStateKeys.split(",").filter(Boolean).entries()) {
+      const connect = () => unsubscribe.push(subscribeLiveState(state as StateCode, update => {
+        byState.set(state, Object.fromEntries(Object.entries(update.trails).filter(([tail]) => tails.has(tail))));
+        render(Object.assign({}, ...byState.values()));
+      }));
+      // Spread joins when all flight paths are enabled across several states.
+      if (index === 0) connect();
+      else timers.push(setTimeout(connect, index * 150));
+    }
+    return () => { timers.forEach(clearTimeout); unsubscribe.forEach(close => close()); };
+  }, [map, tailsKey, visible, trailStateKeys]);
 
   return null;
 }

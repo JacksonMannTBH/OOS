@@ -22,6 +22,9 @@ struct RecordedRide: Codable, Equatable {
     var interrupted = false
     // Optional so summaries saved before route recording still decode.
     var route: [RideRoutePoint]?
+    // Optional so existing ride archives remain readable without migration.
+    var motion: RideMotionSummary?
+    var gForce: RideGForceSummary?
 
     var durationSeconds: Double { max(0, ((endedAt ?? updatedAt) - startedAt) / 1000) }
     var payload: [String: Any] {
@@ -30,7 +33,36 @@ struct RecordedRide: Codable, Equatable {
          "distanceMeters": distanceMeters, "topSpeedMps": topSpeedMps.map { $0 as Any } ?? NSNull(),
          "durationSeconds": durationSeconds, "sampleCount": sampleCount,
          "hasGaps": hasGaps, "interrupted": interrupted,
-         "route": (route ?? []).map(\.payload)]
+         "route": (route ?? []).map(\.payload),
+         "motion": motion.map { $0.payload as Any } ?? NSNull(),
+         "gForce": gForce.map { $0.payload as Any } ?? NSNull()]
+    }
+}
+
+struct RideLifetimeStats: Codable, Equatable {
+    var rideCount = 0
+    var topSpeedMps: Double?
+    var longestDistanceMeters: Double?
+    var longestDurationSeconds = 0.0
+
+    mutating func include(_ ride: RecordedRide) {
+        rideCount += 1
+        if let speed = ride.topSpeedMps, speed.isFinite, speed >= 0 {
+            topSpeedMps = max(topSpeedMps ?? 0, speed)
+        }
+        if ride.sampleCount > 0, ride.distanceMeters.isFinite, ride.distanceMeters >= 0 {
+            longestDistanceMeters = max(longestDistanceMeters ?? 0, ride.distanceMeters)
+        }
+        if ride.durationSeconds.isFinite {
+            longestDurationSeconds = max(longestDurationSeconds, ride.durationSeconds)
+        }
+    }
+
+    var payload: [String: Any] {
+        ["rideCount": rideCount,
+         "topSpeedMps": topSpeedMps.map { $0 as Any } ?? NSNull(),
+         "longestDistanceMeters": longestDistanceMeters.map { $0 as Any } ?? NSNull(),
+         "longestDurationSeconds": longestDurationSeconds]
     }
 }
 
@@ -39,6 +71,8 @@ struct RideArchive: Codable, Equatable {
     var consentGiven = false
     var active: RecordedRide?
     var rides: [RecordedRide] = []
+    // Missing in older archives. Seed once from the summaries still on this device.
+    var lifetimeStats: RideLifetimeStats?
 }
 
 struct RideLocationSample {
@@ -69,14 +103,26 @@ struct RideRecorderCore {
     var archive: RideArchive
     private var previous: RideLocationSample?
     private var speedCandidate: RideLocationSample?
+    private var gForceCandidates: [RideGForceReading] = []
 
-    init(archive: RideArchive = RideArchive()) { self.archive = archive }
+    init(archive: RideArchive = RideArchive()) {
+        self.archive = archive
+        if self.archive.lifetimeStats == nil {
+            var stats = RideLifetimeStats()
+            var included = Set<String>()
+            for ride in archive.rides where ride.endedAt != nil && included.insert(ride.id).inserted {
+                stats.include(ride)
+            }
+            self.archive.lifetimeStats = stats
+        }
+    }
 
     mutating func start(now: Double, consent: Bool) throws {
         if archive.active != nil { return }
         guard consent || archive.consentGiven else { throw RideRecordingError.consentRequired }
         archive.consentGiven = true
         archive.active = RecordedRide(startedAt: now, updatedAt: now)
+        resetGForceCandidates()
         previous = nil
         speedCandidate = nil
     }
@@ -90,6 +136,7 @@ struct RideRecorderCore {
         ride.hasGaps = true
         archive.active = nil
         retain(ride)
+        resetGForceCandidates()
         previous = nil
         speedCandidate = nil
     }
@@ -98,6 +145,82 @@ struct RideRecorderCore {
         archive.active?.hasGaps = true
         previous = nil
         speedCandidate = nil
+    }
+
+    mutating func calibrateMotion(now: Double, recordAngles: Bool = true) throws {
+        guard var ride = archive.active else { throw RideRecordingError.noRide }
+        if recordAngles {
+            if ride.motion == nil { ride.motion = RideMotionSummary(calibratedAt: now) }
+            else { ride.motion?.calibratedAt = now }
+        }
+        if ride.gForce == nil { ride.gForce = RideGForceSummary(calibratedAt: now) }
+        else { ride.gForce?.calibratedAt = now }
+        resetGForceCandidates()
+        archive.active = ride
+    }
+
+    mutating func resetGForceCandidates() {
+        gForceCandidates.removeAll(keepingCapacity: true)
+    }
+
+    mutating func acceptGForce(_ reading: RideGForceReading) {
+        guard var ride = archive.active, var summary = ride.gForce,
+              reading.timestamp.isFinite, reading.longitudinalG.isFinite,
+              reading.lateralG.isFinite else { resetGForceCandidates(); return }
+        if let last = gForceCandidates.last {
+            guard reading.timestamp > last.timestamp else { return }
+            // Missing sensor samples cannot count toward a sustained force.
+            if reading.timestamp - last.timestamp > 0.1 { resetGForceCandidates() }
+        }
+        gForceCandidates.append(reading)
+        let cutoff = reading.timestamp - 0.2
+        let tolerance = 0.000000001
+        while gForceCandidates.count > 1 && gForceCandidates[1].timestamp <= cutoff + tolerance {
+            gForceCandidates.removeFirst()
+        }
+        if let first = gForceCandidates.first, first.timestamp <= cutoff + tolerance {
+            // Only save force sustained throughout the last 200 ms. Taking the
+            // directional minimum prevents a brief spike from raising a peak.
+            let longitudinal = gForceCandidates.map(\.longitudinalG)
+            let lateral = gForceCandidates.map(\.lateralG)
+            summary.maxAccelerationG = max(summary.maxAccelerationG, longitudinal.min()!)
+            summary.maxBrakingG = max(summary.maxBrakingG, -longitudinal.max()!)
+            summary.maxLeftG = max(summary.maxLeftG, -lateral.max()!)
+            summary.maxRightG = max(summary.maxRightG, lateral.min()!)
+        }
+        summary.sampleCount += 1
+        ride.gForce = summary
+        archive.active = ride
+    }
+
+    mutating func resetMotionPeaks(id: String) throws {
+        guard var ride = archive.active else { throw RideRecordingError.noRide }
+        guard ride.id == id else { throw RideRecordingError.wrongRide }
+        if let motion = ride.motion {
+            ride.motion = RideMotionSummary(calibratedAt: motion.calibratedAt)
+        }
+        archive.active = ride
+    }
+
+    mutating func resetGForcePeaks(id: String) throws {
+        guard var ride = archive.active else { throw RideRecordingError.noRide }
+        guard ride.id == id else { throw RideRecordingError.wrongRide }
+        if let gForce = ride.gForce {
+            ride.gForce = RideGForceSummary(calibratedAt: gForce.calibratedAt)
+        }
+        resetGForceCandidates()
+        archive.active = ride
+    }
+
+    mutating func acceptMotion(_ angles: RideMotionAngles) {
+        guard var ride = archive.active, var motion = ride.motion,
+              angles.left.isFinite, angles.right.isFinite, angles.noseUp.isFinite else { return }
+        motion.maxLeftRollDegrees = max(motion.maxLeftRollDegrees, angles.left)
+        motion.maxRightRollDegrees = max(motion.maxRightRollDegrees, angles.right)
+        motion.maxPitchDegrees = max(motion.maxPitchDegrees, angles.noseUp)
+        motion.sampleCount += 1
+        ride.motion = motion
+        archive.active = ride
     }
 
     mutating func accept(_ sample: RideLocationSample, now: Double) {
@@ -174,6 +297,7 @@ struct RideRecorderCore {
         ride.endedAt = max(ride.updatedAt, now)
         archive.active = nil
         retain(ride)
+        resetGForceCandidates()
         previous = nil
         speedCandidate = nil
         return ride
@@ -185,6 +309,10 @@ struct RideRecorderCore {
     }
 
     private mutating func retain(_ ride: RecordedRide) {
+        // Complete records before trimming; deleting a summary never erases a record.
+        if !archive.rides.contains(where: { $0.id == ride.id }) {
+            archive.lifetimeStats?.include(ride)
+        }
         archive.rides.removeAll { $0.id == ride.id }
         archive.rides.insert(ride, at: 0)
         archive.rides = Array(archive.rides.prefix(3))

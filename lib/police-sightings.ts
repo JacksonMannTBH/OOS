@@ -1,8 +1,9 @@
 import { haversineNm } from "./geo";
 import type { StateCode } from "./app-states";
 
-export const POLICE_GROUP_METERS = 402.336;
-export const POLICE_NEARBY_METERS = 1609.344;
+// 0.3 statute miles, shared with the server's prepare and vote checks.
+export const POLICE_NEARBY_METERS = 482.8032;
+export const POLICE_GROUP_METERS = POLICE_NEARBY_METERS;
 export const POLICE_REPORT_LIFETIME_MS = 30 * 60_000;
 export const POLICE_REPORT_COOLDOWN_MS = 30_000;
 export const POLICE_COLOR = "#4da3ff";

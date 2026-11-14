@@ -46,7 +46,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Out Of Sight uses your location for maps, aircraft distances, widgets, and ride statistics. Active rides and Live Tracking use location while locked or using other apps, until you stop each session.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>Out Of Sight uses your device heading to orient the Ride Mode display.</string>
+	<string>Out Of Sight uses your device heading to orient Ride Mode and motion sensors to estimate calibrated acceleration, braking and cornering G-force during rides. When Lean and Pitch is enabled, motion sensors also estimate your bike's lean and pitch angles for your ride summary.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

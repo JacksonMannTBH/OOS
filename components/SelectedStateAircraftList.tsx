@@ -41,7 +41,7 @@ export function SelectedStateAircraftList({ catalog }: { catalog: AircraftCatalo
   return (
     <SettingsCard title={`${state.label} aircraft`}>
       <p style={{ margin: 0, color: "var(--ss-fg2)", fontSize: 13 }}>
-        Choose which aircraft to track. Reset selects all aircraft in this state.
+        Choose which aircraft to track.
       </p>
       <button className="ss-aircraft-reset" type="button" onClick={() => save(null)} disabled={saving || !(preferences[state.code]?.length)}>
         Reset

@@ -121,20 +121,64 @@ final class SharedLocationService: NSObject, @preconcurrency CLLocationManagerDe
 }
 
 @objc(OOSLocationPlugin)
-public class SharedLocationPlugin: CAPPlugin, CAPBridgedPlugin {
+public class SharedLocationPlugin: CAPPlugin, CAPBridgedPlugin, @preconcurrency CLLocationManagerDelegate {
     public let identifier = "OOSLocationPlugin"
     public let jsName = "OOSLocation"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "watchPosition", returnType: CAPPluginReturnCallback),
-        CAPPluginMethod(name: "clearWatch", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "clearWatch", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "watchHeading", returnType: CAPPluginReturnCallback),
+        CAPPluginMethod(name: "clearHeading", returnType: CAPPluginReturnPromise)
     ]
     private var calls: [String: CAPPluginCall] = [:]
+    private var headingCalls: [String: CAPPluginCall] = [:]
+    private var compass: CLLocationManager?
     private var loadingObservation: NSKeyValueObservation?
 
     public override func load() {
         loadingObservation = bridge?.webView?.observe(\.isLoading, options: [.new]) { [weak self] view, _ in
             if view.isLoading { Task { @MainActor in self?.clearAll() } }
         }
+    }
+
+    @objc func watchHeading(_ call: CAPPluginCall) {
+        Task { @MainActor [self] in
+            guard CLLocationManager.headingAvailable(), let id = call.callbackId else {
+                call.reject("Compass unavailable."); return
+            }
+            call.keepAlive = true
+            bridge?.saveCall(call)
+            headingCalls[id] = call
+            if compass == nil {
+                let manager = CLLocationManager()
+                manager.delegate = self
+                manager.headingFilter = 2
+                manager.headingOrientation = .portrait
+                compass = manager
+            }
+            compass?.startUpdatingHeading()
+        }
+    }
+
+    @objc func clearHeading(_ call: CAPPluginCall) {
+        Task { @MainActor [self] in
+            if let id = call.getString("id") { removeHeading(id) }
+            call.resolve()
+        }
+    }
+
+    @MainActor private func removeHeading(_ id: String) {
+        if let saved = headingCalls.removeValue(forKey: id) {
+            saved.keepAlive = false
+            bridge?.releaseCall(saved)
+        }
+        if headingCalls.isEmpty { compass?.stopUpdatingHeading() }
+    }
+
+    @MainActor public func locationManager(_ manager: CLLocationManager, didUpdateHeading heading: CLHeading) {
+        guard heading.headingAccuracy >= 0 else { return }
+        let degrees = heading.trueHeading >= 0 ? heading.trueHeading : heading.magneticHeading
+        for call in Array(headingCalls.values) { call.resolve(["heading": degrees]) }
     }
 
     @objc func watchPosition(_ call: CAPPluginCall) {
@@ -178,5 +222,6 @@ public class SharedLocationPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     @MainActor private func clearAll() {
         for id in Array(calls.keys) { clear(id) }
+        for id in Array(headingCalls.keys) { removeHeading(id) }
     }
 }

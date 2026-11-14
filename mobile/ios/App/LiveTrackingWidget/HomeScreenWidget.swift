@@ -54,7 +54,7 @@ struct HomeScreenWidgetView: View {
             .foregroundStyle(accent)
             Spacer(minLength: 8)
             Text("Start\nRide?")
-                .font(.system(size: 40, weight: .bold)).tracking(-0.6)
+                .font(.custom("Manrope-Bold", size: 40, relativeTo: .largeTitle)).tracking(-0.6)
                 .multilineTextAlignment(.center)
                 .lineLimit(2).minimumScaleFactor(0.8)
                 .fixedSize(horizontal: false, vertical: true)

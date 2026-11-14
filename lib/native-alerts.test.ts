@@ -125,7 +125,7 @@ test("iOS alerts use FCM, refresh tokens, and serialize disabling safely", async
     await client.syncAircraftAlertPreferences({ stateCode: "CA" });
     sent = postedPreferences.at(-1)!;
     assert.ok(!sent.excludedAircraftByState.CA?.includes("N213PF"));
-    assert.ok(sent.excludedAircraftByState.CA?.includes("N983HP"));
+    assert.ok(!sent.excludedAircraftByState.CA?.includes("N983HP"));
     assert.ok(sent.excludedAircraftByState.CA?.includes("N975HP"));
     await updateDevicePreferences({ oos_state_code: "WA", oos_california_region: null, oos_aircraft_tracking: null });
   });

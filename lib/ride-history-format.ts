@@ -11,6 +11,16 @@ export function rideDuration(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} hr ${minutes % 60} min`;
 }
+export function rideDateRange(ride: RecordedRide): string {
+  const format = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+  const start = new Date(ride.startedAt);
+  return ride.endedAt == null ? format.format(start) : format.formatRange(start, new Date(ride.endedAt));
+}
+export function rideTimeRange(ride: RecordedRide): string {
+  const format = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+  const start = format.format(new Date(ride.startedAt));
+  return ride.endedAt == null ? start : `${start}–${format.format(new Date(ride.endedAt))}`;
+}
 export function rideDateTime(ride: RecordedRide): string {
   const start = new Date(ride.startedAt);
   const date = (value: Date) => value.toLocaleDateString(undefined, { month: "short", day: "numeric" });

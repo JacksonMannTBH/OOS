@@ -16,21 +16,21 @@ struct OOSLiveTrackingWidget: Widget {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Label("OOS · \(context.state.stateName)", systemImage: "airplane")
-                        .font(.caption.weight(.bold)).foregroundStyle(Color.white.opacity(0.65)).lineLimit(1)
+                        .font(.custom("Manrope-Bold", size: 12, relativeTo: .caption)).foregroundStyle(Color.white.opacity(0.65)).lineLimit(1)
                     Spacer()
-                    Text(label(context)).font(.headline).foregroundStyle(tint(context))
+                    Text(label(context)).font(.custom("Manrope-Bold", size: 17, relativeTo: .headline)).foregroundStyle(tint(context))
                 }
                 if context.state.hasKnownRideState {
                     HStack(spacing: 4) {
                         Text("Updated")
                         Text(context.state.updatedAt, style: .time)
                     }
-                    .font(.caption2).foregroundStyle(Color.white.opacity(0.65))
+                    .font(.custom("Manrope-Regular", size: 11, relativeTo: .caption2)).foregroundStyle(Color.white.opacity(0.65))
                 }
                 HStack(alignment: .firstTextBaseline) {
-                    Text(context.state.aircraft).font(.headline).lineLimit(1)
+                    Text(context.state.aircraft).font(.custom("Manrope-Bold", size: 17, relativeTo: .headline)).lineLimit(1)
                     Spacer(minLength: 12)
-                    Text(distance(context)).font(.title2.weight(.bold)).monospacedDigit().foregroundStyle(tint(context))
+                    Text(distance(context)).font(.custom("Manrope-Bold", size: 22, relativeTo: .title2)).monospacedDigit().foregroundStyle(tint(context))
                 }
             }
             .padding(16)
@@ -42,26 +42,26 @@ struct OOSLiveTrackingWidget: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     Label("OOS · \(context.state.stateName)", systemImage: "airplane")
-                        .font(.caption.weight(.bold)).lineLimit(1).foregroundStyle(.white)
+                        .font(.custom("Manrope-Bold", size: 12, relativeTo: .caption)).lineLimit(1).foregroundStyle(.white)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(label(context)).font(.headline).foregroundStyle(tint(context))
+                    Text(label(context)).font(.custom("Manrope-Bold", size: 17, relativeTo: .headline)).foregroundStyle(tint(context))
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        Text(context.state.aircraft).font(.headline).lineLimit(1)
+                        Text(context.state.aircraft).font(.custom("Manrope-Bold", size: 17, relativeTo: .headline)).lineLimit(1)
                         Spacer()
-                        Text(distance(context)).font(.title3.weight(.bold)).monospacedDigit().foregroundStyle(tint(context))
+                        Text(distance(context)).font(.custom("Manrope-Bold", size: 20, relativeTo: .title3)).monospacedDigit().foregroundStyle(tint(context))
                     }
                     .padding(.top, 4)
                     .foregroundStyle(.white)
                 }
             } compactLeading: {
                 Text(label(context))
-                    .font(.caption2.weight(.bold)).foregroundStyle(tint(context))
+                    .font(.custom("Manrope-Bold", size: 11, relativeTo: .caption2)).foregroundStyle(tint(context))
             } compactTrailing: {
                 Text(compactDistance(context))
-                    .font(.caption2.weight(.bold)).monospacedDigit().foregroundStyle(tint(context))
+                    .font(.custom("Manrope-Bold", size: 11, relativeTo: .caption2)).monospacedDigit().foregroundStyle(tint(context))
             } minimal: {
                 Image(systemName: "airplane").foregroundStyle(tint(context))
                     .accessibilityLabel("OOS \(label(context)), \(distance(context))")

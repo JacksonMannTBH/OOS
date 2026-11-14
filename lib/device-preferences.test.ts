@@ -113,3 +113,56 @@ test("website preferences continue to read browser changes directly", async () =
   await app.update({ [aircraft]: null });
   assert.equal(app.get(aircraft), null);
 });
+
+test("an opened subscription announcement stays dismissed after web-storage loss and restart", async () => {
+  const f = fixture();
+  const first = f.restart();
+  await first.initialize();
+  assert.equal(first.get("oos_subscription_announcement_seen"), null);
+  await first.update({ oos_subscription_announcement_seen: "1" });
+  f.web.clear();
+  const reopened = f.restart();
+  await reopened.initialize();
+  assert.equal(reopened.get("oos_subscription_announcement_seen"), "1");
+});
+
+test("ride angle opt-in defaults off on upgrade and survives web-storage loss", async () => {
+  const f = fixture();
+  const app = f.restart();
+  await app.initialize();
+  assert.equal(app.get("oos_ride_angles_enabled"), null);
+  await app.update({ oos_ride_angles_enabled: "1" });
+  f.web.clear();
+  const reopened = f.restart();
+  await reopened.initialize();
+  assert.equal(reopened.get("oos_ride_angles_enabled"), "1");
+  await reopened.update({ oos_ride_angles_enabled: "0" });
+  const disabled = f.restart();
+  await disabled.initialize();
+  assert.equal(disabled.get("oos_ride_angles_enabled"), "0");
+});
+
+test("nationwide map preference survives restart and never changes notification state or aircraft exclusions", async () => {
+  const f = fixture();
+  const app = f.restart();
+  await app.initialize();
+  await app.update({ oos_state_code: "WA", [aircraft]: '{"WA":["N102LP"]}', [device]: "stable-id", [optIn]: "1" });
+  assert.equal(app.get("oos_nationwide_map_enabled"), null);
+  await app.update({ oos_nationwide_map_enabled: "1" });
+  f.web.clear();
+  const reopened = f.restart();
+  await reopened.initialize();
+  assert.equal(reopened.get("oos_nationwide_map_enabled"), "1");
+  assert.equal(reopened.get("oos_state_code"), "WA");
+  assert.equal(reopened.get(aircraft), '{"WA":["N102LP"]}');
+  assert.equal(reopened.get(device), "stable-id");
+  assert.equal(reopened.get(optIn), "1");
+  f.failSave(true);
+  await assert.rejects(reopened.update({ oos_nationwide_map_enabled: "0" }));
+  assert.equal(reopened.get("oos_nationwide_map_enabled"), "1");
+  f.failSave(false);
+  await reopened.update({ oos_nationwide_map_enabled: null });
+  const reset = f.restart();
+  await reset.initialize();
+  assert.equal(reset.get("oos_nationwide_map_enabled"), null);
+});

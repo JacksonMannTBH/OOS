@@ -1,5 +1,111 @@
 # Out Of Sight App Store release
 
+## App Store candidate 1.0.2 (145) — November 13, 2026 — phone review first
+
+The owner requested a regular-app phone build to review UI/UX before continuing
+App Store preparation. Build 145 includes the latest UI and the tested aircraft
+field-delta receiver, with automatic negotiation that continues using today's
+backend until a validated v3 feed is enabled. The backend must remain unchanged
+until Apple publishes the app. The backend contract is in `docs/live-updates.md`.
+
+All 251 automated checks, root/mobile type checks, packaged interface build,
+signing configuration checks and signed iPhone build passed. Read-only checks
+confirmed compatibility with the current WA, CA and TX backend responses.
+The regular app and widget both use version 1.0.2 (145). No test banner or local
+Mac endpoint is included. Evidence is in `.local/appstore-1.0.2-145/`.
+This candidate has not been uploaded, submitted or released through Apple.
+Installation of regular Out Of Sight build 145 was verified on the connected
+iPhone. iOS blocked remote launch because the phone was locked; UI/UX review
+is awaiting the owner opening the app. The App Store archive is not created yet.
+
+## App Store 1.0.2 (115) — November 13, 2026 — paused by owner
+
+At the owner’s request, automatic release was changed to manual and saved,
+and the review submission was canceled in App Store Connect. The version page
+now offers Add for Review, and manual release remains selected. Do not resubmit
+or release this update without explicit owner authorization. Version 1.0.1
+remains the public release.
+
+## App Store 1.0.2 (115) — November 12, 2026 — Waiting for Review
+
+The owner authorized submitting the latest phone build to the App Store. Build
+115 includes the current Ride Mode layout, aircraft icons and compass
+abbreviations, smaller estimated-fuel suffix, enlarged controls and readings,
+and stationary helicopter rotors in the aircraft bar and ride map. It also
+includes the subscription announcement and CHP region changes from build 103.
+
+All 196 app tests, both type checks, live backend checks, and local release
+checks passed. The signed Release archive and its widget are version 1.0.2
+(115); all 211 packaged interface files match the tested phone build. UI checks
+verified stationary rotor pixels, the single ride-map sprite frame, and the
+Map/Stats toggle. The archive is saved in `.local/appstore-1.0.2-115/`.
+
+At preparation, App Store Connect showed 1.0.2 as Prepare for Submission with
+no build attached and no active review submission. Version 1.0.1 (97) was Ready
+for Sale. Build 115 is now attached to version 1.0.2 and submitted for review;
+both the submission and app version were confirmed as Waiting for Review.
+Release notes and reviewer instructions match the latest UI. Ten existing
+screenshot placements and automatic release after approval are retained.
+Build 103 is marked superseded, and its submission script rejects a superseded
+release record.
+
+Command-line App Store export failed with `No Accounts`, including on retry,
+despite the owner being signed in and the live Xcode Apple Accounts settings
+showing the developer team and Admin role. Xcode Organizer successfully signed
+and uploaded build 115. Do not infer that the owner is signed out from that
+command-line error; use Organizer when this mismatch occurs.
+
+The uploaded App Store IPA and widget have valid distribution signatures,
+production APNs, the expected App Group, and debugging disabled. All 211 tested
+interface files match the distribution package. Apple processed build 115 as
+Valid and App Store Eligible, with non-exempt encryption set to false. Release
+confirmation and the exported IPA are in `.local/appstore-1.0.2-115/`.
+
+## App Store 1.0.2 (103) — November 12, 2026 — prepared only
+
+Build 103 replaces the pending build 102. The subscription announcement now
+disappears after its first opening, with native persistence across app restarts
+and web-storage loss. All 30 catalogued CHP aircraft appear in both California
+regions, including aircraft lists, map filtering, and takeoff notification
+preferences. Manually disabled aircraft remain disabled.
+
+All 196 app tests, both type checks, first-opening dismissal and persistence UI
+checks across four layouts, and local release checks passed. The signed Release
+archive matches all 211 tested interface files. App Store export is blocked:
+Xcode has no signed-in Apple Developer account or accessible distribution signing
+certificate. App Store distribution remains prepared at the owner’s request.
+On a subsequent request, development build 1.0.2 (103) was installed on the
+owner’s iPhone on November 12; its signature and all 211 bundled interface files
+were verified. Build 103 has **not been uploaded or submitted to App Store Connect**.
+
+Version 1.0.2's draft release notes and reviewer instructions are updated for
+build 103. Records and the archive are in `.local/banner-chp-103/`. Finish export,
+validation, and upload after signing in to Xcode when the owner resumes release
+work. The final-submission script requires a processed, verified build and has
+not been run. Build 102's release record and script mark it as superseded.
+
+## App Store 1.0.2 (102) — November 12, 2026 — processing pending
+
+Build 102 includes live ride Stats, estimated Lean and Pitch peaks, one-tap
+calibration and an uncalibrated Stats prompt, peak reset, the map-first ride
+summary, home map recentering, display improvements, and the upcoming-subscription
+announcement. All 195 app tests, 33 native ride checks, both type checks, ride
+history and motion UI checks, live backend checks, and release checks passed.
+The signed archive and App Store export match all 211 tested interface files.
+
+Apple accepted the upload at 2:11 PM Pacific. Version 1.0.2 is prepared with
+verified release notes, reviewer instructions, ten inherited screenshot
+placements, and automatic release after approval. It has **not been submitted
+for review**: Apple reports an ongoing App Store Connect / App Processing
+performance incident beginning at 1:11 PM Pacific, and build 102 remains
+Processing with no reported errors or warnings.
+
+Records and the guarded final-submission script are in
+`.local/appstore-2026-11-12/`. Once Apple finishes processing, verify the current
+status and run `submit-ready-build.py` from that directory using the repository
+root as the working directory. It validates and attaches build 102, verifies the
+review item, submits, and saves confirmation. The script has not been run.
+
 ## App Store 1.0.1 (97) — November 9, 2026
 
 Build 97 replaces build 85 in the version 1.0.1 review submission. It includes

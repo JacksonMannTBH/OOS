@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { SUPPORTED_STATE_CODES } from "../../lib/app-states";
 
 test("every scheduled tick retries after failures, without old backoff or Retry-After delays", async (t) => {
   const token = "a".repeat(64);
@@ -36,8 +37,8 @@ test("every scheduled tick retries after failures, without old backoff or Retry-
     if (url.pathname.endsWith("/claim_worker_lease")) return Response.json(leaseAvailable);
     if (url.pathname.endsWith("/release_worker_lease")) { releases++; return Response.json(true); }
     if (url.pathname.endsWith("/aircraft_catalog_public")) {
-      assert.deepEqual(new Set(url.searchParams.get("home_state_code")!.slice(4, -1).split(",")), new Set(["WA", "CA", "TX"]));
-      return Response.json([{ tail: "N60TX", icao24: "a7c15c", home_state_code: "TX" }]);
+      assert.deepEqual(new Set(url.searchParams.get("home_state_code")!.slice(4, -1).split(",")), new Set(SUPPORTED_STATE_CODES));
+      return Response.json(Number(url.searchParams.get("offset") ?? 0) === 0 ? [{ tail: "N60TX", icao24: "a7c15c", home_state_code: "TX" }] : []);
     }
     if (url.pathname.endsWith("/ingestion_runs") && init?.method === "POST") {
       assert.equal(JSON.parse(String(init.body)).source, "adsbfi");

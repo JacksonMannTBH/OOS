@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4633B6C7EA914CE9836C92C2 /* Manrope-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = FDEA8BA418D2419482F279D4 /* Manrope-Variable.ttf */; };
 		A01200000000000000000002 /* Widget Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A01200000000000000000001 /* Widget Assets.xcassets */; };
 		001000000000000000000001 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 001000000000000000000002 /* FirebaseMessaging */; };
 		001000000000000000000003 /* Configuration in Resources */ = {isa = PBXBuildFile; fileRef = 001000000000000000000004 /* Configuration */; };
@@ -41,6 +42,7 @@
 		A00B00000000000000000003 /* AppBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00B00000000000000000001 /* AppBackend.swift */; };
 		A01300000000000000000002 /* RideRecorderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01300000000000000000001 /* RideRecorderPlugin.swift */; };
 		A01400000000000000000002 /* RideHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01400000000000000000001 /* RideHistory.swift */; };
+		A01600000000000000000002 /* RideMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01600000000000000000001 /* RideMotion.swift */; };
 		A01500000000000000000002 /* SharedLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01500000000000000000001 /* SharedLocationService.swift */; };
 		A01500000000000000000004 /* SharedLocationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01500000000000000000003 /* SharedLocationPolicy.swift */; };
 /* End PBXBuildFile section */
@@ -70,6 +72,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		FDEA8BA418D2419482F279D4 /* Manrope-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "Manrope-Variable.ttf"; path = "../../../../public/fonts/manrope/Manrope-Variable.ttf"; sourceTree = "<group>"; };
 		A01200000000000000000001 /* Widget Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		001000000000000000000004 /* Configuration */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Configuration; sourceTree = "<group>"; };
 		001000000000000000000005 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
@@ -103,6 +106,7 @@
 		A00B00000000000000000001 /* AppBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBackend.swift; sourceTree = "<group>"; };
 		A01300000000000000000001 /* RideRecorderPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideRecorderPlugin.swift; sourceTree = "<group>"; };
 		A01400000000000000000001 /* RideHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideHistory.swift; sourceTree = "<group>"; };
+		A01600000000000000000001 /* RideMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RideMotion.swift; sourceTree = "<group>"; };
 		A01500000000000000000001 /* SharedLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLocationService.swift; sourceTree = "<group>"; };
 		A01500000000000000000003 /* SharedLocationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLocationPolicy.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -178,6 +182,7 @@
 			isa = PBXGroup;
 			children = (
 				A00600000000000000000009 /* LiveTrackingWidget.swift */,
+				FDEA8BA418D2419482F279D4 /* Manrope-Variable.ttf */,
 				A00900000000000000000009 /* HomeScreenWidget.swift */,
 				A01200000000000000000001 /* Widget Assets.xcassets */,
 				A0090000000000000000000B /* Widget.entitlements */,
@@ -192,6 +197,7 @@
 				A00600000000000000000003 /* RideTrackingData.swift */,
 				A01000000000000000000001 /* LiveTrackingRecovery.swift */,
 				A01400000000000000000001 /* RideHistory.swift */,
+				A01600000000000000000001 /* RideMotion.swift */,
 				A00900000000000000000001 /* HomeWidgetStore.swift */,
 				A00900000000000000000004 /* HomeWidgetRefresh.swift */,
 				A00B00000000000000000001 /* AppBackend.swift */,
@@ -309,6 +315,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A01200000000000000000002 /* Widget Assets.xcassets in Resources */,
+				4633B6C7EA914CE9836C92C2 /* Manrope-Variable.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -325,6 +332,7 @@
 				A00700000000000000000002 /* NotificationSetupPlugin.swift in Sources */,
 				A00600000000000000000002 /* LiveTrackingPlugin.swift in Sources */,
 				A01400000000000000000002 /* RideHistory.swift in Sources */,
+				A01600000000000000000002 /* RideMotion.swift in Sources */,
 				A01300000000000000000002 /* RideRecorderPlugin.swift in Sources */,
 				A01500000000000000000004 /* SharedLocationPolicy.swift in Sources */,
 				A01500000000000000000002 /* SharedLocationService.swift in Sources */,
@@ -499,7 +507,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 97;
+				CURRENT_PROJECT_VERSION = 145;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -507,7 +515,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = live.outofsight.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -524,7 +532,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 97;
+				CURRENT_PROJECT_VERSION = 145;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -532,7 +540,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = live.outofsight.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
@@ -547,7 +555,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = LiveTrackingWidget/Widget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 97;
+				CURRENT_PROJECT_VERSION = 145;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LiveTrackingWidget/Info.plist;
@@ -557,7 +565,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = live.outofsight.app.LiveTrackingWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -572,7 +580,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = LiveTrackingWidget/Widget.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 97;
+				CURRENT_PROJECT_VERSION = 145;
 				DEVELOPMENT_TEAM = C6S63TAR8C;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LiveTrackingWidget/Info.plist;
@@ -582,7 +590,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.2;
 				PRODUCT_BUNDLE_IDENTIFIER = live.outofsight.app.LiveTrackingWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

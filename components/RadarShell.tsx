@@ -1,4 +1,6 @@
 "use client";
+import { getMapOpeningCamera } from "@/lib/map-opening-camera";
+import { MapHeadingCone } from "./MapHeadingCone";
 import { watchDevicePosition } from "@/lib/device-location";
 import { setAutomaticallyDetectedCaliforniaRegion } from "@/lib/california-regions";
 
@@ -7,6 +9,9 @@ import nextDynamic from "next/dynamic";
 import Link from "next/link";
 import type { Map as MaplibreMap } from "maplibre-gl";
 import { useAircraft } from "@/lib/hooks/useAircraft";
+import { useNationwideMapEnabled } from "@/lib/hooks/useNationwideMapEnabled";
+import { useNationwideMapAircraft } from "@/lib/hooks/useNationwideMapAircraft";
+import { mergeMapAircraft } from "@/lib/nationwide-map";
 import { usePoliceSightings } from "@/lib/hooks/usePoliceSightings";
 import { PoliceSightingLayer } from "./PoliceSightingLayer";
 import { TakeOffButton } from "./TakeOffButton";
@@ -43,7 +48,7 @@ import { HelicopterIcon } from "./HelicopterIcon";
 import { DataLoadingScreen } from "./DataLoadingScreen";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
-export type RiderPos = { lat: number; lon: number };
+export type RiderPos = { lat: number; lon: number; heading?: number | null };
 
 const RadarMap = nextDynamic(() => import("./RadarMap"), {
   ssr: false,
@@ -73,6 +78,11 @@ export function RadarShell({
   initialFocusTail,
 }: Props) {
   const snap = useAircraft(initial, mockOn);
+  const nationwideEnabled = useNationwideMapEnabled() && !mockOn;
+  const nationwide = useNationwideMapAircraft(nationwideEnabled);
+  const mapAircraft = useMemo(() => nationwideEnabled
+    ? mergeMapAircraft(snap.aircraft, nationwide.aircraft)
+    : snap.aircraft.filter(isVisibleFlight), [nationwideEnabled, snap.aircraft, nationwide.aircraft]);
   const policeSightings = usePoliceSightings(!mockOn);
   const rideThresholds = useRideStatusThresholds();
   const fleetMap = useMemo(
@@ -87,11 +97,13 @@ export function RadarShell({
 
   const visibleFlights = useMemo(() => snap.aircraft.filter(isVisibleFlight), [snap.aircraft]);
 
+  const [openingCamera] = useState(getMapOpeningCamera);
   const [rider, setRider] = useState<RiderPos | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [map, setMap] = useState<MaplibreMap | null>(null);
   const [showRings, setShowRings] = useState(false);
   const [showFlightPaths, setShowFlightPaths] = useState(false);
+  const [selectedTail, setSelectedTail] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(true);
   const [stateCode, setStateCode] = useState<StateCode>(
     () => getSelectedStateCode(),
@@ -161,7 +173,7 @@ export function RadarShell({
       (pos) => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
-        setRider({ lat, lon });
+        setRider({ lat, lon, heading: pos.coords.heading });
         void setAutomaticallyDetectedCaliforniaRegion(lat, lon)
           .catch(() => { /* Retry on the next location fix. */ });
         if (
@@ -196,8 +208,21 @@ export function RadarShell({
     );
   }, []);
 
+  useEffect(() => {
+    if (!map) return;
+    const ready = () => {
+      if (map.isMoving()) return;
+      map.off("render", ready);
+      window.dispatchEvent(new Event("oos:map-ready"));
+    };
+    map.on("render", ready);
+    map.triggerRepaint();
+    return () => { map.off("render", ready); };
+  }, [map]);
+
   return (
     <main
+      className="ss-map-screen"
       style={{
         position: "fixed",
         inset: 0,
@@ -206,18 +231,21 @@ export function RadarShell({
       }}
     >
       <RadarMap
-        aircraft={visibleFlights}
+        initialCamera={openingCamera}
+        aircraft={mapAircraft}
         rider={rider}
         showDistanceRings={showRings}
         distanceRingThresholds={rideThresholds}
-        showFuelEstimate
+        showAltitude
         darkMode={darkMode}
         stateCode={stateCode}
         focusRequest={focusRequest}
         riderFocusRequest={riderFocusRequest}
         onMapReady={setMap}
+        onSelectedTailChange={setSelectedTail}
       />
       {!map && <DataLoadingScreen asOverlay />}
+      <MapHeadingCone map={map} rider={rider} />
       <PoliceSightingLayer map={map} sightings={policeSightings} interactive />
       <RadarLayerControls
         ringsActive={showRings}
@@ -278,8 +306,9 @@ export function RadarShell({
       </TakeOffButton>
       <AircraftTrailLayer
         map={map}
-        airborne={visibleFlights}
+        airborne={mapAircraft}
         enabled={showFlightPaths}
+        selectedTail={selectedTail}
       />
 
       <MapHeader
@@ -291,7 +320,7 @@ export function RadarShell({
         }}
       />
 
-      {toast && <Toast message={toast} bottomBoost={0} />}
+      {(toast || nationwide.error) && <Toast message={(toast || nationwide.error)!} bottomBoost={0} />}
     </main>
   );
 }

@@ -59,6 +59,7 @@ export function StateSelector({
       </select>
       {current === "CA" && (
         <select
+          className={className}
           aria-label="California region"
           value={region}
           disabled={saving}

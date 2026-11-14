@@ -1,19 +1,21 @@
 "use client";
 
 import type { RecordedRide } from "@/lib/ride-recording";
-import { rideDateTime, rideDistance, rideDuration, rideSpeed } from "@/lib/ride-history-format";
+import { rideDateRange, rideDateTime, rideTimeRange } from "@/lib/ride-history-format";
 import { RideRouteMap } from "./RideRouteMap";
 import { RideDialog } from "./RideDialog";
+import { useRideAnglesEnabled } from "@/lib/hooks/useRideAnglesEnabled";
+import { RideStatistics } from "./RideStatistics";
 
 export function RideSummary({ ride, onClose }: { ride: RecordedRide; onClose: () => void }) {
+  const showRideAngles = useRideAnglesEnabled();
   return <RideDialog title="Ride summary" className="ss-ride-summary" onClose={onClose}>
-    <p className="ss-ride-muted">{rideDateTime(ride)}</p>
+    <p className="ss-ride-summary-meta" aria-label={rideDateTime(ride)}>
+      <span>{rideTimeRange(ride)}</span>
+      <span>{rideDateRange(ride)}</span>
+    </p>
     <RideRouteMap route={ride.route} />
-    <dl className="ss-ride-statistics">
-      <div><dt>Top speed</dt><dd>{rideSpeed(ride)}</dd></div>
-      <div><dt>Distance</dt><dd>{rideDistance(ride)}</dd></div>
-      <div><dt>Duration</dt><dd>{rideDuration(ride.durationSeconds)}</dd></div>
-    </dl>
+    <RideStatistics ride={ride} showAngles={showRideAngles} />
     <button className="ss-ride-primary" onClick={onClose}>Done</button>
   </RideDialog>;
 }

@@ -1,10 +1,11 @@
 import { SUPPORTED_STATE_CODES } from "../../lib/app-states";
 import { runtime, json } from "./runtime";
 import { getSupabaseAdmin } from "../../lib/supabase/server";
-import { ingestSnapshot, type AircraftCatalogEntry } from "../../lib/aircraft-data";
+import { ingestSnapshot, type AircraftCatalogEntry, type CatalogRow } from "../../lib/aircraft-data";
 import { buildAdsbFiIngestionSnapshot } from "../../lib/adsb";
 import type { FleetEntry } from "../../lib/types";
 import { broadcastLiveStates } from "../../lib/live-data-server";
+import { readAllCatalogPages } from "../../lib/catalog-pagination";
 
 runtime.serve(async (request) => {
   if (request.method !== "POST") return json({ error: "Use POST" }, 405);
@@ -34,11 +35,10 @@ runtime.serve(async (request) => {
     if (run.error) throw new Error(run.error.message);
     runId = run.data.id;
     // Read the database catalog directly: do not merge nationwide seed entries.
-    const result = await db.from("aircraft_catalog_public").select("*")
-      .in("home_state_code", SUPPORTED_STATE_CODES).order("tail").limit(1000);
-    if (result.error) throw new Error(result.error.message);
-    if (!result.data.length || result.data.length >= 1000) throw new Error("Unexpected supported-state catalog size");
-    const catalog: AircraftCatalogEntry[] = result.data.map((row) => ({
+    const rows = await readAllCatalogPages((from, to) => db.from("aircraft_catalog_public").select("*")
+      .in("home_state_code", SUPPORTED_STATE_CODES).order("tail").range(from, to), "Ingestion catalog read failed");
+    if (!rows.length) throw new Error("Supported-state catalog is empty");
+    const catalog: AircraftCatalogEntry[] = rows.map((row) => ({
       aircraft: {
         tail: row.tail, hex: row.icao24, operator: row.operator, model: row.model,
         nickname: null, base: row.base, role: row.role as FleetEntry["role"],
@@ -49,7 +49,7 @@ runtime.serve(async (request) => {
       highBurnGph: row.high_burn_gph, reserveMin: row.reserve_min,
     }));
     const snapshot = await buildAdsbFiIngestionSnapshot(catalog);
-    const summary = await ingestSnapshot(snapshot, workerId, { catalogSeeded: true });
+    const summary = await ingestSnapshot(snapshot, workerId, { catalogSeeded: true, catalog: rows as CatalogRow[] });
     const finished = new Date().toISOString();
     const update = await db.from("ingestion_runs").update({
       status: "succeeded", finished_at: finished,

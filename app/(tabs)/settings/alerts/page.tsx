@@ -1,4 +1,5 @@
 import { AlertsSettings } from "@/components/AlertsSettings";
+import { NationwideMapSetting } from "@/components/NationwideMapSetting";
 import { SettingsPageShell } from "@/components/SettingsPageShell";
 import { SettingsCard } from "@/components/SettingsCard";
 import { SelectedStateAircraftList } from "@/components/SelectedStateAircraftList";
@@ -23,6 +24,7 @@ export default function AlertsPage() {
       title="Notifications & state"
       description="Choose the state you track and whether this device receives confirmed takeoff notifications."
     >
+      <NationwideMapSetting />
       <AlertsSettings />
       <Suspense fallback={<SettingsCard title="Tracked aircraft"><p role="status">Loading aircraft…</p></SettingsCard>}>
         <StateAircraftCatalog />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertsSettings } from "@/components/AlertsSettings";
+import { NationwideMapSetting } from "@/components/NationwideMapSetting";
 import { SettingsPageShell } from "@/components/SettingsPageShell";
 import { SettingsCard } from "@/components/SettingsCard";
 import { SelectedStateAircraftList } from "@/components/SelectedStateAircraftList";
@@ -15,6 +16,7 @@ export default function Alerts() {
     return () => { cancelled = true; };
   }, [attempt]);
   return <SettingsPageShell title="Notifications & state" description="Choose the state you track and whether this device receives confirmed takeoff notifications.">
+    <NationwideMapSetting />
     <AlertsSettings />
     {catalog ? <SelectedStateAircraftList catalog={catalog} /> : <SettingsCard title="Tracked aircraft"><p role="status">{error ? "Aircraft data is unavailable. Check your connection." : "Loading aircraft…"}</p>{error && <button onClick={() => setAttempt(value => value + 1)}>Try again</button>}</SettingsCard>}
   </SettingsPageShell>;

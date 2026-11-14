@@ -2,18 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import nextDynamic from "next/dynamic";
 import { LogoMark } from "./brand/Logo";
-import { filterOpsAircraftByState } from "@/lib/aircraft-directory";
 import { EMPTY_AIRCRAFT_SNAPSHOT, useAircraft } from "@/lib/hooks/useAircraft";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
 import { useRideStatusThresholds } from "@/lib/hooks/useRideStatusThresholds";
 import { SS_TOKENS } from "@/lib/tokens";
 import { haversineNm } from "@/lib/geo";
-import { proximityBandForDistance } from "@/lib/proximity-display";
+import { classifyRideStatus, RIDE_STATUS_COLORS } from "@/lib/ride-mode";
 import { aircraftVehicleType } from "@/lib/aircraft-type";
 import { AlertsOptInCard } from "./AlertsOptInCard";
-import { ProximityFlash } from "./ProximityFlash";
 import { SettingsButton } from "./SettingsButton";
 import { TakeOffButton } from "./TakeOffButton";
 import { HomeActiveAircraft } from "./HomeActiveAircraft";
@@ -22,7 +21,10 @@ import { DataLoadingScreen } from "./DataLoadingScreen";
 import { LiveTrackingButton } from "./LiveTrackingButton";
 import { HomeBackground } from "./HomeBackground";
 import { RideHistory } from "./RideHistory";
+import { SubscriptionAnnouncement } from "./SubscriptionAnnouncement";
 import type { Aircraft, Snapshot } from "@/lib/types";
+
+const HomeMapPreview = nextDynamic(() => import("./HomeMapPreview"), { ssr: false });
 
 type WatcherEntry = { plane: Aircraft; distanceNm: number | null };
 
@@ -37,6 +39,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
   const stateId = useSelectedStateId();
   const { pos } = useRiderPos();
   const rideThresholds = useRideStatusThresholds();
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [initialLoadExpired, setInitialLoadExpired] = useState(false);
   const hasSnapshot = snap.fetched_at > 0;
   useEffect(() => {
@@ -46,21 +49,19 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
     return () => window.clearTimeout(timer);
   }, [stateId, hasSnapshot]);
 
-  const stateAircraft = useMemo(
-    () => filterOpsAircraftByState(snap.aircraft, stateId),
-    [snap.aircraft, stateId],
-  );
+  // useAircraft already scopes the live feed to the selected state and tracking
+  // preferences. A second catalog lookup can discard newly tracked aircraft.
   const visibleFlights = useMemo(
-    () => stateAircraft.filter(isVisibleFlight),
-    [stateAircraft],
+    () => snap.aircraft.filter(isVisibleFlight),
+    [snap.aircraft],
   );
   const airborne = useMemo(
-    () => stateAircraft.filter((a) => a.airborne),
-    [stateAircraft],
+    () => snap.aircraft.filter((a) => a.airborne),
+    [snap.aircraft],
   );
 
   // All airborne planes, sorted by Haversine distance when rider location is
-  // available. The first positioned entry still drives the proximity flash.
+  // available.
   const watcherList = useMemo<WatcherEntry[]>(() => {
     if (!pos) {
       return airborne.map((plane) => ({
@@ -84,9 +85,11 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
     return [...ranked, ...unpositioned];
   }, [pos, airborne]);
   const nearest = watcherList.find((entry) => entry.distanceNm != null) ?? null;
-  const nearestBand = nearest?.distanceNm != null
-    ? proximityBandForDistance(nearest.distanceNm, rideThresholds)
-    : null;
+  const nearestVisible = watcherList.find((entry) => entry.distanceNm != null
+    && Number.isFinite(entry.distanceNm) && isVisibleFlight(entry.plane)) ?? null;
+  const statusColor = RIDE_STATUS_COLORS[
+    classifyRideStatus(nearestVisible?.distanceNm ?? null, rideThresholds)
+  ];
   const eyeTarget = nearest?.plane ?? airborne[0] ?? null;
   const eyeHref = eyeTarget
     ? {
@@ -122,6 +125,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
         }}
       >
         <div className="ss-home-scroll">
+        <SubscriptionAnnouncement />
         <LiveTrackingButton mockOn={mockOn} style={{
           position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)",
           left: "clamp(14px, 5vw, 20px)", zIndex: 3,
@@ -144,6 +148,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
         <Link
           href={eyeHref}
           prefetch={false}
+          className="ss-home-eye"
           aria-label={
             eyeTarget
               ? `View nearest active aircraft ${eyeTarget.tail}`
@@ -152,7 +157,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
           style={{
             alignSelf: "center",
             display: "block",
-            width: "min(100%, 300px, 30dvh)",
+            width: "min(100%, 225px, 22.5dvh)",
             aspectRatio: "3 / 2",
             flexShrink: 0,
             WebkitTapHighlightColor: "transparent",
@@ -168,9 +173,22 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
             }
           />
         </Link>
-        <HomeActiveAircraft aircraft={visibleFlights} mockParam={mockParam} />
+        <HomeActiveAircraft aircraft={visibleFlights} nearest={nearestVisible} statusColor={statusColor} mockParam={mockParam} />
 
-        <RideHistory />
+        <div className="ss-home-map-preview" style={{ position: "relative", width: "100%", height: 276.5, marginTop: "auto", boxSizing: "border-box", borderRadius: 18, overflow: "hidden" }}>
+          <HomeMapPreview rider={pos} aircraft={visibleFlights} />
+          <Link
+            href={mockParam ? { pathname: "/map", query: { mock: mockParam } } : "/map"}
+            prefetch={false}
+            aria-label="View Map"
+            title="Open full map"
+            style={{ position: "absolute", top: 10, right: 10, zIndex: 2, width: 60, height: 60, borderRadius: 16, display: "grid", placeItems: "center", background: "rgba(5,5,5,.82)", color: "#f5f1e6", textDecoration: "none" }}
+          >
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6" />
+            </svg>
+          </Link>
+        </div>
         </div>
 
         <div
@@ -180,52 +198,23 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
             maxWidth: 460,
             alignSelf: "center",
             padding: "12px clamp(14px, 5vw, 20px) calc(env(safe-area-inset-bottom, 0px) + 16px)",
-            display: "flex",
-            flexDirection: "column",
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
             gap: 12,
           }}
         >
-          <TakeOffButton />
-          <Link
-            href={
-              mockParam
-                ? { pathname: "/map", query: { mock: mockParam } }
-                : "/map"
-            }
-            prefetch={false}
-            style={{
-              width: "100%",
-              minHeight: 56,
-              boxSizing: "border-box",
-              borderRadius: 18,
-              border: "1px solid #fffdf8",
-              background: "#fffdf8",
-              color: "#050505",
-              fontFamily: "inherit",
-              fontSize: 18,
-              fontWeight: 900,
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 16px 50px rgba(0, 0, 0, 0.18)",
-              touchAction: "manipulation",
-              WebkitTapHighlightColor: "transparent",
-            }}
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            aria-haspopup="dialog"
+            style={{ width: "100%", minWidth: 0, height: 64, padding: "0 10px", boxSizing: "border-box", borderRadius: 18, border: "1px solid rgba(255,255,255,.24)", background: "#151613", color: "#f5f1e6", font: "inherit", fontSize: 18, fontWeight: 800, cursor: "pointer" }}
           >
-            View Map
-          </Link>
+            Recent Rides
+          </button>
+          <div style={{ display: "grid", minWidth: 0 }}><TakeOffButton style={{ width: "100%", height: 64, padding: "0 10px" }} /></div>
         </div>
       </main>
-        <ProximityFlash
-          active={
-            nearest != null &&
-            nearest.distanceNm != null &&
-            nearest.distanceNm <= rideThresholds.watchNm &&
-            (nearest.plane.role === "fixed_wing" || nearest.plane.role === "patrol")
-          }
-          color={nearestBand?.color}
-        />
+        <RideHistory open={historyOpen} onClose={() => setHistoryOpen(false)} />
         <AlertsOptInCard />
     </>
   );

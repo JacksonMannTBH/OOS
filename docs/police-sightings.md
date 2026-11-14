@@ -1,5 +1,37 @@
 # Police sightings — development build 86
 
+## Build 98 — November 10, 2026
+
+- Ride summaries use a green play marker at the start and a checkered finish.
+- Main-map police sightings appear from zoom 8 instead of zoom 10, so they stay
+  visible two zoom levels farther out. Their existing tap targets remain intact.
+- “Police Nearby” uses a 0.3 statute mile radius (482.8032 meters).
+- Nearby report preparation and both support/deny choices use the same 0.3 mile
+  radius. Applied `20261110231659_police_three_tenths_mile.sql` to the OOS backend
+  and verified both RPC definitions and service-only access. Existing grouping
+  anchors are preserved.
+- Removed the X from main-map police details. Tapping the same icon closes the
+  popup; tapping another icon or the map also dismisses it.
+
+Validation: app and mobile type checks, the mobile interface build, and police
+distance/API tests passed. Server preparation and both vote choices passed
+checks just inside and outside the radius in a rolled-back transaction; no test
+reports or function changes were retained.
+
+Police interface checks passed, including visibility at the wider zoom and
+popup/expiry behavior. Route marker assertions and visual review passed, and
+summary layouts passed on phone, tablet, landscape, and large text. The broader
+ride-history suite then failed its separate Home aircraft-count assertion
+(expected three links, found one); that aircraft-list check remains unresolved.
+Evidence is in `.local/next-build-markers/`.
+
+Build 98 police interface checks passed, including no popup close button and
+marker-tap dismissal. Mobile type checking, nine police/API tests, and signed
+device build passed. All 205 packaged assets match the tested interface; the
+app and widget both use version 1.0.1 (98). Installed successfully on Jackson's
+iPhone. Evidence is in `.local/police-98/`. No App Store upload was performed.
+Automatic launch was denied because the phone was locked; unlock and open OOS.
+
 November 9, 2026 (Pacific). Requested for direct installation on Jackson’s iPhone.
 
 Ride Mode has a 104 × 76 police report button on the right, aligned with the

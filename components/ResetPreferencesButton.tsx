@@ -6,6 +6,7 @@ import { resetPreferenceCookiesAction } from "@/app/(tabs)/settings/actions";
 import { disableAircraftAlerts } from "@/lib/aircraft-alerts/client";
 import { SPEEDOMETER_STORAGE_KEY } from "@/lib/ride-display";
 import { stopLiveTracking } from "@/lib/live-tracking";
+import { configureRideMotion } from "@/lib/ride-recording";
 import { SS_TOKENS } from "@/lib/tokens";
 
 const ALERT_DEVICE_ID_KEY = "oos_aircraft_alert_device_id";
@@ -81,6 +82,7 @@ export function ResetPreferencesButton() {
       }
 
       await stopLiveTracking();
+      await configureRideMotion(false);
       await resetPreferenceCookiesAction();
       await resetDevicePreferences();
       clearLocalStorage();

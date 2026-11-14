@@ -4,7 +4,8 @@ import maplibregl, { type Map as MaplibreMap } from "maplibre-gl";
 import { POLICE_COLOR, POLICE_ICON_PATH, policeReportAge, type PoliceSighting } from "@/lib/police-sightings";
 
 type Entry = { marker: maplibregl.Marker; popup?: maplibregl.Popup; details?: HTMLDivElement; count?: HTMLElement; age?: HTMLElement };
-const MAIN_MAP_POLICE_MIN_ZOOM = 10;
+// Show sightings two zoom levels farther out than the previous city view.
+const MAIN_MAP_POLICE_MIN_ZOOM = 8;
 
 function setMarkerVisibility(entry: Entry, visible: boolean) {
   entry.marker.getElement().style.display = visible ? "grid" : "none";
@@ -51,7 +52,7 @@ export function PoliceSightingLayer({ map, sightings, interactive = false }: { m
           entry.count = document.createElement("strong");
           entry.age = document.createElement("span");
           entry.details.append(entry.count, entry.age);
-          entry.popup = new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: "180px", className: "oos-police-popup" }).setDOMContent(entry.details);
+          entry.popup = new maplibregl.Popup({ offset: 16, closeButton: false, maxWidth: "180px", className: "oos-police-popup" }).setDOMContent(entry.details);
           const popup = entry.popup;
           const marker = entry.marker;
           element.addEventListener("click", event => {

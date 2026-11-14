@@ -10,11 +10,14 @@ test("sightings expire at 30 minutes and never cross the selected state", () => 
   assert.equal(activePoliceSightings([sample], "WA", 1_801_000).length, 0);
   assert.equal(activePoliceSightings([sample], "CA", 2_000).length, 0);
 });
-test("nearby is one statute mile in any direction", () => {
+test("nearby is 0.3 statute miles in any direction", () => {
   assert.equal(hasNearbyPolice([sample], null), false);
-  assert.equal(hasNearbyPolice([sample], { lat: 47.514, lon: -122.26 }), true);
-  assert.equal(hasNearbyPolice([sample], { lat: 47.515, lon: -122.26 }), false);
-  assert.equal(hasNearbyPolice([sample], { lat: 47.486, lon: -122.26 }), true);
+  assert.equal(hasNearbyPolice([sample], { lat: 47.50434, lon: -122.26 }), true);
+  assert.equal(hasNearbyPolice([sample], { lat: 47.50435, lon: -122.26 }), false);
+  assert.equal(hasNearbyPolice([sample], { lat: 47.49566, lon: -122.26 }), true);
+  assert.equal(hasNearbyPolice([sample], { lat: 47.49565, lon: -122.26 }), false);
+  assert.equal(hasNearbyPolice([sample], { lat: 47.5, lon: -122.25359 }), true);
+  assert.equal(hasNearbyPolice([sample], { lat: 47.5, lon: -122.25357 }), false);
 });
 test("only police requests use the isolated function", () => {
   assert.match(backendUrl("/api/police?state=WA", "capacitor://localhost/ride"), /\/oos-police\?state=WA$/);

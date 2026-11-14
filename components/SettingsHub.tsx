@@ -4,37 +4,44 @@ import type { ReactNode } from "react";
 type SettingsLink = {
   href: string;
   title: string;
-  body: string;
-  icon: "bell" | "ride" | "aircraft" | "about" | "help" | "legal" | "store";
+  icon: "stats" | "bell" | "ride" | "aircraft" | "about" | "help" | "legal" | "store";
   accent: string;
 };
 
-const SETTINGS_LINKS: SettingsLink[] = [
-  { href: "/settings/alerts", title: "Notifications & state", body: "Tracking area and takeoff alerts", icon: "bell", accent: "#f6c431" },
-  { href: "/settings/display", title: "Ride mode & display", body: "Wake behavior, distance bands, and time", icon: "ride", accent: "#f6c431" },
-
-  { href: "/help", title: "Help & support", body: "Using the app and getting in touch", icon: "help", accent: "#f6c431" },
-  { href: "/aircraft", title: "Tracked Aircrafts", body: "Tracked fleet and operators", icon: "aircraft", accent: "#f6c431" },
-  { href: "/about", title: "About", body: "Project background and mission", icon: "about", accent: "#f6c431" },
-  { href: "/legal", title: "Legal & privacy", body: "Safety, privacy, and data use", icon: "legal", accent: "#f6c431" },
-  { href: "/store", title: "Store", body: "Gear and project updates", icon: "store", accent: "#f6c431" },
+const SETTINGS_GROUPS: { label: string; links: SettingsLink[] }[] = [
+  { label: "Ride stats", links: [
+    { href: "/settings/stats", title: "Stats", icon: "stats", accent: "#f6c431" },
+  ] },
+  { label: "Ride and tracking", links: [
+    { href: "/settings/alerts", title: "Notifications & state", icon: "bell", accent: "#f6c431" },
+    { href: "/settings/display", title: "Ride mode & display", icon: "ride", accent: "#f6c431" },
+    { href: "/aircraft", title: "Tracked aircraft", icon: "aircraft", accent: "#f6c431" },
+  ] },
+  { label: "Information and support", links: [
+    { href: "/help", title: "Help & support", icon: "help", accent: "#f6c431" },
+    { href: "/about", title: "About", icon: "about", accent: "#f6c431" },
+    { href: "/legal", title: "Legal & privacy", icon: "legal", accent: "#f6c431" },
+    { href: "/store", title: "Store", icon: "store", accent: "#f6c431" },
+  ] },
 ];
 
 export default function SettingsHub({ includeStore = true }: { includeStore?: boolean }) {
-  const links = includeStore ? SETTINGS_LINKS : SETTINGS_LINKS.filter(link => link.href !== "/store");
   return (
     <main className="ss-settings-hub">
-      <nav aria-label="Settings" className="ss-settings-list">
-        {links.map((link) => (
-          <Link key={link.href} href={link.href} prefetch={false} className="ss-settings-row">
-            <span className="ss-settings-row__icon" style={{ color: link.accent }}>
-              <SettingsIcon name={link.icon} />
-            </span>
-            <span className="ss-settings-row__copy">
-              <strong>{link.title}</strong>
-              <span>{link.body}</span>
-            </span>
-          </Link>
+      <nav aria-label="Settings" className="ss-settings-menu">
+        {SETTINGS_GROUPS.map(group => (
+          <div key={group.label} role="group" aria-label={group.label} className="ss-settings-list">
+            {group.links.filter(link => includeStore || link.href !== "/store").map((link) => (
+              <Link key={link.href} href={link.href} prefetch={false} className="ss-settings-row">
+                <span className="ss-settings-row__icon" style={{ color: link.accent }}>
+                  <SettingsIcon name={link.icon} />
+                </span>
+                <span className="ss-settings-row__copy">
+                  <strong>{link.title}</strong>
+                </span>
+              </Link>
+            ))}
+          </div>
         ))}
       </nav>
     </main>
@@ -43,6 +50,7 @@ export default function SettingsHub({ includeStore = true }: { includeStore?: bo
 
 function SettingsIcon({ name }: { name: SettingsLink["icon"] }) {
   const paths: Record<SettingsLink["icon"], ReactNode> = {
+    stats: <path d="M1 9h3v6H1zm5-5h4v11H6zm6-4h3v15h-3z" />,
     help: <path fillRule="evenodd" d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M6.496 6.033a1.504 1.504 0 0 1 3.008 0c0 .567-.262.822-.864 1.252-.661.472-1.64 1.17-1.64 2.465a.75.75 0 0 0 1.5 0c0-.488.314-.797 1.012-1.295.713-.51 1.492-1.146 1.492-2.422a3.004 3.004 0 0 0-6.008 0 .75.75 0 0 0 1.5 0M8 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />,
     bell: <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2m.995-14.901a1 1 0 1 0-1.99 0A5 5 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901" />,
     ride: <path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10m0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6" />,

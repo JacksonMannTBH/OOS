@@ -42,8 +42,14 @@ export function TakeOffButton({ variant = "hero", style, children }: Props) {
       if (!mock && hasNativeLiveTracking()) {
         const tracking = await getLiveTrackingStatus();
         if (tracking.supported && !tracking.active) {
-          await startLiveTracking();
-          startedLiveTracking = true;
+          try {
+            await startLiveTracking();
+            startedLiveTracking = true;
+          } catch (cause) {
+            // A foreground transition can temporarily prevent the optional
+            // Lock Screen activity. It must not interrupt starting the ride.
+            if (!(cause instanceof Error) || cause.message !== "Open OOS to start live tracking.") throw cause;
+          }
         }
       }
       if (recording.supported) await startRideRecording(consent, startedLiveTracking);

@@ -111,3 +111,47 @@ registry snapshots and ownership changes before replacing these checked-in sourc
 | West Virginia | 2 | Registry-attributed aircraft |
 | Wisconsin | 3 | Registry-attributed aircraft |
 | Wyoming | 1 | Registry-attributed aircraft |
+
+## Live restoration — November 13, 2026
+
+Restored all 50 state records to the app's current OutOfSight database
+(`ohhixakjamjocgmatbha`). Added 747 missing aircraft from the saved catalog while
+preserving the existing 357 aircraft, their metadata and IDs, current flights,
+and aircraft selections. The active fleet is now 1,104 aircraft in 48 states;
+Rhode Island and Vermont retain explicit research-gap messages.
+
+The app offers all 50 states. The deployed ingestion worker reads every catalog
+page, including records beyond the 1,000-row API cap, and queries the complete
+fleet through the owner-selected ADSB.fi supplier in batches of at most 75 with
+1.1 seconds between request starts. The existing scheduler, authentication,
+leases, lifecycle rules and supplier are preserved. Successful nationwide runs
+processed all 1,104 records in approximately 17–19 seconds. The scheduler still
+runs every 15 seconds; the existing worker lease prevents overlap.
+
+Expanded the private receive-only live-update policy and state validation in
+`oos-app`, `oos-api` and `oos-notifications`. New-state live broadcasts were
+verified for NY, FL, WY and RI. All 50 app snapshot routes matched the national
+catalog, including both empty states, and the catalog endpoint returned 1,104
+records. The restoration migration is in `cloud-backend/supabase/migrations/`;
+`scripts/generate-restored-national-catalog.ts` reproduces it. Existing records
+and retirements are preserved by insert-only conflict handling.
+
+Deployment used narrowly patched copies of the downloaded live bundles to
+preserve newer live fixes absent from the local source. The repeatable patcher
+is `scripts/expand-deployed-state-coverage.mjs`. Before/after deployment bundles,
+checks and logs are saved in `.local/national-restore/`. Deployment versions:
+`oos-ingest` 15, `oos-app` 13, `oos-api` 11, `oos-notifications` 7.
+
+The packaged interface passed state-picker checks in Chromium and WebKit for all
+50 choices, representative populated states, and both coverage gaps. These are
+isolated browser fixtures using the live catalog; WebKit cancellation messages
+from mocked requests during rapid state changes are recorded separately. Live
+API and private broadcast checks were run independently against production.
+All 196 app unit tests, the focused backend tests, mobile and root type checks,
+and signed device build verification passed.
+
+Development build **1.0.2 (119)** was installed and launched on Jackson's connected
+iPhone. App/widget versions and signatures were verified, every packaged web
+asset matched the tested bundle, and the installation preserved ride history.
+Installation records and the private ride-history backup are in
+`.local/national-restore/`. This build was installed directly on the device.

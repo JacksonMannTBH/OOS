@@ -3,6 +3,7 @@ import { aircraftVehicleType } from "@/lib/aircraft-type";
 import { sendAircraftAlertPush } from "./web-push";
 import { sendAircraftAlertFcm } from "./fcm";
 import { isTakeoffDeliverySelected } from "./eligibility";
+import { mapWithConcurrency } from "../map-with-concurrency";
 
 const MAX_DELIVERIES_PER_RUN = 100;
 const NOTIFICATION_TAG_WINDOW_MS = 30 * 60 * 1_000;
@@ -38,9 +39,9 @@ export async function dispatchPendingTakeoffNotifications(options: { maxDuration
     skipped: 0,
   };
 
-  for (const delivery of deliveries ?? []) {
+  await mapWithConcurrency(deliveries ?? [], 4, async delivery => {
     // Leave unclaimed rows for the next tick before the Edge Function deadline.
-    if (Date.now() >= deadline) break;
+    if (Date.now() >= deadline) return;
     const claimToken = crypto.randomUUID();
     const { data: claimed } = await db
       .from("notification_deliveries")
@@ -55,7 +56,7 @@ export async function dispatchPendingTakeoffNotifications(options: { maxDuration
       .in("status", ["pending", "failed"])
       .select("id")
       .maybeSingle();
-    if (!claimed) continue;
+    if (!claimed) return;
     summary.claimed += 1;
 
     const event = Array.isArray(delivery.notification_events)
@@ -67,7 +68,7 @@ export async function dispatchPendingTakeoffNotifications(options: { maxDuration
     if (!event || !endpoint) {
       await markFailed(String(delivery.id), claimToken, "missing_related_record", 15);
       summary.failed += 1;
-      continue;
+      return;
     }
     const payload = (event.payload ?? {}) as Record<string, unknown>;
     const tail = String(payload.tail ?? "Aircraft");
@@ -80,7 +81,7 @@ export async function dispatchPendingTakeoffNotifications(options: { maxDuration
     if (preferenceError) {
       await markFailed(String(delivery.id), claimToken, "preference_read_failed", 2);
       summary.failed += 1;
-      continue;
+      return;
     }
     const currentEndpoint = Array.isArray(preferences?.push_endpoints)
       ? preferences.push_endpoints[0]
@@ -96,7 +97,7 @@ export async function dispatchPendingTakeoffNotifications(options: { maxDuration
         updated_at: new Date().toISOString(),
       }).eq("id", delivery.id).eq("claim_token", claimToken);
       summary.skipped += 1;
-      continue;
+      return;
     }
     const notificationCopy = takeoffNotificationCopy(tail, payload.model);
     const detailUrl = `/map?tail=${encodeURIComponent(tail)}`;
@@ -138,7 +139,7 @@ export async function dispatchPendingTakeoffNotifications(options: { maxDuration
         .update({ last_success_at: new Date().toISOString() })
         .eq("id", endpoint.id);
       summary.sent += 1;
-      continue;
+      return;
     }
 
     if (result.reason === "expired") {
@@ -161,7 +162,7 @@ export async function dispatchPendingTakeoffNotifications(options: { maxDuration
         })
         .eq("id", endpoint.id);
       summary.expired += 1;
-      continue;
+      return;
     }
 
     await markFailed(
@@ -172,7 +173,7 @@ export async function dispatchPendingTakeoffNotifications(options: { maxDuration
       result.statusCode,
     );
     summary.failed += 1;
-  }
+  });
   return summary;
 }
 

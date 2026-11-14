@@ -191,6 +191,77 @@ enum RideHistoryTests {
                 precondition(contents == "bad data")
             }
         }
+        try check("all-time stats survive retention, deletion, disk storage, and repeated End") {
+            var core = try newRide()
+            for second in 0...20 {
+                core.accept(sample(Double(second), meters: Double(second) * 10), now: base + Double(second) * 1000)
+            }
+            precondition(core.archive.lifetimeStats!.rideCount == 0)
+            let first = try core.finish(id: core.archive.active!.id, now: base + 20_000)
+            _ = try core.finish(id: first.id, now: base + 30_000)
+            precondition(core.archive.lifetimeStats!.rideCount == 1)
+            for index in 1...5 {
+                let start = base + Double(index) * 100_000
+                try core.start(now: start, consent: true)
+                _ = try core.finish(id: core.archive.active!.id, now: start + 10_000)
+            }
+            precondition(core.archive.rides.count == 3 && !core.archive.rides.contains(where: { $0.id == first.id }))
+            let stats = core.archive.lifetimeStats!
+            precondition(stats.rideCount == 6 && stats.topSpeedMps == 10)
+            precondition(abs(stats.longestDistanceMeters! - 200) < 0.1 && stats.longestDurationSeconds == 20)
+            for ride in core.archive.rides { try core.delete(id: ride.id) }
+            precondition(core.archive.rides.isEmpty && core.archive.lifetimeStats == stats)
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: folder) }
+            let store = RideHistoryStore(url: folder.appendingPathComponent("rides.json"))
+            try store.write(core.archive)
+            let restored = RideRecorderCore(archive: try store.read())
+            precondition(restored.archive.lifetimeStats == stats)
+            precondition((stats.payload["rideCount"] as? Int) == 6)
+        }
+        try check("legacy migration seeds saved rides once and excludes the active ride") {
+            var core = try newRide()
+            core.accept(sample(0, meters: 0), now: base)
+            core.accept(sample(1, meters: 10), now: base + 1000)
+            let completed = try core.finish(id: core.archive.active!.id, now: base + 1000)
+            try core.start(now: base + 2000, consent: true)
+            var legacy = try JSONSerialization.jsonObject(with: JSONEncoder().encode(core.archive)) as! [String: Any]
+            legacy.removeValue(forKey: "lifetimeStats")
+            let archive = try JSONDecoder().decode(RideArchive.self, from: JSONSerialization.data(withJSONObject: legacy))
+            precondition(archive.lifetimeStats == nil)
+            let seeded = RideRecorderCore(archive: archive)
+            precondition(seeded.archive.rides == [completed] && seeded.archive.active == core.archive.active)
+            precondition(seeded.archive.lifetimeStats!.rideCount == 1)
+            precondition(seeded.archive.lifetimeStats!.topSpeedMps == completed.topSpeedMps)
+            var restarted = RideRecorderCore(archive: seeded.archive)
+            precondition(restarted.archive.lifetimeStats == seeded.archive.lifetimeStats)
+            restarted.recoverInterruptedRide()
+            restarted.recoverInterruptedRide()
+            precondition(restarted.archive.lifetimeStats!.rideCount == 2)
+        }
+        try check("each record keeps its own maximum across different rides") {
+            var core = RideRecorderCore()
+            for (index, values) in [(50.0, 100.0, 10.0), (20.0, 1000.0, 20.0), (30.0, 500.0, 600.0)].enumerated() {
+                let start = base + Double(index) * 1_000_000
+                try core.start(now: start, consent: true)
+                core.archive.active!.topSpeedMps = values.0
+                core.archive.active!.distanceMeters = values.1
+                core.archive.active!.sampleCount = 10
+                _ = try core.finish(id: core.archive.active!.id, now: start + values.2 * 1000)
+            }
+            let stats = core.archive.lifetimeStats!
+            precondition(stats.rideCount == 3 && stats.topSpeedMps == 50)
+            precondition(stats.longestDistanceMeters == 1000 && stats.longestDurationSeconds == 600)
+        }
+        try check("rides without GPS count without inventing speed or distance") {
+            var core = try newRide()
+            _ = try core.finish(id: core.archive.active!.id, now: base + 30_000)
+            let stats = core.archive.lifetimeStats!
+            precondition(stats.rideCount == 1 && stats.longestDurationSeconds == 30)
+            precondition(stats.topSpeedMps == nil && stats.longestDistanceMeters == nil)
+            precondition(stats.payload["topSpeedMps"] is NSNull)
+            precondition(stats.payload["longestDistanceMeters"] is NSNull)
+        }
         print("\(passed) ride-history tests passed")
     }
 }

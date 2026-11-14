@@ -9,6 +9,7 @@ import maplibregl, {
   type ExpressionSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { trackMapOpeningCamera, type MapOpeningCamera } from "@/lib/map-opening-camera";
 import { MAP_LABEL_FONT, MAP_STYLE_URL } from "@/lib/map-style";
 import { darkMapStyle } from "@/lib/dark-map-style";
 import { SS_TOKENS } from "@/lib/tokens";
@@ -32,9 +33,7 @@ import {
   aircraftColorForTail,
 } from "@/lib/aircraft-colors";
 import { type StateCode } from "@/lib/app-states";
-import {
-  estimateFuelRemaining,
-} from "@/lib/fuel-estimate";
+import { formatAircraftAltitude } from "@/lib/aircraft-altitude";
 
 import { useCaliforniaRegion } from "@/lib/hooks/useCaliforniaRegion";
 import { getRegionalMapState } from "@/lib/california-regions";
@@ -45,10 +44,8 @@ const NORTH_AMERICA_BOUNDS: [[number, number], [number, number]] = [
   [-179, 5],
   [-25, 84],
 ];
-// Street-level zoom used the first time the rider's geolocation resolves
-// — opens the map on the rider's actual neighborhood instead of the
-// whole selected-state overview.
-const RIDER_ZOOM = 11;
+// Open around the rider with enough surrounding area to see nearby aircraft.
+const RIDER_ZOOM = 9;
 
 // 1 nautical mile in degrees latitude (constant). Longitude varies with
 // latitude — use cos(lat) to scale per-ring.
@@ -81,7 +78,7 @@ const AIRCRAFT_LABEL_BG_KEY = "aircraft-label-pill";
 const AIRCRAFT_LABEL_COLOR_KEY_PREFIX = "aircraft-label-pill-color";
 // Keep the text and its pill in sync; report age must not affect visibility.
 const AIRCRAFT_LABEL_ZOOM_OPACITY: ExpressionSpecification = [
-  "interpolate", ["linear"], ["zoom"], 7, 0, 8.5, 1,
+  "interpolate", ["linear"], ["zoom"], 4.5, 0, 5.5, 1,
 ];
 
 function aircraftLabelColorKey(index: number): string {
@@ -124,7 +121,7 @@ type StyleLayerLike = {
 
 const CUSTOM_LAYER_PREFIXES = [
   "aircraft",
-  "aircraft-fuel",
+  "aircraft-altitude",
   "rider",
   "distance-rings",
   "flight-paths",
@@ -344,8 +341,8 @@ function applyCustomRadarLayerTheme(map: MaplibreMap, darkMode: boolean) {
     if (map.getLayer("aircraft-labels")) {
       map.setPaintProperty("aircraft-labels", "text-color", "#071012");
     }
-    if (map.getLayer("aircraft-fuel")) {
-      map.setPaintProperty("aircraft-fuel", "text-color", "#f5f2e8");
+    if (map.getLayer("aircraft-altitude")) {
+      map.setPaintProperty("aircraft-altitude", "text-color", "#f5f2e8");
     }
   } catch {
     /* layer may be mid-style reload */
@@ -384,11 +381,11 @@ const ANIM_MS = 3_000;
 const POSITION_FRESHNESS_MS = 30_000;
 const MAX_TURN_BANK_DEG = 6;
 
-function setFuelCardTail(map: MaplibreMap, tail: string | null): void {
-  if (!map.getLayer("aircraft-fuel")) return;
-  map.setFilter("aircraft-fuel", [
+function setAltitudeCardTail(map: MaplibreMap, tail: string | null): void {
+  if (!map.getLayer("aircraft-altitude")) return;
+  map.setFilter("aircraft-altitude", [
     "all",
-    ["has", "fuelLabel"],
+    ["has", "altitudeLabel"],
     ["==", ["get", "tail"], tail ?? ""],
   ]);
 }
@@ -451,27 +448,38 @@ type FocusRequest = { tail: string; seq: number };
 export default function RadarMap({
   aircraft,
   rider,
+  initialCamera = null,
   showDistanceRings = false,
   distanceRingThresholds = DEFAULT_RIDE_STATUS_THRESHOLDS,
   darkMode = true,
-  showFuelEstimate = false,
+  showAltitude = false,
   stateCode,
   focusRequest,
   riderFocusRequest = 0,
   onMapReady,
+  onSelectedTailChange,
 }: {
   aircraft: Aircraft[];
   rider: RiderPos | null;
+  initialCamera?: MapOpeningCamera | null;
   showDistanceRings?: boolean;
   distanceRingThresholds?: RideStatusThresholds;
-  showFuelEstimate?: boolean;
+  showAltitude?: boolean;
   darkMode?: boolean;
   /** Selected catalog state. Used for the default map center. */
   stateCode?: StateCode;
   focusRequest?: FocusRequest | null;
   riderFocusRequest?: number;
   onMapReady?: (map: MaplibreMap | null) => void;
+  onSelectedTailChange?: (tail: string | null) => void;
 }) {
+  const onSelectedTailChangeRef = useRef(onSelectedTailChange);
+  onSelectedTailChangeRef.current = onSelectedTailChange;
+  function updateSelectedTail(map: MaplibreMap, tail: string | null) {
+    setAltitudeCardTail(map, tail);
+    onSelectedTailChangeRef.current?.(tail);
+  }
+
   const region = useCaliforniaRegion();
   const regionRef = useRef(region);
   regionRef.current = region;
@@ -490,7 +498,7 @@ export default function RadarMap({
   const distanceRingThresholdsRef = useRef<RideStatusThresholds>(
     distanceRingThresholds,
   );
-  const showFuelEstimateRef = useRef<boolean>(showFuelEstimate);
+  const showAltitudeRef = useRef<boolean>(showAltitude);
   const darkModeRef = useRef<boolean>(darkMode);
   const reducedMotionRef = useRef(false);
   const lastHelicopterFrameRef = useRef<number | null>(null);
@@ -498,8 +506,9 @@ export default function RadarMap({
   // Tracks whether we've done the one-time zoom-to-rider on first
   // geolocation resolve. Subsequent rider changes only recenter
   // (the existing 5s loop), they don't change zoom.
-  const didFirstRiderZoomRef = useRef<boolean>(false);
-  const userInteractedAtRef = useRef<number>(0);
+  const initialCameraRef = useRef(initialCamera);
+  const didFirstRiderZoomRef = useRef<boolean>(Boolean(initialCamera));
+  const userInteractedAtRef = useRef<number>(initialCamera ? Date.now() : 0);
   // Tail the map is currently "following" (click-to-follow). When set,
   // applyAircraft re-centers on this plane each snapshot if it has
   // drifted >FOLLOW_RECENTER_PX from screen center, and the rider
@@ -520,16 +529,20 @@ export default function RadarMap({
       ? getRegionalMapState(stateCodeRef.current, regionRef.current)
       : null;
     const map = new maplibregl.Map({
+      canvasContextAttributes: { preserveDrawingBuffer: true },
       container: containerRef.current,
-      center: initialState
+      center: initialCameraRef.current?.center ?? (initialState
         ? [initialState.centerLon, initialState.centerLat]
-        : [-122.3, 47.6],
-      zoom: initialState ? STATE_OVERVIEW_ZOOM : DEFAULT_ZOOM,
+        : [-122.3, 47.6]),
+      zoom: initialCameraRef.current?.zoom ?? (initialState ? STATE_OVERVIEW_ZOOM : DEFAULT_ZOOM),
+      bearing: initialCameraRef.current?.bearing ?? 0,
+      pitch: initialCameraRef.current?.pitch ?? 0,
       minZoom: 3,
       maxBounds: NORTH_AMERICA_BOUNDS,
       renderWorldCopies: false,
       attributionControl: false,
     });
+    const stopTrackingCamera = trackMapOpeningCamera(map);
     map.addControl(
       new maplibregl.AttributionControl({ compact: true }),
       "top-right",
@@ -750,18 +763,18 @@ export default function RadarMap({
         },
       });
       map.addLayer({
-        id: "aircraft-fuel",
+        id: "aircraft-altitude",
         type: "symbol",
         source: "aircraft",
         layout: {
-          visibility: showFuelEstimateRef.current ? "visible" : "none",
+          visibility: showAltitudeRef.current ? "visible" : "none",
           "icon-image": AIRCRAFT_LABEL_BG_KEY,
           "icon-text-fit": "both",
           "icon-text-fit-padding": [3, 6, 3, 6],
           "icon-anchor": "center",
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
-          "text-field": ["get", "fuelLabel"],
+          "text-field": ["get", "altitudeLabel"],
           "text-font": MAP_LABEL_FONT,
           "text-size": [
             "interpolate",
@@ -788,10 +801,10 @@ export default function RadarMap({
           "text-color": "#f5f2e8",
           "text-opacity": 0.78,
         },
-        // Fuel estimates stay hidden until a rider selects an aircraft.
+        // Altitude readings stay hidden until a rider selects an aircraft.
         filter: [
           "all",
-          ["has", "fuelLabel"],
+          ["has", "altitudeLabel"],
           ["==", ["get", "tail"], ""],
         ],
       });
@@ -801,7 +814,7 @@ export default function RadarMap({
       // A stored state can hydrate while MapLibre is still loading. Always
       // apply the latest state here so that update cannot be lost and leave
       // live aircraft and trails rendered offscreen in the previous state.
-      if (!riderRef.current && stateCodeRef.current) {
+      if (!initialCameraRef.current && !riderRef.current && stateCodeRef.current) {
         const selectedState = getRegionalMapState(stateCodeRef.current, regionRef.current);
         map.jumpTo({
           center: [selectedState.centerLon, selectedState.centerLat],
@@ -837,7 +850,7 @@ export default function RadarMap({
       userInteractedAtRef.current = Date.now();
       if (e?.originalEvent && followedTailRef.current) {
         followedTailRef.current = null;
-        setFuelCardTail(map, null);
+        updateSelectedTail(map, null);
         popupRef.current?.remove();
         popupRef.current = null;
       }
@@ -866,7 +879,7 @@ export default function RadarMap({
       });
       if (features.length > 0) return;
       followedTailRef.current = null;
-      setFuelCardTail(map, null);
+      updateSelectedTail(map, null);
       popupRef.current?.remove();
       popupRef.current = null;
     };
@@ -891,6 +904,7 @@ export default function RadarMap({
       popupRef.current?.remove();
       popupRef.current = null;
       onMapReadyRef.current?.(null);
+      stopTrackingCamera();
       map.remove();
       mapRef.current = null;
     };
@@ -899,7 +913,7 @@ export default function RadarMap({
 
   // Apply rider position when it updates from the geolocation watch.
   // First time the rider resolves AND the map is ready, fly to their
-  // position at street-level zoom so a Tacoma rider opens to Tacoma,
+  // position with surrounding-area context so a Tacoma rider opens to Tacoma,
   // not to the selected-state overview.
   useEffect(() => {
     riderRef.current = rider;
@@ -942,21 +956,21 @@ export default function RadarMap({
   }, [distanceRingThresholds]);
 
   useEffect(() => {
-    showFuelEstimateRef.current = showFuelEstimate;
+    showAltitudeRef.current = showAltitude;
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     try {
-      if (map.getLayer("aircraft-fuel")) {
+      if (map.getLayer("aircraft-altitude")) {
         map.setLayoutProperty(
-          "aircraft-fuel",
+          "aircraft-altitude",
           "visibility",
-          showFuelEstimate ? "visible" : "none",
+          showAltitude ? "visible" : "none",
         );
       }
     } catch {
       /* layer not yet attached */
     }
-  }, [showFuelEstimate]);
+  }, [showAltitude]);
 
   useEffect(() => {
     darkModeRef.current = darkMode;
@@ -1027,9 +1041,9 @@ export default function RadarMap({
     const pos = stateRef.current.toByTail.get(tail);
     if (!pos) return false;
 
-    followedTailRef.current = tail;
-    setFuelCardTail(map, tail);
     popupRef.current?.remove();
+    followedTailRef.current = tail;
+    updateSelectedTail(map, tail);
     const popup = new maplibregl.Popup({
       anchor: "top",
       closeButton: false,
@@ -1046,14 +1060,13 @@ export default function RadarMap({
     popup.on("close", () => {
       if (followedTailRef.current === tail) {
         followedTailRef.current = null;
-        setFuelCardTail(map, null);
+        updateSelectedTail(map, null);
       }
       if (popupRef.current === popup) popupRef.current = null;
     });
     popupRef.current = popup;
     map.flyTo({
       center: pos,
-      zoom: Math.max(map.getZoom(), 12),
       duration: 600,
     });
     return true;
@@ -1065,7 +1078,7 @@ export default function RadarMap({
     if (!map || !readyRef.current || !rider) return false;
 
     followedTailRef.current = null;
-    setFuelCardTail(map, null);
+    updateSelectedTail(map, null);
     popupRef.current?.remove();
     popupRef.current = null;
     map.flyTo({
@@ -1293,7 +1306,7 @@ export default function RadarMap({
         }
       } else {
         followedTailRef.current = null;
-        setFuelCardTail(map, null);
+        updateSelectedTail(map, null);
         popupRef.current?.remove();
         popupRef.current = null;
       }
@@ -1329,10 +1342,9 @@ export default function RadarMap({
           labelIcon: meta.labelIcon,
           label: meta.label,
         };
-        if (showFuelEstimateRef.current) {
+        if (showAltitudeRef.current) {
           const plane = aircraftRef.current.find((a) => a.tail === tail);
-          const fuel = plane && !plane.last_known_airborne ? estimateFuelRemaining(plane) : null;
-          if (fuel) props.fuelLabel = fuel.label.replace(" - ", "\n");
+          props.altitudeLabel = `Alt. ${formatAircraftAltitude(plane?.altitude_ft)}`;
         }
         features.push({
           type: "Feature",

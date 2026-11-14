@@ -19,7 +19,7 @@ export function PoliceReportButton({ disabled = false, alerting = false }: { dis
       return;
     }
     if (result.status === "gone") throw new Error("This sighting has expired or been removed.");
-    if (result.status === "too_far") throw new Error("Move within a quarter mile of this sighting to respond.");
+    if (result.status === "too_far") throw new Error("Move within 0.3 miles of this sighting to respond.");
     if (!["reported", "voted", "duplicate", "cooldown"].includes(result.status)) throw new Error("Couldn’t report. Try again.");
     setUntil(Date.now() + (result.retryAfterMs ?? 0));
     setChecked(result.status !== "cooldown");

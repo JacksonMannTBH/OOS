@@ -21,7 +21,7 @@ test("changing regions restores that fleet without changing manually excluded ai
   const south = notificationTrackingPreferences(saved, "CA", "south");
   assert.ok(north.CA?.includes("N213PF")); // LAPD
   assert.ok(!north.CA?.includes("N983HP")); // Paso Robles
-  assert.ok(south.CA?.includes("N983HP"));
+  assert.ok(!south.CA?.includes("N983HP")); // CHP remains selected in both regions
   assert.ok(!south.CA?.includes("N213PF"));
   for (const selected of [north, south]) {
     assert.ok(selected.CA?.includes("N975HP"));

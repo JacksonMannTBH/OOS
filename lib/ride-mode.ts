@@ -3,6 +3,13 @@ import type { Aircraft } from "./types";
 
 export type RideStatus = "clear" | "watch" | "warning" | "danger";
 
+export const RIDE_STATUS_COLORS: Record<RideStatus, string> = {
+  clear: "#39d98a",
+  watch: "#60a5fa",
+  warning: "#f6c431",
+  danger: "#ff4d4f",
+};
+
 export type RideStatusThresholds = {
   watchNm: number;
   warningNm: number;

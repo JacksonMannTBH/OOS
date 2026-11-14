@@ -11,6 +11,8 @@ import {
 import { fleetHex, FLEET } from "./seed";
 import { getSupabaseAdmin, isSupabaseConfigured } from "./supabase/server";
 import { catalogBatches, readAllCatalogPages, readCatalogKeyBatches } from "./catalog-pagination";
+import { getPreparedAircraftResponse } from "./prepared-aircraft-response";
+import { resolveAircraftStateRows } from "./aircraft-state-batch";
 import type {
   Aircraft,
   AircraftGroundState,
@@ -49,7 +51,7 @@ type FlightSessionFinalization = {
   landingConfirmedAt: string | null;
 };
 
-type CatalogRow = {
+export type CatalogRow = {
   id: string;
   tail: string;
   icao24: string;
@@ -255,18 +257,28 @@ export async function saveCatalog(
 export async function getDatabaseSnapshot(
   stateCode: StateCode = DEFAULT_STATE_CODE,
 ): Promise<Snapshot> {
+  return getPreparedAircraftResponse(`oos-prepared-v1:aircraft:${stateCode}`, () => getSnapshotForScope(stateCode));
+}
+
+/** Public tracked flights for map markers only, never notification/status input. */
+export async function getNationalMapSnapshot(): Promise<Snapshot> {
+  if (!isSupabaseConfigured()) throw new Error("Nationwide map data is unavailable");
+  return getPreparedAircraftResponse("oos-prepared-v1:nationwide", () => getSnapshotForScope(null));
+}
+
+async function getSnapshotForScope(stateCode: StateCode | null): Promise<Snapshot> {
   if (!isSupabaseConfigured()) {
     return {
       fetched_at: Date.now(),
       source: "mock",
-      aircraft: filterSeedByState(FLEET, stateCode).map((entry) => ({
+      aircraft: filterSeedByState(FLEET, stateCode ?? DEFAULT_STATE_CODE).map((entry) => ({
         ...entry,
         tail: entry.tail,
         icao24: fleetHex(entry),
         observed: false,
         airborne: false,
         observation_status: "unknown",
-        home_state_code: stateCode,
+        home_state_code: stateCode ?? DEFAULT_STATE_CODE,
         last_seen_min: null,
       })),
       live_seen_count: 0,
@@ -275,11 +287,16 @@ export async function getDatabaseSnapshot(
 
   const db = getSupabaseAdmin();
   const [liveResult, ingestionResult] = await Promise.all([
-    db
+    stateCode ? db
       .from("aircraft_live_public")
       .select("*")
       .eq("home_state_code", stateCode)
-      .order("tail"),
+      .order("tail") : readAllCatalogPages(
+        (from, to) => db.from("aircraft_live_public").select("*")
+          .in("observation_status", ["airborne", "airborne_candidate", "landing_candidate"])
+          .not("observed_at", "is", null).order("tail").range(from, to),
+        "Nationwide map read failed",
+      ).then(data => ({ data, error: null })),
     db
       .from("ingestion_runs")
       .select("finished_at,source")
@@ -292,10 +309,16 @@ export async function getDatabaseSnapshot(
   if (liveResult.error) {
     throw new Error(`Live aircraft read failed: ${liveResult.error.message}`);
   }
-  const data = liveResult.data;
+  return buildDatabaseSnapshot(liveResult.data ?? [], ingestionResult.data);
+}
 
-  const snapshotReadAt = Date.now();
-  let fetchedAt = parseTime(ingestionResult.data?.finished_at) ?? 0;
+/** Shared mapping for individual reads and the once-per-cycle nationwide read. */
+export function buildDatabaseSnapshot(
+  data: Record<string, unknown>[],
+  ingestion: { finished_at: string; source?: string | null } | null,
+  snapshotReadAt = Date.now(),
+): Snapshot {
+  let fetchedAt = parseTime(ingestion?.finished_at) ?? 0;
   const aircraft = (data ?? []).map((row) => {
     const observedAt = parseTime(row.observed_at);
     const lastSeenAt = parseTime(row.last_seen_at);
@@ -385,7 +408,7 @@ export async function getDatabaseSnapshot(
 
   return {
     fetched_at: fetchedAt || snapshotReadAt,
-    source: inferSnapshotSource(data, ingestionResult.data?.source),
+    source: inferSnapshotSource(data, ingestion?.source),
     source_ok: fetchedAt > 0 && snapshotReadAt - fetchedAt < CURRENT_OBSERVATION_MAX_AGE_MS,
     aircraft,
     live_seen_count: aircraft.filter((row) => row.observed).length,
@@ -395,7 +418,7 @@ export async function getDatabaseSnapshot(
 export async function ingestSnapshot(
   snapshot: Snapshot,
   workerId: string,
-  options: { catalogSeeded?: boolean } = {},
+  options: { catalogSeeded?: boolean; catalog?: readonly CatalogRow[] } = {},
 ): Promise<IngestionSummary> {
   const db = getSupabaseAdmin();
   if (!options.catalogSeeded) await ensureCatalogSeeded();
@@ -426,7 +449,10 @@ export async function ingestSnapshot(
     };
   }
 
-  const catalogData = await readCatalogKeyBatches(
+  const requestedTails = new Set(snapshot.aircraft.map(aircraft => aircraft.tail.toUpperCase()));
+  const catalogData = options.catalog
+    ? options.catalog.filter(row => requestedTails.has(row.tail.toUpperCase()))
+    : await readCatalogKeyBatches(
     snapshot.aircraft.map((aircraft) => aircraft.tail.toUpperCase()),
     (tails) => db
       .from("aircraft")
@@ -603,12 +629,7 @@ export async function ingestSnapshot(
         observation_status: "unknown",
         consecutive_airborne: 0,
         consecutive_grounded: 0,
-        current_state_code: await resolveCurrentStateCode(
-          db,
-          aircraft.lat,
-          aircraft.lon,
-          catalogRow.home_state_code,
-        ),
+        current_state_code: null,
         observed_at: aircraftObservedAt,
         last_seen_at: aircraftObservedAt,
         // An ambiguous provider sample breaks both transition intervals. It
@@ -732,12 +753,7 @@ export async function ingestSnapshot(
       observation_status: status,
       consecutive_airborne: consecutiveAirborne,
       consecutive_grounded: consecutiveGrounded,
-      current_state_code: await resolveCurrentStateCode(
-        db,
-        aircraft.lat,
-        aircraft.lon,
-        catalogRow.home_state_code,
-      ),
+      current_state_code: null,
       observed_at: aircraftObservedAt,
       last_seen_at: aircraftObservedAt,
       last_grounded_at: lastGroundedAt,
@@ -774,6 +790,8 @@ export async function ingestSnapshot(
       });
     }
   }
+
+  await resolveAircraftStateRows(db, stateRows, catalogById);
 
   const finalizationRows = [...flightSessionsToFinalize].map(
     ([flightSessionId, finalState]) => ({
@@ -1099,24 +1117,6 @@ export function estimateLandingTransitionAt(
   return firstGroundedMs == null
     ? null
     : new Date(firstGroundedMs).toISOString();
-}
-
-async function resolveCurrentStateCode(
-  db: ReturnType<typeof getSupabaseAdmin>,
-  latitude: number | undefined,
-  longitude: number | undefined,
-  fallbackStateCode: StateCode,
-): Promise<string | null> {
-  if (latitude == null || longitude == null) return null;
-  const { data, error } = await db.rpc("resolve_state_code", {
-    input_latitude: latitude,
-    input_longitude: longitude,
-  });
-  if (error) {
-    console.warn("[ingest] state-code resolution failed:", error.message);
-    return fallbackStateCode;
-  }
-  return typeof data === "string" ? data : fallbackStateCode;
 }
 
 export function isStaleOpenFlightSession(

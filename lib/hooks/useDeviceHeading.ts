@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import { watchWhileVisible } from "@/lib/device-location";
 import { finiteHeading, headingFromOrientationEvent } from "@/lib/device-heading";
+
+const nativeCompass = registerPlugin<{
+  watchHeading(options: Record<string, never>, callback: (event: { heading: number }) => void): Promise<string>;
+  clearHeading(options: { id: string }): Promise<void>;
+}>("OOSLocation");
 
 export type HeadingSource = "device" | "geolocation" | "none";
 export type HeadingPermissionState =
@@ -35,6 +42,25 @@ export function useDeviceHeading(
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (Capacitor.getPlatform() === "ios" && Capacitor.isNativePlatform()) {
+      return watchWhileVisible(() => {
+        let stopped = false;
+        let watchId: string | undefined;
+        void nativeCompass.watchHeading({}, event => {
+          if (stopped) return;
+          const value = finiteHeading(event.heading);
+          if (value != null) { setDeviceHeadingDeg(value); setPermissionState("granted"); }
+        }).then(id => {
+          if (stopped) void nativeCompass.clearHeading({ id }).catch(() => undefined);
+          else watchId = id;
+        }).catch(() => setPermissionState("unsupported"));
+        return () => {
+          stopped = true;
+          setDeviceHeadingDeg(null);
+          if (watchId) void nativeCompass.clearHeading({ id: watchId }).catch(() => undefined);
+        };
+      }, document);
+    }
     if (!("DeviceOrientationEvent" in window)) {
       setPermissionState("unsupported");
       return;

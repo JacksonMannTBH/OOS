@@ -4,12 +4,18 @@ import { OPS_AIRCRAFT } from "./aircraft-directory";
 import { aircraftMatchesCaliforniaRegion, californiaRegionForAgency, filterAircraftByCaliforniaRegion, getRegionalMapState, getSelectedCaliforniaRegion, setSelectedCaliforniaRegion, CALIFORNIA_REGION_KEY } from "./california-regions";
 import { DevicePreferenceStore } from "./device-preference-store";
 
-test("every California aircraft belongs to exactly one home region", () => {
+test("CHP aircraft are statewide and other California aircraft retain one home region", () => {
   const fleet = OPS_AIRCRAFT.filter((row) => row.stateId === "california");
   assert.ok(fleet.length > 100);
   for (const row of fleet) {
     assert.ok(californiaRegionForAgency(row.unit), `${row.tail}: ${row.unit}`);
-    assert.notEqual(aircraftMatchesCaliforniaRegion(row.tail, "north"), aircraftMatchesCaliforniaRegion(row.tail, "south"), row.tail);
+    if (row.unit.startsWith("CHP ") || row.unit.startsWith("California Highway Patrol")) {
+      assert.equal(californiaRegionForAgency(row.unit), "both", row.tail);
+      assert.equal(aircraftMatchesCaliforniaRegion(row.tail, "north"), true, row.tail);
+      assert.equal(aircraftMatchesCaliforniaRegion(row.tail, "south"), true, row.tail);
+    } else {
+      assert.notEqual(aircraftMatchesCaliforniaRegion(row.tail, "north"), aircraftMatchesCaliforniaRegion(row.tail, "south"), row.tail);
+    }
   }
 });
 
@@ -22,10 +28,15 @@ test("regional filtering uses home agency even when an aircraft crosses the boun
     { tail: "N206SB", lat: 34.4 }, // Santa Barbara
     { tail: "N984HP", lat: 34.5 }, // CHP Inland
   ];
-  assert.deepEqual(filterAircraftByCaliforniaRegion(aircraft, "CA", "north").map((a) => a.tail), ["N975HP", "N983HP", "N189JC"]);
-  assert.deepEqual(filterAircraftByCaliforniaRegion(aircraft, "california", "south").map((a) => a.tail), ["N912KC", "N206SB", "N984HP"]);
+  assert.deepEqual(filterAircraftByCaliforniaRegion(aircraft, "CA", "north").map((a) => a.tail), ["N975HP", "N983HP", "N189JC", "N984HP"]);
+  assert.deepEqual(filterAircraftByCaliforniaRegion(aircraft, "california", "south").map((a) => a.tail), ["N975HP", "N983HP", "N912KC", "N206SB", "N984HP"]);
   assert.equal(filterAircraftByCaliforniaRegion(aircraft, "WA", "south"), aircraft);
   assert.equal(aircraftMatchesCaliforniaRegion(" n912kc ", "south"), true);
+  for (const region of ["north", "south"] as const) {
+    for (const tail of [" n975hp ", "N984HP", "N263HP", "N911CA", "N918CA"]) assert.equal(aircraftMatchesCaliforniaRegion(tail, region), true, tail);
+    assert.equal(aircraftMatchesCaliforniaRegion("UNKNOWN", region), false);
+    assert.equal(aircraftMatchesCaliforniaRegion("N25HP", region), false, "Other states' highway patrols are not California fleets");
+  }
 });
 
 test("California map centers change by region while other states stay unchanged", () => {
