@@ -35,10 +35,16 @@ At the owner's subsequent request, the same build was added to TestFlight's
 existing **Owner Phone Testing** group and all **ten existing individual
 testers**. What to Test and beta-review instructions were saved and verified.
 Apple confirmed **Waiting for Beta Review** at 22:52 UTC on November 16.
-Automatic tester notification remains enabled for distribution after approval;
-no new testers were invited. The public App Store submission still uses manual
-release. Private assignment and beta-review records are saved as
-`testflight-verification.json` and related files in the release folder above.
+An additional individual tester was subsequently assigned, bringing the count
+to eleven. At the owner's request, **automatic tester notifications are now
+disabled for build 192**; only the requested individual may be notified. At
+23:15 UTC, Apple confirmed that no build-wide notification had been sent and
+rejected the individual invitation with `NO_INSTALLABLE_BUILDS` while beta
+review was pending. Do not send a notification to all testers to work around
+this restriction; the individual invitation remains pending approval and
+distribution availability. The public App Store submission still uses manual
+release. Private assignment, beta-review, and notification-policy records are
+saved in the release folder above. Tester contact details remain private.
 
 ## Phone review 1.0.2 (192) — November 16, 2026 — memberships held for later
 
