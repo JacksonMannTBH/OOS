@@ -4,6 +4,7 @@ import { MapHeadingCone } from "./MapHeadingCone";
 import { useEffect, useRef, useState } from "react";
 import type { PoliceSighting } from "@/lib/police-sightings";
 import { PoliceSightingLayer } from "./PoliceSightingLayer";
+import { RiderLayer } from "./RiderLayer";
 import maplibregl, {
   GeoJSONSource,
   Map as MaplibreMap,
@@ -19,7 +20,7 @@ import {
 } from "@/lib/brand/helicopter-sprite";
 import { trackMapOpeningCamera } from "@/lib/map-opening-camera";
 import { MAP_STYLE_URL } from "@/lib/map-style";
-import { darkMapStyle } from "@/lib/dark-map-style";
+import { darkMapStyle, STATE_BOUNDARY_LAYER_ID } from "@/lib/dark-map-style";
 import { rideMapBounds } from "@/lib/ride-map-camera";
 import type {
   RideContact,
@@ -197,6 +198,11 @@ function RideMapCanvas(props: RideMapState) {
       maxPitch: 0,
     });
     const stopTrackingCamera = trackMapOpeningCamera(map);
+    const resize = new ResizeObserver(() => {
+      map.resize();
+      if (readyRef.current) setCamera(map, latestRef.current, false);
+    });
+    resize.observe(container);
     map.addControl(
       new maplibregl.AttributionControl({ compact: true }),
       "bottom-right",
@@ -231,6 +237,7 @@ function RideMapCanvas(props: RideMapState) {
     map.on("load", onLoad);
     return () => {
       disposed = true;
+      resize.disconnect();
       readyRef.current = false;
       map.off("load", onLoad);
       map.off("render", notifyReady);
@@ -262,7 +269,7 @@ function RideMapCanvas(props: RideMapState) {
   }, [rider.lat, rider.lon, distanceBands.watchNm]);
 
   return (
-    <><MapHeadingCone map={policeMap} rider={rider} /><PoliceSightingLayer map={policeMap} sightings={props.policeSightings ?? []} /><div
+    <><MapHeadingCone map={policeMap} rider={rider} /><PoliceSightingLayer map={policeMap} sightings={props.policeSightings ?? []} /><RiderLayer map={policeMap} /><div
       ref={containerRef}
       style={{
         position: "absolute",
@@ -492,7 +499,7 @@ function setCamera(map: MaplibreMap, state: RideMapState, animate: boolean) {
 function applyRideMapTheme(map: MaplibreMap) {
   const layers = (map.getStyle().layers ?? []) as StyleLayerLike[];
   for (const layer of layers) {
-    if (layer.id.startsWith(MAP_LAYER_PREFIX)) continue;
+    if (layer.id.startsWith(MAP_LAYER_PREFIX) || layer.id === STATE_BOUNDARY_LAYER_ID) continue;
     const descriptor = `${layer.id} ${layer["source-layer"] ?? ""}`.toLowerCase();
     const isWater = /water|ocean|lake|river|bay|marine/.test(descriptor);
     const isRoad = /road|street|highway|motorway|transport/.test(descriptor);

@@ -6,6 +6,7 @@ import { resetPreferenceCookiesAction } from "@/app/(tabs)/settings/actions";
 import { disableAircraftAlerts } from "@/lib/aircraft-alerts/client";
 import { SPEEDOMETER_STORAGE_KEY } from "@/lib/ride-display";
 import { stopLiveTracking } from "@/lib/live-tracking";
+import { stopRiderSharingForReset } from "@/lib/rider-profile-client";
 import { configureRideMotion } from "@/lib/ride-recording";
 import { SS_TOKENS } from "@/lib/tokens";
 
@@ -61,7 +62,7 @@ export function ResetPreferencesButton() {
     if (typeof window === "undefined") return;
     if (
       !window.confirm(
-        "Stop live tracking, turn off notifications, and reset all preferences on this device?",
+        "Stop live tracking and rider sharing, turn off notifications, and reset preferences on this device? Your rider username and icon will stay saved.",
       )
     ) {
       return;
@@ -72,6 +73,7 @@ export function ResetPreferencesButton() {
     let notificationsWereDisabled = false;
 
     try {
+      await stopRiderSharingForReset();
       const hasAlertIdentity = Boolean(
         getDevicePreference(ALERT_DEVICE_ID_KEY),
       );

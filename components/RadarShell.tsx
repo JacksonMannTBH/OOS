@@ -1,4 +1,6 @@
 "use client";
+import { openPro } from "@/lib/pro-access";
+import { usePro } from "@/lib/hooks/usePro";
 import { getMapOpeningCamera } from "@/lib/map-opening-camera";
 import { MapHeadingCone } from "./MapHeadingCone";
 import { watchDevicePosition } from "@/lib/device-location";
@@ -14,6 +16,7 @@ import { useNationwideMapAircraft } from "@/lib/hooks/useNationwideMapAircraft";
 import { mergeMapAircraft } from "@/lib/nationwide-map";
 import { usePoliceSightings } from "@/lib/hooks/usePoliceSightings";
 import { PoliceSightingLayer } from "./PoliceSightingLayer";
+import { RiderLayer } from "./RiderLayer";
 import { TakeOffButton } from "./TakeOffButton";
 import { useRideStatusThresholds } from "@/lib/hooks/useRideStatusThresholds";
 import { SS_TOKENS } from "@/lib/tokens";
@@ -26,6 +29,7 @@ import { isVisibleFlight } from "@/lib/aircraft-freshness";
 import { computeStatus, type StatusKind } from "@/lib/status";
 import { RadarLayerControls } from "./RadarLayerControls";
 import { AircraftTrailLayer } from "./AircraftTrailLayer";
+import { hasAircraftMapPosition } from "@/lib/map-aircraft";
 import {
   aircraftColorForTail,
 } from "@/lib/aircraft-colors";
@@ -45,7 +49,6 @@ import {
 } from "@/lib/app-states";
 import { PlaneIcon } from "./PlaneIcon";
 import { HelicopterIcon } from "./HelicopterIcon";
-import { DataLoadingScreen } from "./DataLoadingScreen";
 import type { Aircraft, FleetEntry, Snapshot } from "@/lib/types";
 
 export type RiderPos = { lat: number; lon: number; heading?: number | null };
@@ -78,11 +81,12 @@ export function RadarShell({
   initialFocusTail,
 }: Props) {
   const snap = useAircraft(initial, mockOn);
-  const nationwideEnabled = useNationwideMapEnabled() && !mockOn;
+  const plan = usePro();
+  const nationwideEnabled = useNationwideMapEnabled() && plan.pro && !mockOn;
   const nationwide = useNationwideMapAircraft(nationwideEnabled);
-  const mapAircraft = useMemo(() => nationwideEnabled
+  const mapAircraft = useMemo(() => (nationwideEnabled
     ? mergeMapAircraft(snap.aircraft, nationwide.aircraft)
-    : snap.aircraft.filter(isVisibleFlight), [nationwideEnabled, snap.aircraft, nationwide.aircraft]);
+    : snap.aircraft.filter(isVisibleFlight)).filter(hasAircraftMapPosition), [nationwideEnabled, snap.aircraft, nationwide.aircraft]);
   const policeSightings = usePoliceSightings(!mockOn);
   const rideThresholds = useRideStatusThresholds();
   const fleetMap = useMemo(
@@ -244,15 +248,16 @@ export function RadarShell({
         onMapReady={setMap}
         onSelectedTailChange={setSelectedTail}
       />
-      {!map && <DataLoadingScreen asOverlay />}
       <MapHeadingCone map={map} rider={rider} />
       <PoliceSightingLayer map={map} sightings={policeSightings} interactive />
+      <RiderLayer map={map} enabled={!mockOn} />
       <RadarLayerControls
         ringsActive={showRings}
         onToggleRings={() => setShowRings((v) => !v)}
         ringsDisabled={!rider}
-        flightPathsEnabled={showFlightPaths}
+        flightPathsEnabled={plan.pro && showFlightPaths}
         onToggleFlightPaths={() => {
+          if (!plan.pro) { openPro("paths"); return; }
           const next = !showFlightPaths;
           setShowFlightPaths(next);
           window.localStorage.setItem(
@@ -304,12 +309,12 @@ export function RadarShell({
           <MapRideIcon />
         </span>
       </TakeOffButton>
-      <AircraftTrailLayer
+      {plan.pro && <AircraftTrailLayer
         map={map}
         airborne={mapAircraft}
         enabled={showFlightPaths}
         selectedTail={selectedTail}
-      />
+      />}
 
       <MapHeader
         airborne={visibleFlights}
@@ -362,6 +367,7 @@ function MapHeader({
 
   return (
     <header
+      className="ss-map-header"
       role="status"
       aria-live="polite"
       aria-label={
@@ -390,10 +396,10 @@ function MapHeader({
       <div
         style={{
           width: "100%",
-          maxWidth: 560,
+          maxWidth: "var(--ss-map-header-width, 560px)",
           margin: "0 auto",
-          height: "calc(env(safe-area-inset-top, 0px) + clamp(78px, 20vw, 92px))",
-          padding: "env(safe-area-inset-top, 0px) clamp(14px, 4vw, 18px) 10px",
+          height: "calc(env(safe-area-inset-top, 0px) + var(--ss-map-header-height, clamp(78px, 20vw, 92px)))",
+          padding: "env(safe-area-inset-top, 0px) max(18px, env(safe-area-inset-right, 0px)) 10px max(18px, env(safe-area-inset-left, 0px))",
           display: "grid",
           gridTemplateColumns:
             visibleAircraft.length > 0 ? "auto minmax(0, 1fr)" : "1fr auto 1fr",

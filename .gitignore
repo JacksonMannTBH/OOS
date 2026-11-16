@@ -24,6 +24,10 @@ mobile/android/.gradle/
 mobile/android/build/
 mobile/android/app/build/
 mobile/android/local.properties
+mobile/DerivedData/
+mobile/DeviceDerivedData/
+mobile/ios/DerivedData/
+cloud-backend/supabase/.temp/
 supabase/.temp/
 .firebase/
 firebase/functions/lib/
@@ -83,6 +87,7 @@ AUDIT-2026-05-07.md
 .codex-local/
 tmp/
 firebase-debug.log
+.local-*.log
 
 # Packaged mobile interface (regenerated from mobile/frontend)
 mobile/www/

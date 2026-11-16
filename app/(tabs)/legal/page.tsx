@@ -1,5 +1,6 @@
 import { SettingsPageShell } from "@/components/SettingsPageShell";
 import type { ReactNode } from "react";
+import { MEMBERSHIP_PREVIEW_ENABLED } from "@/lib/membership-availability";
 
 export const metadata = {
   title: "Legal & Privacy",
@@ -30,7 +31,6 @@ export default function LegalPage() {
   return (
     <SettingsPageShell
       title="Legal & privacy"
-      description="Plain-language rules for using Out Of Sight and a clear account of what happens to your data."
     >
       <LegalSection id="safety" title="Use it safely">
         <p>
@@ -54,7 +54,7 @@ export default function LegalPage() {
 
       <LegalSection id="privacy" title="What the app handles">
         <p>
-          <strong>Effective October 12, 2026.</strong> Out Of Sight is operated
+          <strong>Effective November 15, 2026.</strong> Out Of Sight is operated
           by Jackson Mann. For privacy questions or deletion requests, email{" "}
           <a href="mailto:jacksonmann253@gmail.com">
             jacksonmann253@gmail.com
@@ -64,8 +64,8 @@ export default function LegalPage() {
         <PrivacyRow title="Live location">
           If you allow location access, your coordinates, speed, and heading are
           used on your device for map positioning, distance calculations, and
-          Ride Mode. Simply opening those features does not cause Out Of Sight
-          to store that location on its servers. If you have not chosen a state,
+          Ride Mode. These features keep your location on the device
+          {MEMBERSHIP_PREVIEW_ENABLED ? ", unless you explicitly enable Elite rider sharing, described below." : "."} If you have not chosen a state,
           the map sends one location fix through our server to the U.S. Census
           geocoder to identify your state. Map tile requests also reveal the
           area being viewed to the map provider. These services may retain
@@ -87,13 +87,26 @@ export default function LegalPage() {
         <PrivacyRow title="Ride recording on iPhone">
           After you confirm recording, Start Ride uses Precise Location to record
           speed, estimated distance, and duration, including while locked or using
-          another app. End Ride stops this recording and saves a summary. Your three
+          another app. End Ride stops this recording and saves a summary. Your ten
           latest summaries are stored only on this phone, excluded from iCloud backup.
           Completing another ride
-          replaces the oldest of the three. Route points are saved only on this phone
+          replaces the oldest of the ten. Route points are saved only on this phone
           to display your route, start, and finish. Route history is not uploaded. Missing distance is not estimated
           when recording is interrupted. Aircraft Live Tracking is a separate session.
         </PrivacyRow>
+        {MEMBERSHIP_PREVIEW_ENABLED && <PrivacyRow title="Elite rider sharing">
+          If you enable map visibility in Elite Settings, your precise current
+          location, username and chosen icon are sent to our server during an
+          active recorded ride and shown to other OOS users, including while your
+          screen is locked. Speed is included only when you enable speed sharing.
+          Only the latest shared position is stored; your recorded route is not
+          uploaded. End Ride or turning visibility off removes the active position.
+          If the phone loses its connection, the position disappears within 45
+          seconds and is deleted by the next minute’s cleanup. Profiles and sharing
+          choices are saved for this installation with a random private credential.
+          There is no login, account recovery or profile transfer to another phone.
+          Reset preferences turns sharing off and keeps your saved username and icon.
+        </PrivacyRow>}
         <PrivacyRow title="Live tracking on iPhone">
           Turning on Live tracking starts a location session that continues while
           you use other apps or lock your phone. Your device calculates the nearest
@@ -106,13 +119,9 @@ export default function LegalPage() {
           original update time until fresh data becomes available.
         </PrivacyRow>
         <PrivacyRow title="Home Screen widget on iPhone">
-          With location permission, the widget calculates aircraft distances on
-          your device when iOS refreshes it. The app and widget share your selected
-          state, aircraft preferences, distance bands, and last calculated result
-          in private storage on your phone. Your coordinates stay in memory and
-          are not saved there or sent with aircraft-data requests. The widget
-          works independently of Live tracking and keeps its last known result
-          and update time when new data is unavailable.
+          The Home Screen widget opens Ride Mode. It does not request your
+          location or fetch aircraft data. Starting a ride or Live Tracking
+          remains a separate action in the app.
         </PrivacyRow>
         <PrivacyRow title="Takeoff alerts">
           Enabling alerts stores a random device ID, selected state, aircraft

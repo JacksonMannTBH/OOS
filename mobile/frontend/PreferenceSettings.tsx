@@ -20,16 +20,16 @@ export function TimeFormatSetting({ current }: { current: TimeFormat }) {
       style={{ display: "flex", gap: 8, flexWrap: "wrap" }}
     >
       <FormatChoice
-        value="24"
-        current={current}
-        label="24-hour"
-        sample="15:42 PT"
-      />
-      <FormatChoice
         value="12"
         current={current}
         label="12-hour"
         sample="3:42 PM PT"
+      />
+      <FormatChoice
+        value="24"
+        current={current}
+        label="24-hour"
+        sample="15:42 PT"
       />
     </form>
   );

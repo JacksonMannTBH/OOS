@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import nextDynamic from "next/dynamic";
 import { LogoMark } from "./brand/Logo";
 import { EMPTY_AIRCRAFT_SNAPSHOT, useAircraft } from "@/lib/hooks/useAircraft";
-import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { useRiderPos } from "@/lib/hooks/useRiderPos";
 import { useRideStatusThresholds } from "@/lib/hooks/useRideStatusThresholds";
 import { SS_TOKENS } from "@/lib/tokens";
@@ -17,7 +16,6 @@ import { SettingsButton } from "./SettingsButton";
 import { TakeOffButton } from "./TakeOffButton";
 import { HomeActiveAircraft } from "./HomeActiveAircraft";
 import { isVisibleFlight } from "@/lib/aircraft-freshness";
-import { DataLoadingScreen } from "./DataLoadingScreen";
 import { LiveTrackingButton } from "./LiveTrackingButton";
 import { HomeBackground } from "./HomeBackground";
 import { RideHistory } from "./RideHistory";
@@ -36,18 +34,9 @@ type Props = {
 
 export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, mockParam }: Props) {
   const snap = useAircraft(initial, mockOn);
-  const stateId = useSelectedStateId();
   const { pos } = useRiderPos();
   const rideThresholds = useRideStatusThresholds();
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [initialLoadExpired, setInitialLoadExpired] = useState(false);
-  const hasSnapshot = snap.fetched_at > 0;
-  useEffect(() => {
-    setInitialLoadExpired(false);
-    if (hasSnapshot) return;
-    const timer = window.setTimeout(() => setInitialLoadExpired(true), 10_000);
-    return () => window.clearTimeout(timer);
-  }, [stateId, hasSnapshot]);
 
   // useAircraft already scopes the live feed to the selected state and tracking
   // preferences. A second catalog lookup can discard newly tracked aircraft.
@@ -104,9 +93,6 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
       : "/map";
 
 
-  // Open the app using its most recent saved state.
-  if (!hasSnapshot && !initialLoadExpired) return <DataLoadingScreen />;
-
   return (
     <>
       <HomeBackground />
@@ -116,7 +102,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
           height: "100dvh",
           boxSizing: "border-box",
           width: "100%",
-          maxWidth: 430,
+          maxWidth: "var(--ss-home-max-width, 430px)",
           margin: "0 auto",
           position: "relative",
           zIndex: 1,
@@ -125,18 +111,19 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
         }}
       >
         <div className="ss-home-scroll">
+        <div className="ss-home-overview">
         <SubscriptionAnnouncement />
         <LiveTrackingButton mockOn={mockOn} style={{
-          position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 12px)",
-          left: "clamp(14px, 5vw, 20px)", zIndex: 3,
+          position: "absolute", top: "var(--ss-home-control-top, calc(env(safe-area-inset-top, 0px) + 12px))",
+          left: "var(--ss-home-control-side, clamp(14px, 5vw, 20px))", zIndex: 3,
         }} />
         <SettingsButton
           label=""
           variant="plain"
           style={{
             position: "absolute",
-            top: "calc(env(safe-area-inset-top, 0px) + 12px)",
-            right: "clamp(14px, 5vw, 20px)",
+            top: "var(--ss-home-control-top, calc(env(safe-area-inset-top, 0px) + 12px))",
+            right: "var(--ss-home-control-side, clamp(14px, 5vw, 20px))",
             width: 44,
             minHeight: 44,
             padding: 0,
@@ -157,7 +144,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
           style={{
             alignSelf: "center",
             display: "block",
-            width: "min(100%, 225px, 22.5dvh)",
+            width: "var(--ss-home-eye-width, min(100%, 225px, 22.5dvh))",
             aspectRatio: "3 / 2",
             flexShrink: 0,
             WebkitTapHighlightColor: "transparent",
@@ -174,8 +161,9 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
           />
         </Link>
         <HomeActiveAircraft aircraft={visibleFlights} nearest={nearestVisible} statusColor={statusColor} mockParam={mockParam} />
+        </div>
 
-        <div className="ss-home-map-preview" style={{ position: "relative", width: "100%", height: 276.5, marginTop: "auto", boxSizing: "border-box", borderRadius: 18, overflow: "hidden" }}>
+        <div className="ss-home-map-preview" style={{ position: "relative", width: "100%", height: "var(--ss-home-map-height, 276.5px)", marginTop: "var(--ss-home-map-margin, auto)", boxSizing: "border-box", borderRadius: 18, overflow: "hidden" }}>
           <HomeMapPreview rider={pos} aircraft={visibleFlights} />
           <Link
             href={mockParam ? { pathname: "/map", query: { mock: mockParam } } : "/map"}
@@ -195,9 +183,9 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
           className="ss-home-actions"
           style={{
             width: "100%",
-            maxWidth: 460,
+            maxWidth: "var(--ss-home-actions-max-width, 460px)",
             alignSelf: "center",
-            padding: "12px clamp(14px, 5vw, 20px) calc(env(safe-area-inset-bottom, 0px) + 16px)",
+            padding: "var(--ss-home-actions-padding, 12px clamp(14px, 5vw, 20px) calc(env(safe-area-inset-bottom, 0px) + 16px))",
             display: "grid",
             gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
             gap: 12,
@@ -205,13 +193,15 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
         >
           <button
             type="button"
+            className="ss-recent-rides-button"
+            aria-label="Recent Rides"
             onClick={() => setHistoryOpen(true)}
             aria-haspopup="dialog"
-            style={{ width: "100%", minWidth: 0, height: 64, padding: "0 10px", boxSizing: "border-box", borderRadius: 18, border: "1px solid rgba(255,255,255,.24)", background: "#151613", color: "#f5f1e6", font: "inherit", fontSize: 18, fontWeight: 800, cursor: "pointer" }}
+            style={{ width: "100%", minWidth: 0, minHeight: 56, height: "var(--ss-home-action-height, 64px)", padding: "var(--ss-home-action-padding, 0)", lineHeight: 1.25, boxSizing: "border-box", borderRadius: 18, border: "1px solid rgba(255,255,255,.24)", background: "#151613", color: "#f5f1e6", font: "inherit", fontSize: "var(--ss-home-action-font-size, 18px)", fontWeight: 800, cursor: "pointer" }}
           >
             Recent Rides
           </button>
-          <div style={{ display: "grid", minWidth: 0 }}><TakeOffButton style={{ width: "100%", height: 64, padding: "0 10px" }} /></div>
+          <div style={{ display: "grid", minWidth: 0 }}><TakeOffButton style={{ width: "100%", height: "var(--ss-home-action-height, 64px)", alignSelf: "stretch", fontSize: "var(--ss-home-action-font-size, 18px)", lineHeight: 1.25, padding: "var(--ss-home-action-padding, 0 10px)" }} /></div>
         </div>
       </main>
         <RideHistory open={historyOpen} onClose={() => setHistoryOpen(false)} />

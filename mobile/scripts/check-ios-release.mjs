@@ -10,6 +10,7 @@ const backend = JSON.parse(fs.readFileSync(path.join(mobile, "backend.json"), "u
 try {
   execFileSync(process.execPath, [path.join(mobile, "scripts/generate-backend-config.mjs"), "--check"]);
   const packaged = JSON.parse(fs.readFileSync(path.join(app, "public/bundle-info.json"), "utf8"));
+  if (packaged.membershipPreview !== false) errors.push("The App Store interface must exclude the saved membership preview. Rebuild with the default build:web command.");
   if (packaged.backend !== backend.url) errors.push("The bundled app must use the same Supabase endpoint as the native widget. Run npm run sync:ios.");
 } catch {
   errors.push("Generate and sync the Supabase app/widget configuration before release.");

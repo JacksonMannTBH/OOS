@@ -77,6 +77,28 @@ struct RideMotionAngles {
     var noseUp: Double
 }
 
+// Screen-right expressed in Core Motion's fixed portrait device coordinates.
+// These cases follow UIInterfaceOrientation, whose landscape names are the
+// opposite of UIDeviceOrientation. Capture this once when calibrating.
+enum RideMountOrientation: CaseIterable {
+    case portrait, portraitUpsideDown, landscapeLeft, landscapeRight
+
+    func mapHeading(portraitHeading: Double) -> Double? {
+        guard portraitHeading.isFinite, portraitHeading >= 0 else { return nil }
+        let offset = atan2(screenRight.y, screenRight.x) * 180 / .pi
+        return (portraitHeading - offset + 360).truncatingRemainder(dividingBy: 360)
+    }
+
+    var screenRight: RideMotionVector {
+        switch self {
+        case .portrait: return RideMotionVector(x: 1, y: 0, z: 0)
+        case .portraitUpsideDown: return RideMotionVector(x: -1, y: 0, z: 0)
+        case .landscapeLeft: return RideMotionVector(x: 0, y: 1, z: 0)
+        case .landscapeRight: return RideMotionVector(x: 0, y: -1, z: 0)
+        }
+    }
+}
+
 // These fixed bike axes compensate for the mount's initial tilt. Core Motion's
 // fused gravity supplies world vertical in phone coordinates, so heading turns
 // cannot become roll/pitch. Raw accelerometer force is never treated as tilt.
@@ -84,7 +106,6 @@ struct RideMotionTracker {
     private var up: RideMotionVector?
     private var right: RideMotionVector?
     private var forward: RideMotionVector?
-    private var gForceForward: RideMotionVector?
     private var recent: [(time: Double, angles: RideMotionAngles)] = []
     private var orientation: (time: Double, roll: Double, pitch: Double)?
     var calibrated: Bool { up != nil }
@@ -96,7 +117,7 @@ struct RideMotionTracker {
                 timestamp: Double) -> RideGForceReading? {
         guard timestamp.isFinite, acceleration.length.isFinite,
               gravity.length > 0.8, gravity.length < 1.2,
-              let vertical = gravity.scaled(-1).unit, let forward = gForceForward else { return nil }
+              let vertical = gravity.scaled(-1).unit, let forward else { return nil }
         let projected = forward.subtracting(vertical.scaled(forward.dot(vertical)))
         // Forward/backward is undefined when the bike points vertically.
         guard projected.length > 0.05, let horizontalForward = projected.unit,
@@ -109,36 +130,29 @@ struct RideMotionTracker {
             lateralG: -acceleration.dot(horizontalRight))
     }
 
-    mutating func calibrate(gravity: RideMotionVector) -> Bool {
+    mutating func calibrate(gravity: RideMotionVector, orientation: RideMountOrientation = .portrait) -> Bool {
         guard gravity.length > 0.8, gravity.length < 1.2,
               let up = gravity.scaled(-1).unit else { return false }
-        let phoneRight = RideMotionVector(x: 1, y: 0, z: 0)
-        let projectedRight = phoneRight.subtracting(up.scaled(phoneRight.dot(up)))
+        // Gravity sets the mounted zero. Its intersection with the screen plane
+        // supplies the bike's horizontal right, including combined tilt and cant.
+        // The locked screen orientation resolves the sign in either landscape.
+        let screenRight = RideMotionVector(x: up.y, y: -up.x, z: 0)
         let right: RideMotionVector
-        if projectedRight.length > 0.1, let horizontalRight = projectedRight.unit {
+        if screenRight.length > 0.1, var horizontalRight = screenRight.unit {
+            if horizontalRight.dot(orientation.screenRight) < 0 {
+                horizontalRight = horizontalRight.scaled(-1)
+            }
             right = horizontalRight
         } else {
-            // If the phone's right axis is vertical, use its top edge for the
-            // forward direction. This avoids rejecting a valid starting pose
-            // or amplifying tiny sensor noise when projecting a vertical axis.
-            let phoneTop = RideMotionVector(x: 0, y: 1, z: 0)
-            guard let forward = phoneTop.subtracting(up.scaled(phoneTop.dot(up))).unit,
-                  let horizontalRight = forward.cross(up).unit else { return false }
+            // With the screen flat, gravity cannot resolve an in-screen heading.
+            // Use screen-right in the captured orientation instead of portrait x.
+            let projectedRight = orientation.screenRight.subtracting(up.scaled(orientation.screenRight.dot(up)))
+            guard let horizontalRight = projectedRight.unit else { return false }
             right = horizontalRight
         }
         self.up = up
         self.right = right
         self.forward = up.cross(right)
-        // The screen's horizontal intersection accounts for a mount that is
-        // both tilted and side-canted without introducing a heading offset.
-        // A flat screen has no such intersection; use the existing mount axes.
-        let screenRight = RideMotionVector(x: up.y, y: -up.x, z: 0)
-        if screenRight.length > 0.1, var horizontalRight = screenRight.unit {
-            if horizontalRight.x < 0 { horizontalRight = horizontalRight.scaled(-1) }
-            gForceForward = up.cross(horizontalRight)
-        } else {
-            gForceForward = self.forward
-        }
         resetSamples()
         return true
     }

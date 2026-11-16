@@ -196,7 +196,9 @@ function animateScreenNavigation(update: () => void, from: Screen, to: Screen) {
           const viewport = sourceRenderer.getBoundingClientRect();
           const offsetX = target.left + target.width / 2 - (viewport.left + viewport.width / 2);
           const offsetY = target.top + target.height / 2 - (viewport.top + viewport.height / 2);
-          const scroll = renderer.closest<HTMLElement>(".ss-home-scroll")?.getBoundingClientRect();
+          const scrollBounds = renderer.closest<HTMLElement>(".ss-home-scroll")?.getBoundingClientRect();
+          // In landscape the overview scrolls independently, beside the map.
+          const scroll = scrollBounds?.height ? scrollBounds : undefined;
           const targetTop = Math.max(target.top, scroll?.top ?? 0, 0);
           const targetBottom = Math.min(target.bottom, scroll?.bottom ?? innerHeight, innerHeight);
           const clip = `inset(${Math.max(0, targetTop - source.top)}px ${Math.max(0, source.right - target.right)}px ${Math.max(0, source.bottom - targetBottom)}px ${Math.max(0, target.left - source.left)}px round 18px)`;

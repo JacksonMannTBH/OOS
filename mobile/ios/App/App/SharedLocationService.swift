@@ -133,6 +133,7 @@ public class SharedLocationPlugin: CAPPlugin, CAPBridgedPlugin, @preconcurrency 
     private var calls: [String: CAPPluginCall] = [:]
     private var headingCalls: [String: CAPPluginCall] = [:]
     private var compass: CLLocationManager?
+    private var portraitHeading: Double?
     private var loadingObservation: NSKeyValueObservation?
 
     public override func load() {
@@ -153,10 +154,13 @@ public class SharedLocationPlugin: CAPPlugin, CAPBridgedPlugin, @preconcurrency 
                 let manager = CLLocationManager()
                 manager.delegate = self
                 manager.headingFilter = 2
+                // Keep the sensor reference fixed; publish relative to the
+                // rendered interface, including when Ride rotation is locked.
                 manager.headingOrientation = .portrait
                 compass = manager
             }
             compass?.startUpdatingHeading()
+            refreshHeadingOrientation()
         }
     }
 
@@ -172,12 +176,19 @@ public class SharedLocationPlugin: CAPPlugin, CAPBridgedPlugin, @preconcurrency 
             saved.keepAlive = false
             bridge?.releaseCall(saved)
         }
-        if headingCalls.isEmpty { compass?.stopUpdatingHeading() }
+        if headingCalls.isEmpty { compass?.stopUpdatingHeading(); portraitHeading = nil }
     }
 
     @MainActor public func locationManager(_ manager: CLLocationManager, didUpdateHeading heading: CLHeading) {
         guard heading.headingAccuracy >= 0 else { return }
-        let degrees = heading.trueHeading >= 0 ? heading.trueHeading : heading.magneticHeading
+        portraitHeading = heading.trueHeading >= 0 ? heading.trueHeading : heading.magneticHeading
+        refreshHeadingOrientation()
+    }
+
+    @MainActor func refreshHeadingOrientation() {
+        guard let portraitHeading,
+              let orientation = (bridge?.viewController as? OOSBridgeViewController)?.compassHeadingOrientation,
+              let degrees = orientation.mapHeading(portraitHeading: portraitHeading) else { return }
         for call in Array(headingCalls.values) { call.resolve(["heading": degrees]) }
     }
 

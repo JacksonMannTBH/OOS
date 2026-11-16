@@ -5,7 +5,9 @@ import { POLICE_COLOR, POLICE_ICON_PATH, policeReportAge, type PoliceSighting } 
 
 type Entry = { marker: maplibregl.Marker; popup?: maplibregl.Popup; details?: HTMLDivElement; count?: HTMLElement; age?: HTMLElement };
 // Show sightings two zoom levels farther out than the previous city view.
-const MAIN_MAP_POLICE_MIN_ZOOM = 8;
+export const MAIN_MAP_POLICE_MIN_ZOOM = 8;
+export const MAIN_MAP_POLICE_BADGE_SIZE = 28;
+export const MAIN_MAP_POLICE_TOUCH_SIZE = 44;
 
 function setMarkerVisibility(entry: Entry, visible: boolean) {
   entry.marker.getElement().style.display = visible ? "grid" : "none";
@@ -41,8 +43,8 @@ export function PoliceSightingLayer({ map, sightings, interactive = false }: { m
         if (interactive) element.setAttribute("type", "button");
         else element.setAttribute("aria-hidden", "true");
         // The main-map badge is compact, with an unchanged 44px touch target.
-        const size = interactive ? 28 : 22;
-        Object.assign(element.style, { width: interactive ? "44px" : "22px", height: interactive ? "44px" : "22px", display: "grid", placeItems: "center", border: "none", borderRadius: "50%", background: "transparent", color: POLICE_COLOR, cursor: interactive ? "pointer" : "default", pointerEvents: interactive ? "auto" : "none", padding: "0", boxSizing: "border-box" });
+        const size = interactive ? MAIN_MAP_POLICE_BADGE_SIZE : 22;
+        Object.assign(element.style, { width: interactive ? `${MAIN_MAP_POLICE_TOUCH_SIZE}px` : "22px", height: interactive ? `${MAIN_MAP_POLICE_TOUCH_SIZE}px` : "22px", display: "grid", placeItems: "center", border: "none", borderRadius: "50%", background: "transparent", color: POLICE_COLOR, cursor: interactive ? "pointer" : "default", pointerEvents: interactive ? "auto" : "none", padding: "0", boxSizing: "border-box" });
         element.innerHTML = `<span class="oos-police-marker__badge" style="display:grid;place-items:center;width:${size}px;height:${size}px;box-sizing:border-box;border:1px solid currentColor;border-radius:50%;background:#090909;padding:4px"><svg width="100%" height="100%" viewBox="0 0 24 26" aria-hidden="true"><path d="${POLICE_ICON_PATH}" fill="currentColor"/></svg></span>`;
         entry = { marker: new maplibregl.Marker({ element }).setLngLat([sighting.lon, sighting.lat]).addTo(map) };
         if (interactive) {

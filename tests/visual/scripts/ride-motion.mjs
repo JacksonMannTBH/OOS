@@ -2,11 +2,11 @@
 // tested separately in RideMotionTests.swift; real riding needs device testing.
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
-const { chromium } = await import(process.env.OOS_PLAYWRIGHT_MODULE ?? "@playwright/test");
+const { chromium, webkit } = await import(process.env.OOS_PLAYWRIGHT_MODULE ?? "@playwright/test");
 const base = process.env.OOS_VISUAL_BASE_URL ?? "http://127.0.0.1:4183";
 const out = process.env.OOS_REVIEW_OUTPUT ?? ".local/ride-motion";
 await mkdir(out, { recursive: true });
-const browser = await chromium.launch({ headless: true });
+const browser = await (process.env.OOS_WEBKIT === "1" ? webkit : chromium).launch({ headless: true });
 let page;
 try {
   page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -176,10 +176,15 @@ try {
   assert.equal(await page.locator(".ss-ride-screen footer p").count(), 0, "Successful calibration clears the error and stays quiet");
   await page.screenshot({ path: `${out}/calibrated-ride.png`, fullPage: true });
   const swipe = async () => page.locator(".ss-ride-view").evaluate(element => {
-    const touch = x => new Touch({ identifier: 1, target: element, clientX: x, clientY: 400 });
-    element.dispatchEvent(new TouchEvent("touchstart", { bubbles: true, touches: [touch(240)] }));
-    element.dispatchEvent(new TouchEvent("touchmove", { bubbles: true, touches: [touch(110)] }));
-    element.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [], changedTouches: [touch(110)] }));
+    const touch = x => ({ identifier: 1, target: element, clientX: x, clientY: 400 });
+    const send = (type, touches, changedTouches = []) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperties(event, { touches: { value: touches }, changedTouches: { value: changedTouches } });
+      element.dispatchEvent(event);
+    };
+    send("touchstart", [touch(240)]);
+    send("touchmove", [touch(110)]);
+    send("touchend", [], [touch(110)]);
     const click = new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 });
     element.dispatchEvent(click);
     if (!click.defaultPrevented) throw new Error("A swipe must suppress its following click");
@@ -219,6 +224,7 @@ try {
   assert(Math.abs(dialSize.width - mapDiameter) < 0.1 && Math.abs(dialSize.height - mapDiameter) < 0.1, "G-force and map circles have the same diameter");
   assert.deepEqual(await meter.locator(".ss-gforce-peak").allTextContents(), ["0.70 G", "0.80 G", "0.60 G", "0.50 G"]);
   assert.equal(await meter.getByRole("img", { name: /left G-force 0\.60 G, right G-force 0\.50 G/ }).count(), 1, "The meter names load directions, not turn directions");
+  assert.equal(await meter.getByRole("img", { name: /^Fixed G-force scale: center 0 G, inner ring 0\.5 G, outer edge 1 G\./ }).count(), 1);
   assert.equal(await meter.locator("h2, output, dl").count(), 0, "The circle has no heading, current reading, or separate peak list");
   assert.equal(await meter.getByText("Swipe for map", { exact: true }).count(), 0);
   assert.equal(await meter.getByRole("status").count(), 0, "The calibrated meter has no explanatory text");
@@ -236,18 +242,36 @@ try {
   }));
   assert(intermediate > 94 && intermediate < 234, "The dot glides instead of jumping to the next reading");
   await page.waitForFunction(() => Math.abs(Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) - 234) < 0.1);
+  assert(await meter.locator(".ss-gforce-trail path").evaluateAll(paths => paths.some(path => path.getAttribute("d")?.includes("L"))), "Moving G-force readings leave a tracking line");
+  assert.equal(await meter.locator(".ss-gforce-trail path").count(), 6, "The fading trail has a fixed drawing budget");
+  await page.screenshot({ path: `${out}/gforce-tracking-trail.png`, fullPage: true });
+  await page.waitForTimeout(3300);
+  assert(await meter.locator(".ss-gforce-trail path").evaluateAll(paths => paths.every(path => {
+    const numbers = (path.getAttribute("d") ?? "").match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+    return numbers.every((value, index) => Math.abs(value - (index % 2 ? 262 : 234)) < 0.2);
+  })), "Old movements fade out instead of building up indefinitely");
   assert.equal(await meter.evaluate(element => element.getAnimations().filter(animation => animation.effect?.target === element).length), 0, "Live readings do not restart the entrance animation");
   assert(Number(await meter.locator(".ss-gforce-dot").getAttribute("cy")) > 150, "A left turn while accelerating moves the dot right and down");
   await page.evaluate(() => { window.motionFixture.gForceReading = { timestamp: 3, longitudinalG: 0, lateralG: 1.2, combinedG: 1.2 }; });
-  await page.waitForFunction(() => Math.abs(Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) - 38) < 0.1);
+  await page.waitForFunction(() => Math.abs(Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) - 10) < 0.1);
+  assert(await meter.locator(".ss-gforce-trail path").evaluateAll(paths => paths.some(path => {
+    const numbers = (path.getAttribute("d") ?? "").match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+    return numbers.some((value, index) => index % 2 === 0 && Math.abs(value - 234) < 0.2 && Math.abs(numbers[index + 1] - 262) < 0.2);
+  })), "Crossing 1 G leaves earlier trail points at their original positions");
   await page.evaluate(() => { window.motionFixture.gForceReading = { timestamp: 4, longitudinalG: 0, lateralG: 0.4, combinedG: 0.4 }; });
-  await page.waitForTimeout(600);
-  const heldPosition = Number(await meter.locator(".ss-gforce-dot").getAttribute("cx"));
-  assert(heldPosition > 94 && heldPosition < 113, "Scale holds briefly before shrinking");
   await page.waitForFunction(() => Math.abs(Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) - 94) < 0.1);
+  await page.waitForTimeout(1200);
+  assert(Math.abs(Number(await meter.locator(".ss-gforce-dot").getAttribute("cx")) - 94) < 0.1, "A lower reading stays on the same scale after the old resizing delay");
   assert.deepEqual(await meter.locator(".ss-gforce-peak").allTextContents(), ["0.70 G", "0.80 G", "0.60 G", "0.50 G"], "Display smoothing does not change recorded peaks");
   await page.emulateMedia({ reducedMotion: "reduce" });
   assert.equal(await meter.evaluate(element => getComputedStyle(element).animationName), "none", "Reduced Motion disables the panel animation");
+  await page.evaluate(() => { window.motionFixture.gForceReading = { timestamp: 4.5, longitudinalG: 2.4, lateralG: -3.2, combinedG: 4 }; });
+  await page.waitForFunction(() => Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) === 262
+    && Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cy")) === 234);
+  assert(await meter.locator(".ss-gforce-trail path").evaluateAll(paths => paths.every(path => {
+    const numbers = (path.getAttribute("d") ?? "").match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+    return numbers.every((value, index) => index % 2 || Math.hypot(value - 150, numbers[index + 1] - 150) <= 140.02);
+  })), "Diagonal over-range readings preserve direction and keep the complete trail inside the dial");
   await page.evaluate(() => { window.motionFixture.gForceReading = { timestamp: 5, longitudinalG: 0, lateralG: -0.4, combinedG: 0.4 }; });
   await page.waitForFunction(() => Number(document.querySelector(".ss-gforce-dot")?.getAttribute("cx")) === 206);
   await page.evaluate(() => { window.motionFixture.gForceReading = { timestamp: 6, longitudinalG: -0.5, lateralG: 0.4, combinedG: Math.hypot(0.5, 0.4) }; });
@@ -258,6 +282,7 @@ try {
   await page.evaluate(() => { window.motionFixture.gForcePaused = true; });
   await meter.getByText("Waiting for motion readings…", { exact: true }).waitFor();
   assert.equal(await meter.locator(".ss-gforce-dot").count(), 0, "Missing readings do not show stale G-force");
+  assert.equal(await meter.locator(".ss-gforce-trail").count(), 0, "A sensor pause clears the tracking trail");
   await page.evaluate(() => { window.motionFixture.gForcePaused = false; });
   await meter.locator(".ss-gforce-dot").waitFor();
   await page.evaluate(() => document.dispatchEvent(new Event("pause")));
@@ -443,6 +468,8 @@ try {
   await swipe();
   await meter.waitFor();
   assert.equal(await resetGForce.isDisabled(), true, "G-force refresh waits for calibrated measurements");
+  assert.match(await meter.locator(".ss-gforce-message").innerText(), /Use\s+the level button\s+to measure/);
+  assert.equal(await meter.locator(".ss-gforce-message svg").count(), 1, "The measurement prompt includes the Level icon");
   await swipe();
   await page.evaluate(() => { window.motionFixture.unstable = false; });
   await cal.click();
@@ -484,7 +511,7 @@ try {
   await page.getByRole("button", { name: "End Ride and return to the main app" }).click();
   await summary.waitFor();
   assert.equal(await summary.locator(".ss-ride-statistics + p").count(), 0, "Uncalibrated summaries also have no bottom note");
-  assert.equal(await summary.getByText("—°", { exact: true }).count(), 3);
+  assert.equal(await summary.getByRole("region", { name: "Peak angles", exact: true }).count(), 0, "A ride without angle calibration has no peak-angle section");
   assert.equal(await summary.locator(".ss-ride-calibration-prompt").count(), 0, "The live calibration prompt stays out of saved summaries");
   console.log("PASS independent G-force refresh, failure and retry, busy controls, calibration and dot preservation, compact refresh icons; G-force animation, navigation, pause/resume, raw peaks, saved summaries and angle resets");
 } catch (error) {

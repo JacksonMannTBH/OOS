@@ -65,6 +65,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, MessagingDelegate {
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
+        #if DEBUG
+        RiderSharingSession.shared.endRide()
+        #endif
         if #available(iOS 16.2, *) { LiveTrackingSession.shared.stopForApplicationTermination() }
     }
 }

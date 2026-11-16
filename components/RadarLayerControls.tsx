@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { SS_TOKENS } from "@/lib/tokens";
 import { Tooltip } from "./Tooltip";
+import { ProBadge } from "./ProAccess";
 
 const PATH_ICON = "/icons/radar-path.svg";
 const RINGS_ICON = "/icons/radar-rings.svg";
@@ -38,7 +39,7 @@ export function RadarLayerControls({
     <div
       style={{
         position: "absolute",
-        left: 12,
+        left: "max(12px, env(safe-area-inset-left, 0px))",
         bottom: offsetCss(0),
         zIndex: 12,
         display: "flex",
@@ -51,7 +52,7 @@ export function RadarLayerControls({
         aria-label="Home"
         style={{
           ...iconButtonStyle(false),
-          border: `1px solid ${SS_TOKENS.alert}`,
+          border: 0,
         }}
       >
         <HomeIcon />
@@ -92,9 +93,10 @@ export function RadarLayerControls({
           onClick={onToggleFlightPaths}
           aria-label="Toggle flight paths"
           aria-pressed={flightPathsEnabled}
-          style={iconButtonStyle(flightPathsEnabled)}
+          style={{ ...iconButtonStyle(flightPathsEnabled), position: "relative" }}
         >
           <IconGlyph src={PATH_ICON} active={flightPathsEnabled} />
+          <ProBadge className="ss-map-pro-badge" />
         </button>
       </Tooltip>
       <Tooltip
@@ -146,9 +148,7 @@ function iconButtonStyle(
       : active
         ? SS_TOKENS.alert
         : SS_TOKENS.fg1,
-    boxShadow: active
-      ? "0 0 22px rgba(246, 196, 49, 0.24), 0 14px 34px rgba(0, 0, 0, 0.34)"
-      : "0 14px 34px rgba(0, 0, 0, 0.34)",
+    boxShadow: "0 14px 34px rgba(0, 0, 0, 0.34)",
     backdropFilter: "blur(18px)",
     WebkitBackdropFilter: "blur(18px)",
     cursor: disabled ? "not-allowed" : "pointer",

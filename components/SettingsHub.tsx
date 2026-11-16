@@ -1,16 +1,23 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { EliteBadge, ProBadge } from "./ProAccess";
+import { usePro } from "@/lib/hooks/usePro";
+import { openPro } from "@/lib/pro-access";
+import { MEMBERSHIP_PREVIEW_ENABLED } from "@/lib/membership-availability";
 
 type SettingsLink = {
   href: string;
   title: string;
-  icon: "stats" | "bell" | "ride" | "aircraft" | "about" | "help" | "legal" | "store";
+  icon: "stats" | "bell" | "ride" | "aircraft" | "about" | "help" | "legal" | "store" | "elite";
   accent: string;
 };
 
 const SETTINGS_GROUPS: { label: string; links: SettingsLink[] }[] = [
   { label: "Ride stats", links: [
     { href: "/settings/stats", title: "Stats", icon: "stats", accent: "#f6c431" },
+    ...(MEMBERSHIP_PREVIEW_ENABLED ? [{ href: "/settings/elite", title: "Elite Settings", icon: "elite" as const, accent: "#f6c431" }] : []),
   ] },
   { label: "Ride and tracking", links: [
     { href: "/settings/alerts", title: "Notifications & state", icon: "bell", accent: "#f6c431" },
@@ -25,20 +32,29 @@ const SETTINGS_GROUPS: { label: string; links: SettingsLink[] }[] = [
   ] },
 ];
 
-export default function SettingsHub({ includeStore = true }: { includeStore?: boolean }) {
+export default function SettingsHub({ includeStore = true, includeElite = false, proAction, onEliteClick }: { includeStore?: boolean; includeElite?: boolean; proAction?: ReactNode; onEliteClick?: () => void }) {
+  const plan = usePro();
   return (
     <main className="ss-settings-hub">
+      {proAction}
       <nav aria-label="Settings" className="ss-settings-menu">
         {SETTINGS_GROUPS.map(group => (
           <div key={group.label} role="group" aria-label={group.label} className="ss-settings-list">
-            {group.links.filter(link => includeStore || link.href !== "/store").map((link) => (
-              <Link key={link.href} href={link.href} prefetch={false} className="ss-settings-row">
+            {group.links.filter(link => (includeStore || link.href !== "/store") && (includeElite || link.icon !== "elite")).map((link) => (
+              <Link key={link.href} href={link.href} prefetch={false} className="ss-settings-row"
+                aria-haspopup={(link.icon === "stats" && !plan.pro) || (link.icon === "elite" && onEliteClick) ? "dialog" : undefined}
+                onClick={event => {
+                  if (link.icon === "stats" && !plan.pro) { event.preventDefault(); openPro("stats"); }
+                  else if (link.icon === "elite" && onEliteClick) { event.preventDefault(); onEliteClick(); }
+                }}>
                 <span className="ss-settings-row__icon" style={{ color: link.accent }}>
                   <SettingsIcon name={link.icon} />
                 </span>
                 <span className="ss-settings-row__copy">
                   <strong>{link.title}</strong>
                 </span>
+                {link.icon === "stats" && <ProBadge />}
+                {link.icon === "elite" && <EliteBadge />}
               </Link>
             ))}
           </div>
@@ -50,6 +66,8 @@ export default function SettingsHub({ includeStore = true }: { includeStore?: bo
 
 function SettingsIcon({ name }: { name: SettingsLink["icon"] }) {
   const paths: Record<SettingsLink["icon"], ReactNode> = {
+    // dinkie-icons:white-medium-star-filled by atelierAnchor, MIT (public/licenses/dinkie-icons.txt).
+    elite: <path d="M1 12h2v-1h2v-1h1v1h2v1h2v-1H9V9H8V8h1V7h1V6h1V5H7V3H6V1H5v2H4v2H0v1h1v1h1v1h1v1H2v2H1Zm0 0" />,
     stats: <path d="M1 9h3v6H1zm5-5h4v11H6zm6-4h3v15h-3z" />,
     help: <path fillRule="evenodd" d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M6.496 6.033a1.504 1.504 0 0 1 3.008 0c0 .567-.262.822-.864 1.252-.661.472-1.64 1.17-1.64 2.465a.75.75 0 0 0 1.5 0c0-.488.314-.797 1.012-1.295.713-.51 1.492-1.146 1.492-2.422a3.004 3.004 0 0 0-6.008 0 .75.75 0 0 0 1.5 0M8 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />,
     bell: <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2m.995-14.901a1 1 0 1 0-1.99 0A5 5 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901" />,
@@ -62,7 +80,8 @@ function SettingsIcon({ name }: { name: SettingsLink["icon"] }) {
 
   return (
     <svg
-      viewBox="0 0 16 16"
+      viewBox={name === "elite" ? "0 0 12 12" : "0 0 16 16"}
+      shapeRendering={name === "elite" ? "crispEdges" : undefined}
       aria-hidden
       fill="currentColor"
       stroke="none"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import maplibregl, { type Map, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -13,17 +13,19 @@ import { aircraftColorForTail } from "@/lib/aircraft-colors";
 import { HelicopterIcon } from "./HelicopterIcon";
 import { PlaneIcon } from "./PlaneIcon";
 import { MapHeadingCone } from "./MapHeadingCone";
+import { RiderLayer } from "./RiderLayer";
 
 type Point = { lat: number; lon: number; heading?: number | null };
 
-function PreviewAircraft({ map, aircraft, bearing, onSelect }: {
-  map: Map; aircraft: Aircraft; bearing: number; onSelect: (aircraft: Aircraft) => void;
+function PreviewAircraft({ map, aircraft, bearing, layerOrder, onSelect }: {
+  map: Map; aircraft: Aircraft; bearing: number; layerOrder: number; onSelect: (aircraft: Aircraft) => void;
 }) {
   const [element, setElement] = useState<HTMLDivElement | null>(null);
   const marker = useRef<maplibregl.Marker | null>(null);
   useEffect(() => {
     const target = document.createElement("div");
     target.className = "ss-home-map-aircraft";
+    target.dataset.tail = aircraft.tail;
     const current = new maplibregl.Marker({ element: target });
     marker.current = current;
     setElement(target);
@@ -32,6 +34,9 @@ function PreviewAircraft({ map, aircraft, bearing, onSelect }: {
   useEffect(() => {
     marker.current?.setLngLat([aircraft.lon!, aircraft.lat!]).addTo(map);
   }, [map, aircraft.lon, aircraft.lat]);
+  useEffect(() => {
+    if (element) element.style.zIndex = String(layerOrder);
+  }, [element, layerOrder]);
   const heading = (aircraft.heading ?? 0) - bearing;
   const color = aircraftColorForTail(aircraft.tail);
   return element && createPortal(<button type="button" className="ss-home-map-aircraft-button"
@@ -51,6 +56,13 @@ export default function HomeMapPreview({ rider, aircraft }: { rider: Point | nul
   const [map, setMap] = useState<Map | null>(null);
   const [bearing, setBearing] = useState(0);
   const popup = useRef<maplibregl.Popup | null>(null);
+  const [selectedTail, setSelectedTail] = useState<string | null>(null);
+  const orderedAircraft = useMemo(() => aircraft.filter(plane => Number.isFinite(plane.lat) && Number.isFinite(plane.lon))
+    .sort((a, b) => a.tail.localeCompare(b.tail)), [aircraft]);
+  useEffect(() => {
+    const element = popup.current?.getElement();
+    if (element) element.style.zIndex = String(orderedAircraft.length + 2);
+  }, [orderedAircraft.length, selectedTail]);
   const centeredOnRider = useRef(false);
   const userInteracted = useRef(false);
   const resetPreview = useRef<(() => void) | null>(null);
@@ -181,12 +193,17 @@ export default function HomeMapPreview({ rider, aircraft }: { rider: Point | nul
     link.textContent = "View on full map";
     details.append(name, model, link);
     popup.current?.remove();
+    setSelectedTail(plane.tail);
     popup.current = new maplibregl.Popup({ className: "ss-home-map-popup", offset: 24 })
       .setLngLat([plane.lon, plane.lat]).setDOMContent(details).addTo(map);
+    popup.current.getElement().style.zIndex = String(orderedAircraft.length + 2);
+    popup.current.on("close", () => setSelectedTail(current => current === plane.tail ? null : current));
   };
-  return <><div ref={container} style={{ position: "absolute", inset: 0, background: "#121515" }} /><MapHeadingCone map={map} rider={rider} />
-    {map && aircraft.filter(plane => Number.isFinite(plane.lat) && Number.isFinite(plane.lon)).map(plane =>
-      <PreviewAircraft key={plane.tail} map={map} aircraft={plane} bearing={bearing} onSelect={selectAircraft} />)}
+  return <><div ref={container} style={{ position: "absolute", inset: 0, background: "#121515", isolation: "isolate" }} /><MapHeadingCone map={map} rider={rider} />
+    <RiderLayer map={map} />
+    {map && orderedAircraft.map((plane, index) =>
+      <PreviewAircraft key={plane.tail} map={map} aircraft={plane} bearing={bearing}
+        layerOrder={selectedTail === plane.tail ? orderedAircraft.length + 1 : index + 1} onSelect={selectAircraft} />)}
     {map && rider && <button type="button" aria-label="Center preview on your location" onClick={() => resetPreview.current?.()}
       style={{ position: "absolute", right: 10, bottom: 10, zIndex: 2, width: 44, height: 44, display: "grid", placeItems: "center", border: 0, borderRadius: 12, background: "rgba(5,5,5,.82)", color: "#f5f1e6", cursor: "pointer" }}>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="6" /><path d="M12 2v4m0 12v4M2 12h4m12 0h4" /><circle cx="12" cy="12" r="1" /></svg>

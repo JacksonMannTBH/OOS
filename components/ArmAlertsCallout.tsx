@@ -1,5 +1,6 @@
 "use client";
 
+import { usePro } from "@/lib/hooks/usePro";
 import { useCallback, useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { SS_TOKENS } from "@/lib/tokens";
@@ -17,6 +18,7 @@ const DISMISS_DAYS = 14;
 const DISMISS_MS = DISMISS_DAYS * 24 * 60 * 60 * 1000;
 
 export function ArmAlertsCallout() {
+  const plan = usePro();
   const [dismissed, setDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<AircraftAlertStatus | null>(null);
@@ -62,7 +64,7 @@ export function ArmAlertsCallout() {
     }
   }, [busy, platform, status]);
 
-  if (dismissed || !canArmAircraftAlerts(status)) return null;
+  if (!plan.pro || dismissed || !canArmAircraftAlerts(status)) return null;
   const actionDisabled = busy;
 
   return (

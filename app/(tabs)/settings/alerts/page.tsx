@@ -22,7 +22,6 @@ export default function AlertsPage() {
   return (
     <SettingsPageShell
       title="Notifications & state"
-      description="Choose the state you track and whether this device receives confirmed takeoff notifications."
     >
       <NationwideMapSetting />
       <AlertsSettings />

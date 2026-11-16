@@ -14,8 +14,12 @@ export function RideSummary({ ride, onClose }: { ride: RecordedRide; onClose: ()
       <span>{rideTimeRange(ride)}</span>
       <span>{rideDateRange(ride)}</span>
     </p>
-    <RideRouteMap route={ride.route} />
-    <RideStatistics ride={ride} showAngles={showRideAngles} />
+    <div className="ss-ride-summary-content" data-has-route={ride.route?.length ? "true" : undefined}>
+      <RideRouteMap route={ride.route} />
+      <div className="ss-ride-summary-details" role="region" aria-label="Ride details" tabIndex={0}>
+        <RideStatistics ride={ride} showAngles={showRideAngles} />
+      </div>
+    </div>
     <button className="ss-ride-primary" onClick={onClose}>Done</button>
   </RideDialog>;
 }

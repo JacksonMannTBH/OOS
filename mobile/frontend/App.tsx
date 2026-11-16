@@ -1,3 +1,7 @@
+import { openPro } from "@/lib/pro-access";
+import { MEMBERSHIP_PREVIEW_ENABLED } from "@/lib/membership-availability";
+import { ProProvider, ProRideBoundary } from "@/components/ProAccess";
+import { RiderSharingSync } from "@/components/RiderSharingSync";
 import { LiveTrackingPreferenceSync } from "@/components/LiveTrackingPreferenceSync";
 import { Component, useEffect, useState, type ReactNode, type ComponentType } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -11,7 +15,7 @@ import { SpeedWarning } from "@/components/SpeedWarning";
 import { SkipLink } from "@/components/SkipLink";
 import { RadarShell } from "@/components/RadarShell";
 import { RideModeShell } from "@/components/RideModeShell";
-import { DataLoadingScreen } from "@/components/DataLoadingScreen";
+import Home from "../../app/(tabs)/home/page";
 import { STARTING_SNAPSHOT, getSpeedWarningEnabled } from "./data";
 import { navigate, useLocation, useRevision } from "./navigation";
 import Alerts from "./Alerts";
@@ -21,8 +25,8 @@ type PageProps = { params: Record<string, string>; searchParams: Record<string, 
 type PageModule = { default: (props: PageProps) => ReactNode | Promise<ReactNode>; metadata?: { title?: string } };
 type Route = { pattern: RegExp; load: () => Promise<unknown>; names?: string[]; async?: boolean };
 const routes: Route[] = [
-  { pattern: /^\/home$/, load: () => import("../../app/(tabs)/home/page") },
   { pattern: /^\/settings$/, load: () => import("./Settings") },
+  ...(MEMBERSHIP_PREVIEW_ENABLED ? [{ pattern: /^\/settings\/elite$/, load: () => import("./Elite") }] : []),
   { pattern: /^\/settings\/stats$/, load: () => import("../../app/(tabs)/settings/stats/page") },
   { pattern: /^\/settings\/display$/, load: () => import("../../app/(tabs)/settings/display/page") },
   { pattern: /^\/aircraft$/, load: () => import("../../app/(tabs)/aircraft/page"), async: true },
@@ -48,14 +52,14 @@ function Page({ route, props }: { route: Route; props: PageProps }) {
     let cancelled = false;
     setError(null);
     void route.load().then(async value => {
-      const module = value as PageModule;
-      const element = route.async ? await module.default(props) : (() => { const Screen = module.default as ComponentType<PageProps>; return <Screen {...props} />; })();
-      if (!cancelled) { document.title = module.metadata?.title ?? "Out Of Sight"; setContent(element); }
+      const pageModule = value as PageModule;
+      const element = route.async ? await pageModule.default(props) : (() => { const Screen = pageModule.default as ComponentType<PageProps>; return <Screen {...props} />; })();
+      if (!cancelled) { document.title = pageModule.metadata?.title ?? "Out Of Sight"; setContent(element); }
     }).catch(error => { if (!cancelled) setError(error instanceof Error ? error.message : "Check your connection and try again."); });
     return () => { cancelled = true; };
   }, [route, props, attempt]);
   if (error) return <Failure message={error} retry={() => setAttempt(value => value + 1)} />;
-  return content ?? <DataLoadingScreen />;
+  return content;
 }
 function RouteScreen({ location }: { location: string }) {
   const url = new URL(location, "https://local.oos");
@@ -65,10 +69,13 @@ function RouteScreen({ location }: { location: string }) {
     else if (pathname === "/radar") navigate("/map", true);
     else if (pathname === "/settings/ride") navigate("/settings/display", true);
     else if (pathname === "/store") navigate("/settings", true);
+    else if (pathname === "/settings/pro") { navigate("/settings", true); queueMicrotask(() => openPro()); }
+    else if (!MEMBERSHIP_PREVIEW_ENABLED && pathname === "/settings/elite") navigate("/settings", true);
   }, [pathname]);
-  if (pathname === "/" || pathname === "/radar" || pathname === "/settings/ride" || pathname === "/store") return null;
+  if (pathname === "/" || pathname === "/radar" || pathname === "/settings/ride" || pathname === "/store" || pathname === "/settings/pro" || (!MEMBERSHIP_PREVIEW_ENABLED && pathname === "/settings/elite")) return null;
+  if (pathname === "/home") return <Home searchParams={{}} />;
   if (pathname === "/map") return <RadarShell initial={STARTING_SNAPSHOT} initialFocusTail={url.searchParams.get("tail")?.toUpperCase()} />;
-  if (pathname === "/ride") return <RideModeShell initial={STARTING_SNAPSHOT} />;
+  if (pathname === "/ride") return <ProRideBoundary><RideModeShell initial={STARTING_SNAPSHOT} /></ProRideBoundary>;
   if (pathname === "/help") return <Help />;
   if (pathname === "/settings/alerts") return <Alerts />;
   const route = routes.find(item => item.pattern.test(pathname));
@@ -86,8 +93,8 @@ export default function App() {
   const revision = useRevision();
   const [speedWarning, setSpeedWarning] = useState(false);
   useEffect(() => { void getSpeedWarningEnabled().then(setSpeedWarning).catch(() => {}); }, []);
-  return <><ThemeController /><AircraftAlertPreferenceSync /><LiveTrackingPreferenceSync /><SkipLink /><SiteHeader /><TooltipProvider>
+  return <ProProvider><RiderSharingSync /><ThemeController /><AircraftAlertPreferenceSync /><LiveTrackingPreferenceSync /><SkipLink /><SiteHeader /><TooltipProvider>
     <ScreenBoundary key={location + revision}><div id="main-content"><RouteScreen location={location} /></div></ScreenBoundary>
     <SettingsHomeButton /><AppBadge /><SpeedWarning enabled={speedWarning} /><SwRegistrar />
-  </TooltipProvider></>;
+  </TooltipProvider></ProProvider>;
 }

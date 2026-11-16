@@ -1,5 +1,6 @@
 "use client";
 
+import { usePro } from "@/lib/hooks/usePro";
 import { useCallback, useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { Capacitor } from "@capacitor/core";
@@ -17,6 +18,7 @@ const COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
 type Phase = "checking" | "show" | "hidden";
 
 export function AlertsOptInCard() {
+  const plan = usePro();
   const [phase, setPhase] = useState<Phase>("checking");
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,7 +71,7 @@ export function AlertsOptInCard() {
     }
   }, []);
 
-  if (!mounted || phase === "checking" || phase === "hidden") return null;
+  if (!plan.pro || !mounted || phase === "checking" || phase === "hidden") return null;
 
   return createPortal(
     <div

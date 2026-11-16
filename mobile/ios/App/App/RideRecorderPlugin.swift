@@ -33,6 +33,12 @@ public class RideRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func start(_ call: CAPPluginCall) {
         Task { @MainActor in
             do {
+                #if DEBUG
+                if try RideRecordingSession.shared.status()["active"] is NSNull {
+                    await ProSubscriptionSession.shared.refresh()
+                    guard ProSubscriptionSession.shared.pro else { call.reject("OOS Pro is required to start a ride."); return }
+                }
+                #endif
                 try RideRecordingSession.shared.start(consent: call.getBool("consent") ?? false,
                     recordAngles: call.getBool("recordAngles") ?? false)
                 call.resolve(try RideRecordingSession.shared.status())
@@ -85,7 +91,10 @@ public class RideRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
         guard let rideId = call.getString("rideId") else { call.reject("Missing ride identifier."); return }
         Task { @MainActor in
             do {
-                try RideRecordingSession.shared.calibrateMotion(rideId: rideId)
+                guard let orientation = (self.bridge?.viewController as? OOSBridgeViewController)?.rideCalibrationOrientation else {
+                    throw RideCalibrationError.notReady
+                }
+                try RideRecordingSession.shared.calibrateMotion(rideId: rideId, orientation: orientation)
                 call.resolve(RideRecordingSession.shared.motionStatus())
             } catch RideCalibrationError.notReady {
                 call.reject("Waiting for the bike to stabilize.", "CALIBRATION_NOT_READY")
@@ -203,6 +212,9 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
         liveGForce = nil
         try configureMotion(enabled: recordAngles)
         updateLocationService()
+        #if DEBUG
+        if let ride = next.archive.active { RiderSharingSession.shared.beginRide(ride.id) }
+        #endif
     }
 
     func finish(id: String) throws -> RecordedRide {
@@ -215,6 +227,9 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
         motionTracker = RideMotionTracker()
         anglesCalibrated = false
         stopLocationService()
+        #if DEBUG
+        RiderSharingSession.shared.endRide()
+        #endif
         message = ""
         lastFixAt = nil
         return ride
@@ -260,7 +275,7 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
         updateMotionService()
     }
 
-    func calibrateMotion(rideId: String) throws {
+    func calibrateMotion(rideId: String, orientation: RideMountOrientation) throws {
         guard core?.archive.active != nil else { throw failure("Start a ride before calibrating.") }
         guard core?.archive.active?.id == rideId else { throw RideRecordingError.wrongRide }
         guard motionManager.isDeviceMotionAvailable else { throw failure("Motion sensors are unavailable on this device.") }
@@ -272,7 +287,8 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
             throw RideCalibrationError.notReady
         }
         var tracker = motionTracker
-        guard tracker.calibrate(gravity: RideMotionVector(x: motion.gravity.x, y: motion.gravity.y, z: motion.gravity.z)) else {
+        guard tracker.calibrate(gravity: RideMotionVector(x: motion.gravity.x, y: motion.gravity.y, z: motion.gravity.z),
+                              orientation: orientation) else {
             throw RideCalibrationError.notReady
         }
         var next = core!
@@ -397,6 +413,9 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
                 lastFixAt = ride.updatedAt
             }
             lastSpeed = locations.last.flatMap { $0.speed >= 0 && $0.speedAccuracy >= 0 && $0.speedAccuracy <= 3 ? $0.speed : nil }
+            #if DEBUG
+            if let fix = locations.last { RiderSharingSession.shared.capture(fix) }
+            #endif
             message = ""
         } catch {
             core?.markGap()

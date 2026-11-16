@@ -321,7 +321,7 @@ struct RideRecorderCore {
         }
         archive.rides.removeAll { $0.id == ride.id }
         archive.rides.insert(ride, at: 0)
-        archive.rides = Array(archive.rides.prefix(3))
+        archive.rides = Array(archive.rides.prefix(10))
     }
 }
 

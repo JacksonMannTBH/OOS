@@ -34,6 +34,10 @@ public class LiveTrackingPlugin: CAPPlugin, CAPBridgedPlugin {
         Task { @MainActor in
             guard #available(iOS 16.2, *) else { call.reject("Live tracking requires iOS 16.2 or later."); return }
             do {
+                #if DEBUG
+                await ProSubscriptionSession.shared.refresh()
+                guard ProSubscriptionSession.shared.pro else { call.reject("OOS Pro is required for Live Tracking."); return }
+                #endif
                 let config = try self.configuration(call)
                 HomeWidgetAppUpdater.shared.configure(config)
                 try LiveTrackingSession.shared.start(config)
@@ -376,12 +380,9 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
     private func scheduleContent(_ content: RideTrackingContent) {
         guard let config = configuration, let id = sessionID else { return }
         guard let current = activity else { return }
-        // Updating every GPS callback is unnecessary; distance is shown to one decimal.
+        // Skip sub-decimal GPS changes, but publish when the compass direction changes.
         let previousContent = lastScheduledContent ?? current.content.state
-        if previousContent.aircraft == content.aircraft, previousContent.rideState == content.rideState,
-           previousContent.message == content.message,
-           previousContent.stateName == content.stateName,
-           rounded(previousContent.distanceNm) == rounded(content.distanceNm),
+        if previousContent.hasSameReadings(as: content),
            abs(previousContent.validUntil.timeIntervalSince(content.validUntil)) < 10 { return }
         HomeWidgetStore.shared.publish(content, for: config)
         pendingContent = content
@@ -398,7 +399,6 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
         }
     }
 
-    private func rounded(_ distance: Double?) -> Double? { distance.map { ($0 * 10).rounded() / 10 } }
     private func beginTimer() {
         guard timer == nil else { return }
         timer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in

@@ -1,0 +1,139 @@
+2a61e26ff20428aab4aec71d589064dfe0157fdd
+ M app/(tabs)/about/page.tsx
+ M app/(tabs)/legal/page.tsx
+ M app/(tabs)/settings/actions.ts
+ M app/(tabs)/settings/alerts/page.tsx
+ M app/(tabs)/settings/display/page.tsx
+ M app/(tabs)/settings/stats/page.tsx
+ M app/admin/tracks/fmt.ts
+ M app/globals.css
+ M app/help/HelpView.tsx
+ M cloud-backend/supabase/config.toml
+ M components/AircraftAlertPreferenceSync.tsx
+ M components/AircraftProfile.tsx
+ M components/AircraftTrailLayer.tsx
+ M components/AlertsOptInCard.tsx
+ M components/AlertsSettings.tsx
+ M components/ArmAlertsCallout.tsx
+ M components/DashShell.tsx
+ M components/HomeActiveAircraft.tsx
+ M components/HomeMapPreview.tsx
+ M components/LiveTrackingButton.tsx
+ M components/NationwideMapSetting.tsx
+ M components/PlaneTrackMap.tsx
+ M components/PoliceReportButton.tsx
+ M components/PoliceSightingLayer.tsx
+ M components/RadarLayerControls.tsx
+ M components/RadarMap.tsx
+ M components/RadarShell.tsx
+ M components/ResetPreferencesButton.tsx
+ M components/RideDialog.tsx
+ M components/RideGForce.tsx
+ M components/RideHistory.tsx
+ M components/RideMap.tsx
+ M components/RideModeShell.tsx
+ M components/RideSettings.tsx
+ M components/RideStatistics.tsx
+ M components/RideSummary.tsx
+ M components/SettingsHub.tsx
+ M components/SettingsPageShell.tsx
+ M components/SiteHeader.tsx
+ M components/TakeOffButton.tsx
+ M components/TimeFormatSetting.tsx
+ M content/help.md
+ M docs/app-store-submission.md
+ M docs/ride-gforce.md
+ M docs/ride-stats.md
+ M lib/aircraft-alerts/client.ts
+ M lib/dark-map-style.test.ts
+ M lib/dark-map-style.ts
+ M lib/device-preference-store.ts
+ M lib/device-screen-wake.ts
+ M lib/flight-utils.ts
+ M lib/live-tracking.ts
+ M lib/ride-recording.ts
+ M lib/time.test.ts
+ M lib/time.ts
+ M lib/user-prefs.ts
+ M mobile/frontend/Alerts.tsx
+ M mobile/frontend/App.tsx
+ M mobile/frontend/PreferenceSettings.tsx
+ M mobile/frontend/Settings.tsx
+ M mobile/frontend/index.html
+ M mobile/frontend/main.tsx
+ M mobile/frontend/map-transition.ts
+ M mobile/frontend/preferences.ts
+ M mobile/ios/App/App.xcodeproj/project.pbxproj
+ M mobile/ios/App/App/AppDelegate.swift
+ M mobile/ios/App/App/LiveTrackingPlugin.swift
+ M mobile/ios/App/App/RideRecorderPlugin.swift
+ M mobile/ios/App/App/ScreenAwakePlugin.swift
+ M mobile/ios/App/App/SharedLocationService.swift
+ M mobile/ios/App/LiveTrackingWidget/LiveTrackingWidget.swift
+ M mobile/ios/App/Shared/RideHistory.swift
+ M mobile/ios/App/Shared/RideMotion.swift
+ M mobile/ios/App/Shared/RideTrackingData.swift
+ M mobile/ios/Tests/LiveTrackingCoreTests.swift
+ M mobile/ios/Tests/RideHistoryTests.swift
+ M package.json
+ M tests/visual/scripts/police-sightings.mjs
+ M tests/visual/scripts/ride-history.mjs
+ M tests/visual/scripts/ride-motion.mjs
+?? .local-gforce-build-142.log
+?? .local-gforce-sync-142.log
+?? app-store-assets/
+?? artifacts/
+?? cloud-backend/src/riders-handler.ts
+?? cloud-backend/src/riders.ts
+?? cloud-backend/supabase/.temp/
+?? cloud-backend/supabase/migrations/20261116045402_elite_installation_profiles_and_sharing.sql
+?? cloud-backend/tests/riders.sql
+?? cloud-backend/tests/riders.test.ts
+?? components/EliteSettings.tsx
+?? components/PixelRiderIcon.tsx
+?? components/ProAccess.tsx
+?? components/RideOrientationButton.tsx
+?? components/RiderLayer.tsx
+?? components/RiderSharingSync.tsx
+?? docs/carplay-live-activity.md
+?? docs/elite-backend.md
+?? docs/membership-preview.md
+?? lib/current-flight-time.test.ts
+?? lib/device-ride-orientation.ts
+?? lib/elite-rider-icons.ts
+?? lib/hooks/usePro.ts
+?? lib/map-aircraft.test.ts
+?? lib/map-aircraft.ts
+?? lib/pro-access-disabled.test.ts
+?? lib/pro-access.test.ts
+?? lib/pro-access.ts
+?? lib/pro-trial-eligibility.test.ts
+?? lib/rider-feed.ts
+?? lib/rider-profile-client.ts
+?? lib/rider-sharing.ts
+?? lib/time-format.ts
+?? mobile/DerivedData/
+?? mobile/DeviceDerivedData/
+?? mobile/frontend/Elite.tsx
+?? mobile/ios/App/App/ProSubscriptionPlugin.swift
+?? mobile/ios/App/App/RiderSharingPlugin.swift
+?? mobile/ios/Tests/RideOrientationCalibrationTests.swift
+?? mobile/ios/Tests/RideOrientationUITests.swift
+?? play-store-assets/OOS-Play-Store-Screenshots-2026-11-14.zip
+?? play-store-assets/concepts/follow-flight-v1/
+?? play-store-assets/concepts/overhead-v1/
+?? play-store-assets/concepts/ride-mode-v1/
+?? play-store-assets/concepts/ride-summary-v1/
+?? play-store-assets/concepts/ride-summary-v2/
+?? play-store-assets/concepts/takeoff-alerts-v1/
+?? play-store-assets/concepts/takeoff-alerts-v2/
+?? play-store-assets/final-headline-edits/
+?? play-store-assets/play-console-upload-2026-11-14/
+?? play-store-assets/play-console-upload-manifest-2026-11-14.json
+?? public/licenses/
+?? references/
+?? scripts/build-riders-backend.mjs
+?? scripts/check-riders-backend.mjs
+?? tests/visual/fixtures/
+?? tests/visual/scripts/landscape.mjs
+?? tests/visual/scripts/ride-map-arrow.mjs

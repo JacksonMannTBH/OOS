@@ -6,7 +6,6 @@ import App from "./App";
 import { connectBackend } from "./network";
 import { connectNavigation } from "./navigation";
 import { getContrastPref } from "./preferences";
-import { DataLoadingScreen } from "@/components/DataLoadingScreen";
 import "../../app/globals.css";
 connectBackend();
 connectNavigation();
@@ -28,7 +27,7 @@ function Startup() {
     return () => { cancelled = true; };
   }, [attempt]);
   if (ready) return <App />;
-  if (!failed) return <DataLoadingScreen />;
+  if (!failed) return null;
   return <main style={{ padding: 32 }}>
     <p role="status">{failed ? "Could not restore your saved settings. Please try again." : "Restoring your settings…"}</p>
     {failed && <button onClick={() => setAttempt(value => value + 1)}>Try again</button>}

@@ -1,12 +1,12 @@
 // Canonical time-display formatter. One source of truth so per-page
-// helpers don't drift on tz, format, or 24-hour invariants.
+// helpers don't drift on time zone or the rider's clock preference.
 //
 // The initial audience is Pacific-time only. Every displayed time is
 // rendered in PT; time-bearing styles get an explicit "PT" suffix so a
 // rider in any tz can read the value without guessing. Date-only styles
 // don't get the suffix — a date is a date.
 //
-// Brand voice (design/BRAND.md §3): 24-hour clock, mono numerics, no AM/PM.
+// Default to a 12-hour clock with AM/PM; explicit 24-hour choices remain supported.
 
 export const PT_TZ = "America/Los_Angeles";
 
@@ -28,7 +28,7 @@ const TIME_BEARING: ReadonlySet<FormatStyle> = new Set([
 ]);
 
 export type FormatOpts = {
-  /** Render as 12-hour with AM/PM. Default false (24-hour, brand default). */
+  /** Render as 12-hour with AM/PM. Defaults to true. */
   hour12?: boolean;
 };
 
@@ -63,7 +63,7 @@ export function formatTs(
 ): string {
   if (tsMs == null || Number.isNaN(tsMs)) return "—";
   const d = new Date(tsMs);
-  const hour12 = opts?.hour12 ?? false;
+  const hour12 = opts?.hour12 ?? true;
   let out: string;
   switch (style) {
     case "time":

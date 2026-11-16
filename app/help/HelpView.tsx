@@ -11,7 +11,7 @@ import { SettingsPageShell } from "@/components/SettingsPageShell";
 export function HelpContent({ source }: { source: string }) {
   const body = source.replace(/^\s*# [^\n]+\n+/, "");
   return (
-    <SettingsPageShell title="Help" description="How to read each screen, manage tracking, and use OOS.">
+    <SettingsPageShell title="Help">
       <article>
         <HelpMarkdown source={body} />
       </article>

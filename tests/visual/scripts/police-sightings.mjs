@@ -81,7 +81,7 @@ async function fixture(page, seeded = false, aircraftCount = 0) {
           if (method === "finish") {
             assertId(args.id, state.active?.id);
             const result = { ...state.active, endedAt: Date.now() };
-            state.rides = [result, ...state.rides].slice(0, 3);
+            state.rides = [result, ...state.rides].slice(0, 10);
             state.active = null;
             state.finishes++;
             save();

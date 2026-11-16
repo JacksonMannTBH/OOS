@@ -12,6 +12,7 @@
 // can be 0–2 points old enough to render as a blank map for a tail
 // that just lifted off.
 
+import { ProFeatureGate } from "./ProAccess";
 import { useEffect, useId, useRef, useState } from "react";
 import { subscribeLiveState } from "@/lib/live-data-client";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
@@ -82,7 +83,11 @@ function fitToCoords(map: MaplibreMap, coords: Coord[], padPct = 0.1): void {
   });
 }
 
-export default function PlaneTrackMap({
+export default function PlaneTrackMap(props: Props) {
+  return <ProFeatureGate feature="paths" title="Aircraft path lines"><ProPlaneTrackMap {...props} /></ProFeatureGate>;
+}
+
+function ProPlaneTrackMap({
   tail,
   points,
   inProgress,

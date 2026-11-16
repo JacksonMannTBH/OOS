@@ -6,7 +6,7 @@
 // Aircraft-colored lines keep a consistent opacity along the full
 // recorded path. A subtle dark outline separates them from map roads.
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { subscribeLiveState } from "@/lib/live-data-client";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { isStateCode, stateCodeForId, type StateCode } from "@/lib/app-states";
@@ -14,6 +14,7 @@ import type { Map as MaplibreMap, GeoJSONSource } from "maplibre-gl";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
 import { smoothFlightPath } from "@/lib/flight-path-smoothing";
 import type { Aircraft } from "@/lib/types";
+import { aircraftMapTails } from "@/lib/map-aircraft";
 
 const SOURCE_ID = "aircraft-trails";
 const ENDPOINTS_SOURCE_ID = "aircraft-trail-endpoints";
@@ -126,13 +127,10 @@ export function AircraftTrailLayer({
   enabled: boolean;
   selectedTail?: string | null;
 }) {
-  const tailsKey = airborne
-    .map((a) => a.tail)
-    .filter(Boolean)
-    .sort()
-    .join(",");
-  const tailsKeyRef = useRef(tailsKey);
-  tailsKeyRef.current = tailsKey;
+  const tailsKey = [...aircraftMapTails(airborne)].sort().join(",");
+  const currentTails = useRef(new Set<string>());
+  currentTails.current = new Set(tailsKey.split(",").filter(Boolean));
+  const currentTrails = useRef<Record<string, TrailPoint[]>>({});
   const pulseRef = useRef<number | null>(null);
   const visible = enabled || selectedTail !== null;
   const enabledRef = useRef(visible);
@@ -140,7 +138,15 @@ export function AircraftTrailLayer({
   const selectedTailRef = useRef(selectedTail);
   selectedTailRef.current = selectedTail;
 
-  function applyTrailSelection() {
+  const renderTrails = useCallback((trails: Record<string, TrailPoint[]>) => {
+    const filtered = Object.fromEntries(Object.entries(trails).filter(([tail]) => currentTails.current.has(tail)));
+    currentTrails.current = filtered;
+    if (!map || !map.getStyle()) return;
+    (map.getSource(SOURCE_ID) as GeoJSONSource | undefined)?.setData(buildFeatureCollection(filtered));
+    (map.getSource(ENDPOINTS_SOURCE_ID) as GeoJSONSource | undefined)?.setData(buildEndpointCollection(filtered));
+  }, [map]);
+
+  const applyTrailSelection = useCallback(() => {
     if (!map) return;
     const tail = selectedTailRef.current;
     for (const id of TRAIL_LAYER_IDS) {
@@ -152,7 +158,7 @@ export function AircraftTrailLayer({
       map.setFilter(id, kind ? ["all", selection, ["==", ["get", "kind"], kind]] : selection);
       map.setLayoutProperty(id, "visibility", enabledRef.current ? "visible" : "none");
     }
-  }
+  }, [map]);
 
   // Layer attachment — once per map instance.
   useEffect(() => {
@@ -269,6 +275,7 @@ export function AircraftTrailLayer({
       // the stack (visible immediately) and the next fetch poll
       // re-runs the reorder once the chevron mounts.
       applyTrailSelection();
+      renderTrails(currentTrails.current);
       reorderTrailLayers(map);
       console.debug("[trail] attach: complete", {
         layers: map.getStyle()?.layers?.map((l) => l.id) ?? [],
@@ -330,11 +337,11 @@ export function AircraftTrailLayer({
         // map torn down already
       }
     };
-  }, [map]);
+  }, [map, applyTrailSelection, renderTrails]);
 
   useEffect(() => {
     applyTrailSelection();
-  }, [map, visible, selectedTail]);
+  }, [map, visible, selectedTail, applyTrailSelection]);
 
   const stateCode = stateCodeForId(useSelectedStateId());
   const trailStateKeys = [...new Set(airborne
@@ -343,22 +350,21 @@ export function AircraftTrailLayer({
   // Normally one shared state channel. Nationwide markers can select a flight
   // from another state without changing the user's notification state.
   useEffect(() => {
-    if (!map || !visible) return;
+    if (!map) return;
     const render = (trails: Record<string, TrailPoint[]>) => {
-      const line = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-      const endpoints = map.getSource(ENDPOINTS_SOURCE_ID) as GeoJSONSource | undefined;
-      line?.setData(buildFeatureCollection(trails));
-      endpoints?.setData(buildEndpointCollection(trails));
+      renderTrails(trails);
       reorderTrailLayers(map);
     };
-    if (!tailsKey) { render({}); return; }
+    render({});
+    if (!visible || !tailsKey) return;
+    let cancelled = false;
     const tails = new Set(tailsKey.split(","));
     const byState = new Map<string, Record<string, TrailPoint[]>>();
     const unsubscribe: Array<() => void> = [];
     const timers: ReturnType<typeof setTimeout>[] = [];
-    render({});
     for (const [index, state] of trailStateKeys.split(",").filter(Boolean).entries()) {
       const connect = () => unsubscribe.push(subscribeLiveState(state as StateCode, update => {
+        if (cancelled) return;
         byState.set(state, Object.fromEntries(Object.entries(update.trails).filter(([tail]) => tails.has(tail))));
         render(Object.assign({}, ...byState.values()));
       }));
@@ -366,8 +372,13 @@ export function AircraftTrailLayer({
       if (index === 0) connect();
       else timers.push(setTimeout(connect, index * 150));
     }
-    return () => { timers.forEach(clearTimeout); unsubscribe.forEach(close => close()); };
-  }, [map, tailsKey, visible, trailStateKeys]);
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+      unsubscribe.forEach(close => close());
+      renderTrails({});
+    };
+  }, [map, tailsKey, visible, trailStateKeys, renderTrails]);
 
   return null;
 }

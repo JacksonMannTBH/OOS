@@ -4,12 +4,10 @@ import type { ReactNode } from "react";
 export function SettingsPageShell({
   eyebrow,
   title,
-  description,
   children,
 }: {
   eyebrow?: string;
   title: string;
-  description: string;
   children: ReactNode;
 }) {
   return (
@@ -19,7 +17,6 @@ export function SettingsPageShell({
         <div className="ss-settings-page__intro">
           {eyebrow && <span className="ss-settings-kicker">{eyebrow}</span>}
           <h1>{title}</h1>
-          <p>{description}</p>
         </div>
       </header>
       <div className="ss-settings-page__content">{children}</div>

@@ -1,4 +1,5 @@
 "use client";
+import { assertPro, refreshPro } from "../pro-access";
 
 import {
   getSelectedStateCode,
@@ -9,6 +10,7 @@ import type {
   AircraftAlertPushSubscription,
   AircraftAlertStatus,
 } from "./types";
+
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { readNotificationTrackingPreferences } from "./preferences";
@@ -103,7 +105,7 @@ function queueAlertMutation<T>(work: () => Promise<T>): Promise<T> {
 }
 
 export function enableAircraftAlerts(input: StateInput = {}): Promise<AircraftAlertStatus> {
-  return queueAlertMutation(() => enableAlerts(input)).then(publishStatus);
+  return queueAlertMutation(async () => { await assertPro("notifications"); return enableAlerts(input); }).then(publishStatus);
 }
 
 async function enableAlerts(
@@ -187,7 +189,9 @@ export function syncAircraftAlertPreferences(input: StateInput): Promise<Aircraf
 async function syncPreferences(
   input: StateInput,
 ): Promise<AircraftAlertStatus | null> {
+  const plan = await refreshPro();
   const current = await readAircraftAlertStatus();
+  if (!plan.pro) return current.enabled || current.optedIn ? disableAlerts() : current;
   if (getDevicePreference(OPT_IN_KEY) === "0") {
     return current.enabled ? disableAlerts() : current;
   }
@@ -215,6 +219,7 @@ async function syncPreferences(
 }
 
 export async function sendAircraftAlertTest(): Promise<void> {
+  await assertPro("notifications");
   const res = await fetch("/api/aircraft-alerts/test", {
     method: "POST",
     headers: { "content-type": "application/json" },

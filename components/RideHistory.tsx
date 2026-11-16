@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRideRecorder } from "@/lib/hooks/useRideRecorder";
 import type { RecordedRide } from "@/lib/ride-recording";
 import { useRideSummaryDeferred } from "@/lib/ride-summary-transition";
@@ -13,9 +13,24 @@ export function RideHistory({ open, onClose }: { open: boolean; onClose: () => v
   const { status, error } = useRideRecorder();
   const summaryDeferred = useRideSummaryDeferred();
   const [selected, setSelected] = useState<RecordedRide | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const router = useRouter();
   const params = useSearchParams();
   const summaryId = params.get("rideSummary");
+  useLayoutEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const rows = Array.from(list.children).slice(0, 5);
+    const sizeList = () => {
+      const first = rows[0]?.getBoundingClientRect();
+      const last = rows.at(-1)?.getBoundingClientRect();
+      if (first && last) list.style.maxHeight = `${last.bottom - first.top}px`;
+    };
+    sizeList();
+    const observer = new ResizeObserver(sizeList);
+    rows.forEach(row => observer.observe(row));
+    return () => observer.disconnect();
+  }, [open, selected, status?.rides, error]);
   useEffect(() => {
     if (!summaryId || !status) return;
     const ride = status.rides.find(ride => ride.id === summaryId) ?? null;
@@ -33,8 +48,8 @@ export function RideHistory({ open, onClose }: { open: boolean; onClose: () => v
       : !status ? <p role="status">Loading rides…</p>
       : !status.supported ? <p>Ride summaries are available in the iPhone app.</p>
       : status.rides.length === 0 ? <p>No rides yet. Start a ride to save your first summary.</p>
-      : <ul className="ss-ride-history" aria-label="Saved rides">
-      {status.rides.slice(0, 3).map(ride => <li key={ride.id}>
+      : <ul ref={listRef} className="ss-ride-history" aria-label="Saved rides" tabIndex={0}>
+      {status.rides.map(ride => <li key={ride.id}>
         <button type="button" onClick={() => setSelected(ride)}>
           <span><span className="ss-ride-date">{rideDateTime(ride)}</span>
             <span className="ss-ride-row-stats">{rideDistance(ride)} · {rideDuration(ride.durationSeconds)} · Top {rideSpeed(ride)}</span>

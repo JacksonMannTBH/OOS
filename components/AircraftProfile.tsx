@@ -10,7 +10,7 @@ import { getAppState } from "@/lib/app-states";
 import { AircraftDisplay } from "@/lib/aircraft-display";
 import { subscribeLiveState } from "@/lib/live-data-client";
 import { estimateFuelRemaining } from "@/lib/fuel-estimate";
-import { averageGroundSpeedKt, flightIdFromTs } from "@/lib/flight-utils";
+import { averageGroundSpeedKt, flightIdFromTs, getCurrentFlightTime } from "@/lib/flight-utils";
 import { fmtAgoTs, formatTs } from "@/lib/time";
 import { fleetHex } from "@/lib/seed";
 import { roleBadgeText } from "@/lib/role-display";
@@ -113,6 +113,7 @@ export function AircraftProfile({ catalogEntry, initialSnapshot, initialFlight, 
   const mapHref = `/map?tail=${encodeURIComponent(entry.tail)}&state=${stateCode}${mock ? `&mock=${encodeURIComponent(mock)}` : ""}`;
   const showReadings = Boolean(live && (airborne || lastKnown));
   const fuel = airborne && live ? estimateFuelRemaining(live) : null;
+  const flightTime = live ? getCurrentFlightTime(live, snapshot.fetched_at) : null;
   const action = airborne || lastKnown
     ? { href: mapHref, label: lastKnown ? "View last known position" : "View on map" }
     : flightHref ? { href: flightHref, label: "View latest flight" } : { href: mapHref, label: "Open map" };
@@ -139,7 +140,7 @@ export function AircraftProfile({ catalogEntry, initialSnapshot, initialFlight, 
       <h2 id="aircraft-flight-heading">{lastKnown ? "Last known flight" : "Current flight"}</h2>
       <dl className="ss-aircraft-profile__readings">
         {[
-          { label: "Time airborne", value: live.time_aloft_min != null ? formatDuration(Math.round(live.time_aloft_min * 60)) : "Not reported" },
+          { label: flightTime?.basis === "tracking" ? "Time tracked" : "Time airborne", value: flightTime ? formatDuration(flightTime.seconds) : "Not reported" },
           { label: "Altitude", value: live.altitude_ft != null ? `${live.altitude_ft.toLocaleString()} ft` : "Not reported" },
           { label: "Ground speed", value: live.ground_speed_kt != null ? `${Math.round(live.ground_speed_kt)} kt` : "Not reported" },
           { label: "Estimated time remaining", value: fuel?.label.replace(/^Est\. /, "") ?? "Unavailable" },

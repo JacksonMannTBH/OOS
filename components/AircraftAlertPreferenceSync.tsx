@@ -18,6 +18,7 @@ export function AircraftAlertPreferenceSync() {
       if (event.key === null || event.key === AIRCRAFT_TRACKING_STORAGE_KEY || event.key === STATE_PREFERENCE_KEY || event.key === CALIFORNIA_REGION_KEY) sync();
     };
     const onVisible = () => { if (document.visibilityState === "visible") sync(); };
+    window.addEventListener("oos:pro-tier-changed", sync);
     window.addEventListener(STATE_CHANGE_EVENT, sync);
     window.addEventListener(AIRCRAFT_TRACKING_CHANGE_EVENT, sync);
     window.addEventListener(CALIFORNIA_REGION_EVENT, sync);
@@ -26,6 +27,7 @@ export function AircraftAlertPreferenceSync() {
     document.addEventListener("visibilitychange", onVisible);
     sync();
     return () => {
+      window.removeEventListener("oos:pro-tier-changed", sync);
       window.removeEventListener(STATE_CHANGE_EVENT, sync);
       window.removeEventListener(AIRCRAFT_TRACKING_CHANGE_EVENT, sync);
       window.removeEventListener(CALIFORNIA_REGION_EVENT, sync);

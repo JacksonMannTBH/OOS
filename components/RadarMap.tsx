@@ -11,7 +11,7 @@ import maplibregl, {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { trackMapOpeningCamera, type MapOpeningCamera } from "@/lib/map-opening-camera";
 import { MAP_LABEL_FONT, MAP_STYLE_URL } from "@/lib/map-style";
-import { darkMapStyle } from "@/lib/dark-map-style";
+import { darkMapStyle, STATE_BOUNDARY_LAYER_ID } from "@/lib/dark-map-style";
 import { SS_TOKENS } from "@/lib/tokens";
 import type { Aircraft } from "@/lib/types";
 import {
@@ -27,11 +27,7 @@ import {
   helicopterFrameAt,
   isHelicopterRole,
 } from "@/lib/brand/helicopter-sprite";
-import {
-  AIRCRAFT_PATH_COLORS,
-  aircraftColorIndex,
-  aircraftColorForTail,
-} from "@/lib/aircraft-colors";
+import { aircraftColorForTail } from "@/lib/aircraft-colors";
 import { type StateCode } from "@/lib/app-states";
 import { formatAircraftAltitude } from "@/lib/aircraft-altitude";
 
@@ -75,15 +71,11 @@ const AIRCRAFT_ICON_SIZE = 52; // bitmap raster size; layer `icon-size` scales i
 const PLANE_ASSET_VERSION = "cessna-v1";
 const PLANE_ICON_KEY = "aircraft-plane-cessna";
 const AIRCRAFT_LABEL_BG_KEY = "aircraft-label-pill";
-const AIRCRAFT_LABEL_COLOR_KEY_PREFIX = "aircraft-label-pill-color";
-// Keep the text and its pill in sync; report age must not affect visibility.
+const AIRCRAFT_TAG_PIXEL_RATIO = 3;
+// Report age must not affect tag visibility.
 const AIRCRAFT_LABEL_ZOOM_OPACITY: ExpressionSpecification = [
   "interpolate", ["linear"], ["zoom"], 4.5, 0, 5.5, 1,
 ];
-
-function aircraftLabelColorKey(index: number): string {
-  return `${AIRCRAFT_LABEL_COLOR_KEY_PREFIX}-${index}`;
-}
 
 function setHelicopterFrame(map: MaplibreMap, activeFrame: number) {
   if (!map.getLayer("aircraft")) return;
@@ -131,7 +123,7 @@ const DISTANCE_RING_COLOR = "#ffffff";
 const DISTANCE_RING_HALO_COLOR = "#050908";
 
 function isCustomLayer(id: string): boolean {
-  return CUSTOM_LAYER_PREFIXES.some((prefix) => id.startsWith(prefix));
+  return id === STATE_BOUNDARY_LAYER_ID || CUSTOM_LAYER_PREFIXES.some((prefix) => id.startsWith(prefix));
 }
 
 function shouldHideMapDetailLayer(layer: StyleLayerLike): boolean {
@@ -282,6 +274,35 @@ function createAircraftLabelPill(color = "rgba(2, 2, 2, 0.72)"): ImageData {
   return context.getImageData(0, 0, canvas.width, canvas.height);
 }
 
+function createAircraftNameTag(label: string, color: string): ImageData {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Unable to create aircraft name tag");
+  const font = '400 10px "Manrope", sans-serif';
+  const spacing = 0.7;
+  context.font = font;
+  const letters = Array.from(label);
+  const widths = letters.map(letter => context.measureText(letter).width);
+  const width = Math.ceil(widths.reduce((sum, value) => sum + value, 0) + Math.max(0, letters.length - 1) * spacing + 10);
+  const height = 16;
+  canvas.width = width * AIRCRAFT_TAG_PIXEL_RATIO;
+  canvas.height = height * AIRCRAFT_TAG_PIXEL_RATIO;
+  context.scale(AIRCRAFT_TAG_PIXEL_RATIO, AIRCRAFT_TAG_PIXEL_RATIO);
+  context.fillStyle = color;
+  context.beginPath();
+  context.roundRect(0, 0, width, height, 8);
+  context.fill();
+  context.font = font;
+  context.textBaseline = "middle";
+  context.fillStyle = "#071012";
+  let x = 5;
+  letters.forEach((letter, index) => {
+    context.fillText(letter, x, height / 2);
+    x += widths[index]! + spacing;
+  });
+  return context.getImageData(0, 0, canvas.width, canvas.height);
+}
+
 async function loadImageBitmap(src: string, size: number): Promise<ImageBitmap> {
   const img = new Image(size, size);
   img.src = src;
@@ -338,9 +359,6 @@ function applyCustomRadarLayerTheme(map: MaplibreMap, darkMode: boolean) {
       map.setPaintProperty("distance-rings-labels", "text-halo-width", 2.4);
       map.setPaintProperty("distance-rings-labels", "text-opacity", 1);
     }
-    if (map.getLayer("aircraft-labels")) {
-      map.setPaintProperty("aircraft-labels", "text-color", "#071012");
-    }
     if (map.getLayer("aircraft-altitude")) {
       map.setPaintProperty("aircraft-altitude", "text-color", "#f5f2e8");
     }
@@ -364,6 +382,7 @@ type Snapshot = {
       color: string;
       labelIcon: string;
       label: string;
+      labelOrder: number;
     }
   >;
   startedAt: number;
@@ -477,6 +496,9 @@ export default function RadarMap({
   onSelectedTailChangeRef.current = onSelectedTailChange;
   function updateSelectedTail(map: MaplibreMap, tail: string | null) {
     setAltitudeCardTail(map, tail);
+    if (map.getLayer("aircraft-labels")) {
+      map.setLayoutProperty("aircraft-labels", "symbol-sort-key", ["case", ["==", ["get", "tail"], tail ?? ""], 1, ["get", "labelOrder"]]);
+    }
     onSelectedTailChangeRef.current?.(tail);
   }
 
@@ -579,6 +601,7 @@ export default function RadarMap({
         { length: HELICOPTER_ICON_FRAMES },
         (_, frame) => ({ key: helicopterIconKeyFor(frame), frame }),
       );
+      await document.fonts.load('400 10px "Manrope"').catch(() => []);
       const [riderImg, planeImg, ...iconImgs] = await Promise.all([
         loadSvgBitmap(RIDER_SVG, 48),
         loadImageBitmap(
@@ -602,17 +625,6 @@ export default function RadarMap({
         stretchX: [[9, 23]],
         stretchY: [[7, 11]],
         content: [3, 1, 29, 17],
-      });
-      AIRCRAFT_PATH_COLORS.forEach((color, index) => {
-        map.addImage(
-          aircraftLabelColorKey(index),
-          createAircraftLabelPill(color),
-          {
-            stretchX: [[9, 23]],
-            stretchY: [[7, 11]],
-            content: [3, 1, 29, 17],
-          },
-        );
       });
       helicopterEntries.forEach(({ key }, i) => {
         map.addImage(key, helicopterImgs[i]!);
@@ -725,41 +737,33 @@ export default function RadarMap({
         type: "symbol",
         source: "aircraft",
         layout: {
+          // One image contains both the pill and its text, so a front tag
+          // covers the complete tag behind it without changing either position.
           "icon-image": ["get", "labelIcon"],
-          "icon-text-fit": "both",
-          "icon-text-fit-padding": [2, 4, 2, 4],
           "icon-anchor": "center",
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
-          "text-field": ["get", "label"],
-          "text-font": MAP_LABEL_FONT,
-          "text-size": [
+          "icon-rotation-alignment": "viewport",
+          "icon-pitch-alignment": "viewport",
+          "icon-offset": [0, -30],
+          "symbol-z-order": "source",
+          "symbol-sort-key": ["get", "labelOrder"],
+          "icon-size": [
             "interpolate",
             ["linear"],
             ["zoom"],
             6,
-            9,
+            0.9,
             10,
-            9.5,
+            0.95,
             14,
-            10,
+            1,
             18,
-            10.5,
+            1.05,
           ],
-          "text-anchor": "center",
-          "text-offset": [0, -3],
-          "text-justify": "center",
-          "text-max-width": 12,
-          "text-allow-overlap": true,
-          "text-ignore-placement": true,
-          "text-optional": false,
-          "text-line-height": 1.08,
-          "text-letter-spacing": 0.07,
         },
         paint: {
           "icon-opacity": AIRCRAFT_LABEL_ZOOM_OPACITY,
-          "text-color": "#071012",
-          "text-opacity": AIRCRAFT_LABEL_ZOOM_OPACITY,
         },
       });
       map.addLayer({
@@ -1221,12 +1225,18 @@ export default function RadarMap({
         color: string;
         labelIcon: string;
         label: string;
+        labelOrder: number;
       }
     >();
-    for (const a of list) {
+    const orderedAircraft = [...list].sort((a, b) => a.tail.localeCompare(b.tail));
+    for (const [index, a] of orderedAircraft.entries()) {
       if (a.lat == null || a.lon == null) continue;
       const color = aircraftColorForTail(a.tail);
-      const labelIcon = aircraftLabelColorKey(aircraftColorIndex(a.tail));
+      const label = a.tail.toUpperCase();
+      const labelIcon = `aircraft-name-tag-${label}`;
+      if (!map.hasImage(labelIcon)) {
+        map.addImage(labelIcon, createAircraftNameTag(label, color), { pixelRatio: AIRCRAFT_TAG_PIXEL_RATIO });
+      }
       const glyphRole = glyphRoleFor(a.role);
       const iconFamily = isHelicopterRole(glyphRole) ? "helicopter" : "plane";
       const observedAtMs = observationTimeMs(a, now);
@@ -1257,7 +1267,8 @@ export default function RadarMap({
         nickname: null,
         color,
         labelIcon,
-        label: a.tail.toUpperCase(),
+        label,
+        labelOrder: (index + 1) / (orderedAircraft.length + 1),
       });
       if (!newFrom.has(a.tail)) {
         // First time we see this plane — render it at its current position
@@ -1341,6 +1352,7 @@ export default function RadarMap({
           color: meta.color,
           labelIcon: meta.labelIcon,
           label: meta.label,
+          labelOrder: meta.labelOrder,
         };
         if (showAltitudeRef.current) {
           const plane = aircraftRef.current.find((a) => a.tail === tail);

@@ -1,9 +1,17 @@
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import type { ScreenWakeLease } from "./screen-wake-session";
 
-const NativeScreenAwake = registerPlugin<{
+export type RideOrientationStatus = {
+  supported: boolean;
+  locked: boolean;
+  sessionId?: string | null;
+};
+
+export const NativeScreenAwake = registerPlugin<{
   acquire(options: { id: string }): Promise<void>;
   release(options: { id: string }): Promise<void>;
+  orientationStatus(): Promise<RideOrientationStatus>;
+  setOrientationLocked(options: { locked: boolean; sessionId: string }): Promise<RideOrientationStatus>;
 }>("OOSScreenAwake");
 
 export async function requestScreenWake(): Promise<ScreenWakeLease> {

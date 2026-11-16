@@ -16,12 +16,13 @@ enum LiveTrackingCoreTests {
             precondition(condition, message)
         }
         func plane(_ tail: String = "N123", latitude: Double? = 0.01,
+                   longitude: Double? = 0,
                    airborne: Bool = true, age: Double = 0,
                    timestamp: Bool = true) -> RideTrackingAircraft {
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             return RideTrackingAircraft(tail: tail, model: "Cessna", nickname: nil,
-                airborne: airborne, lat: latitude, lon: 0,
+                airborne: airborne, lat: latitude, lon: longitude,
                 position_observed_at: timestamp ? formatter.string(from: now.addingTimeInterval(-age)) : nil,
                 last_seen_min: timestamp ? nil : age / 60)
         }
@@ -52,6 +53,7 @@ enum LiveTrackingCoreTests {
             require(result.aircraft == "Plane NEAR", "Must select nearest airborne contact")
             require(abs((result.distanceNm ?? 0) - 0.6004) < 0.002, "Must calculate nautical miles")
             require(result.rideState == "Stop", "Nearest contact should determine status")
+            require(result.direction == "N", "Direction must belong to the nearest contact")
         }
         check("aircraft exclusions apply before choosing nearest") {
             var selected = config
@@ -62,6 +64,74 @@ enum LiveTrackingCoreTests {
         check("healthy empty feed can show Clear without inventing a distance") {
             let result = summary(snapshot([]))
             require(result.rideState == "Clear" && result.distanceNm == nil, "No artificial zero-distance aircraft")
+        }
+        check("the map's four-minute report timeout clears a retained aircraft at the boundary") {
+            let previous = summary(snapshot([plane()]))
+            require(summary(snapshot([plane(age: 239.999)])).rideState == "Updating",
+                    "A stale position before four minutes is unavailable, not landed")
+            let landed = summary(snapshot([plane(age: 240)]))
+            require(landed.rideState == "Clear" && landed.aircraft == "No tracked aircraft airborne",
+                    "Four minutes without a report must match the map's landed state")
+            require(landed.aircraftTail == nil && landed.distanceNm == nil && landed.direction == nil,
+                    "Landing must remove the previous aircraft, distance and arrow")
+            require(RideTrackingCalculator.displayedContent(landed, previous: previous) == landed,
+                    "The landing must replace the retained aircraft")
+        }
+        check("confirmed landings and empty skies can publish without a fresh rider location") {
+            let previous = summary(snapshot([plane()]))
+            for feed in [snapshot([]), snapshot([plane(airborne: false)]), snapshot([plane(age: 300)])] {
+                for locationAge in [31.0, 3600.0] {
+                    let result = summary(feed, locationAge: locationAge)
+                    require(result.rideState == "Clear" && result.updatedAt == now,
+                            "The feed proves there are no airborne contacts without GPS")
+                    require(RideTrackingCalculator.displayedContent(result, previous: previous) == result,
+                            "Old GPS must not block a landing update")
+                }
+                let result = RideTrackingCalculator.summarize(snapshot: feed, lat: nil, lon: nil,
+                    locationDate: nil, configuration: config, now: now)
+                require(result.rideState == "Clear", "No distance calculation is needed without aircraft")
+            }
+        }
+        check("individual report times take priority over newer fleet and position timestamps") {
+            var old = plane()
+            old.observed_at = ISO8601DateFormatter().string(from: now.addingTimeInterval(-300))
+            require(summary(snapshot([old])).rideState == "Clear",
+                    "New fleet data or coordinates cannot refresh an old individual report")
+            var reported = plane(age: 300)
+            reported.observed_at = ISO8601DateFormatter().string(from: now.addingTimeInterval(-10))
+            require(summary(snapshot([reported])).rideState == "Updating",
+                    "A recent aircraft report with stale coordinates must not claim landing")
+            var resumed = plane()
+            resumed.observed_at = ISO8601DateFormatter().string(from: now)
+            require(summary(snapshot([resumed])).rideState == "Stop", "A new report restores airborne tracking")
+        }
+        check("landing the previous contact selects another airborne aircraft when available") {
+            let previous = summary(snapshot([plane("LANDED")]))
+            let result = summary(snapshot([plane("LANDED", airborne: false), plane("NEXT", latitude: 0.1)]))
+            require(result.aircraftTail == "NEXT" && result.rideState == "Watch", "Select the remaining aircraft")
+            require(RideTrackingCalculator.displayedContent(result, previous: previous) == result,
+                    "The new contact must replace the landed one")
+            require(summary(snapshot([plane(age: 300), plane("NEXT", latitude: 0.1)])).aircraftTail == "NEXT",
+                    "A timed-out contact must not block the next one")
+            require(summary(snapshot([plane(age: 300), plane("NEXT", latitude: 0.1)]), locationAge: 31).rideState == "Updating",
+                    "Remaining airborne contacts still require current rider coordinates")
+        }
+        try check("API report fields decode and explicitly unobserved contacts match the map") {
+            let data = try JSONSerialization.data(withJSONObject: [
+                "tail": "N123", "model": "Cessna", "airborne": true,
+                "lat": 0.01, "lon": 0, "last_seen_min": 0,
+                "observed_at": ISO8601DateFormatter().string(from: now.addingTimeInterval(-300)),
+                "observed": true
+            ])
+            var aircraft = try JSONDecoder().decode(RideTrackingAircraft.self, from: data)
+            require(aircraft.observed == true && aircraft.observed_at != nil, "Read the map's report metadata")
+            require(summary(snapshot([aircraft])).rideState == "Clear", "Decoded report time controls the timeout")
+            aircraft.observed_at = ISO8601DateFormatter().string(from: now)
+            aircraft.observed = false
+            require(summary(snapshot([aircraft])).rideState == "Clear", "Unobserved contacts are hidden on the map")
+            aircraft.observed = true
+            aircraft.observed_at = "invalid timestamp"
+            require(summary(snapshot([aircraft])).rideState == "Stop", "Malformed report time cannot invent landing")
         }
         check("expired location cannot show a current ride state") {
             let result = summary(snapshot([plane()]), locationAge: 31)
@@ -103,7 +173,7 @@ enum LiveTrackingCoreTests {
             require(abs(result.validUntil.timeIntervalSince(now) - 5) < 0.01, "Feed expires first")
         }
         check("invalid rider coordinates cannot claim Clear") {
-            let result = RideTrackingCalculator.summarize(snapshot: snapshot([]), lat: .nan, lon: 0,
+            let result = RideTrackingCalculator.summarize(snapshot: snapshot([plane()]), lat: .nan, lon: 0,
                 locationDate: now, configuration: config, now: now)
             require(result.rideState == "Updating", "Invalid location")
         }
@@ -216,6 +286,72 @@ enum LiveTrackingCoreTests {
                 require(summary(snapshot([helicopter])).aircraft == "Heli N123", "Older feed's helicopter model: \(model)")
             }
             require(summary(snapshot([])).aircraft == "No tracked aircraft airborne", "No type label without an aircraft")
+        }
+        check("aircraft direction is measured from the user across all eight compass sectors") {
+            for (latitude, longitude, expected) in [
+                (0.01, 0.0, "N"), (0.01, 0.01, "NE"), (0.0, 0.01, "E"),
+                (-0.01, 0.01, "SE"), (-0.01, 0.0, "S"), (-0.01, -0.01, "SW"),
+                (0.0, -0.01, "W"), (0.01, -0.01, "NW")
+            ] {
+                let result = summary(snapshot([plane(latitude: latitude, longitude: longitude)]))
+                require(result.direction == expected, "Aircraft position should read \(expected)")
+                require(result.distanceLabel.hasSuffix("nm \(expected)"), "Direction appears beside the distance")
+            }
+        }
+        check("moving the user changes aircraft direction even at the same rounded distance") {
+            let feed = snapshot([plane(latitude: 47.1, longitude: -122)])
+            let south = RideTrackingCalculator.summarize(snapshot: feed, lat: 47, lon: -122,
+                locationDate: now, configuration: config, now: now)
+            let north = RideTrackingCalculator.summarize(snapshot: feed, lat: 47.2, lon: -122,
+                locationDate: now, configuration: config, now: now)
+            require(south.direction == "N" && north.direction == "S", "Use the user's current position as the origin")
+            require(south.distanceNm!.rounded() == north.distanceNm!.rounded(), "Both observations have the same displayed range")
+            require(!south.hasSameReadings(as: north), "Direction-only changes must not be suppressed")
+            var jitter = south
+            jitter.distanceNm = south.distanceNm! + 0.001
+            jitter.bearingDegrees = 5
+            require(south.hasSameReadings(as: jitter), "Tiny changes within the same displayed range and direction stay coalesced")
+        }
+        check("compass sectors wrap at north and their halfway boundaries") {
+            for (bearing, expected) in [(0.0, "N"), (22.49, "N"), (22.5, "NE"),
+                (67.49, "NE"), (67.5, "E"), (337.49, "NW"), (337.5, "N"),
+                (360.0, "N"), (-45.0, "NW"), (-360.0, "N")] {
+                require(RideTrackingCalculator.cardinalDirection(bearingDegrees: bearing) == expected,
+                        "Compass sector for \(bearing)")
+            }
+            require(RideTrackingCalculator.cardinalDirection(bearingDegrees: .nan) == nil, "No compass direction for NaN")
+            require(RideTrackingCalculator.cardinalDirection(bearingDegrees: .infinity) == nil, "No compass direction for infinity")
+        }
+        check("bearing follows the short crossing of the date line and rejects undefined geometry") {
+            let east = RideTrackingCalculator.bearingDegrees(lat: 0, lon: 179.9, aircraftLat: 0, aircraftLon: -179.9)
+            let west = RideTrackingCalculator.bearingDegrees(lat: 0, lon: -179.9, aircraftLat: 0, aircraftLon: 179.9)
+            require(abs(east! - 90) < 0.001 && abs(west! - 270) < 0.001, "Date line must not reverse east and west")
+            require(RideTrackingCalculator.bearingDegrees(lat: 47, lon: -122, aircraftLat: 47, aircraftLon: -122) == nil,
+                    "Coincident positions must not invent North")
+            require(RideTrackingCalculator.bearingDegrees(lat: 0, lon: 0, aircraftLat: 0, aircraftLon: 180) == nil,
+                    "Antipodal positions have no unique bearing")
+            require(RideTrackingCalculator.bearingDegrees(lat: .nan, lon: 0, aircraftLat: 0, aircraftLon: 0) == nil,
+                    "Invalid rider position has no bearing")
+        }
+        try check("legacy saved readings decode without direction while new readings preserve it") {
+            let result = summary(snapshot([plane()]))
+            let data = try JSONEncoder().encode(result)
+            let restored = try JSONDecoder().decode(RideTrackingContent.self, from: data)
+            require(restored.direction == "N" && restored.bearingDegrees == result.bearingDegrees, "Persist the measured bearing")
+            var legacy = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+            legacy.removeValue(forKey: "bearingDegrees")
+            let old = try JSONDecoder().decode(RideTrackingContent.self,
+                from: JSONSerialization.data(withJSONObject: legacy))
+            require(old.bearingDegrees == nil && old.direction == nil && old.distanceLabel == "0.6 nm",
+                    "Older results keep their distance without inventing a direction")
+            let retained = RideTrackingCalculator.displayedContent(summary(nil), previous: restored)
+            require(retained == restored && retained?.updatedAt == result.updatedAt, "Retain direction with the original observation time")
+        }
+        check("empty, first-use and coincident observations do not show a compass direction") {
+            for result in [summary(snapshot([])), RideTrackingContent.initial(stateName: "Washington", now: now),
+                           summary(snapshot([plane(latitude: 0, longitude: 0)]))] {
+                require(result.direction == nil, "No direction without a distinct located aircraft")
+            }
         }
         print("\(passed) native live tracking checks passed")
     }

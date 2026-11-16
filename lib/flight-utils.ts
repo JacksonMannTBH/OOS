@@ -1,4 +1,39 @@
 import type { TrackPoint } from "./tracks";
+import type { AircraftLive } from "./types";
+
+export type CurrentFlightTime = {
+  seconds: number;
+  basis: "takeoff" | "tracking" | "reported";
+};
+
+/** Missing takeoff confirmation must not hide the known current-flight duration. */
+export function getCurrentFlightTime(
+  aircraft: AircraftLive,
+  snapshotAt: number,
+): CurrentFlightTime | null {
+  if (!aircraft.airborne && !aircraft.last_known_airborne) return null;
+  const timestamp = (value: unknown): number | null => {
+    const parsed = typeof value === "number" ? value : typeof value === "string" ? Date.parse(value) : NaN;
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  // A last-known flight freezes at its observation; an active one uses server time.
+  const end = (aircraft.last_known_airborne ? timestamp(aircraft.observed_at) : null)
+    ?? timestamp(aircraft.as_of) ?? snapshotAt;
+  const confirmedTakeoff = aircraft.takeoff_confidence === "medium" || aircraft.takeoff_confidence === "high";
+  const starts = [
+    { at: confirmedTakeoff ? timestamp(aircraft.detected_takeoff_at) : null, basis: "takeoff" },
+    { at: timestamp(aircraft.tracking_started_at), basis: "tracking" },
+  ] as const;
+  for (const { at, basis } of starts) {
+    if (at != null && Number.isFinite(end) && end >= at) {
+      return { seconds: Math.floor((end - at) / 1_000), basis };
+    }
+  }
+  const reported = aircraft.time_aloft_min;
+  return typeof reported === "number" && Number.isFinite(reported) && reported >= 0
+    ? { seconds: Math.floor(reported * 60), basis: "reported" }
+    : null;
+}
 
 export function averageGroundSpeedKt(points: TrackPoint[]): number | null {
   const validSpeeds = points

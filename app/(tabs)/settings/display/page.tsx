@@ -18,7 +18,6 @@ export default function DisplaySettingsPage() {
   return (
     <SettingsPageShell
       title="Ride mode & display"
-      description="Control Ride mode behavior, distance bands, and time preferences."
     >
       <RideSettings />
       <TimeFormatSetting current={timeFormat} />

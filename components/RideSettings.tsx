@@ -21,6 +21,7 @@ import { writeRideAnglesEnabled } from "@/lib/ride-motion-settings";
 import { configureRideMotion } from "@/lib/ride-recording";
 import { SettingsCard } from "./SettingsCard";
 import { RideDialog } from "./RideDialog";
+import { usePro } from "@/lib/hooks/usePro";
 
 type ThresholdKey = keyof RideStatusThresholds;
 type ThresholdDrafts = Record<ThresholdKey, string>;
@@ -28,26 +29,23 @@ type ThresholdDrafts = Record<ThresholdKey, string>;
 const DISTANCE_FIELDS: ReadonlyArray<{
   key: ThresholdKey;
   label: string;
-  description: string;
 }> = [
   {
     key: "watchNm",
     label: "Watch",
-    description: "Start tracking the aircraft closely.",
   },
   {
     key: "warningNm",
     label: "Warning",
-    description: "Show the stronger proximity warning.",
   },
   {
     key: "stopNm",
     label: "Stop",
-    description: "Show the closest-range stop warning.",
   },
 ];
 
 export function RideSettings() {
+  const plan = usePro();
   const showSpeedometer = useSpeedometerVisible();
   const showRideAngles = useRideAnglesEnabled();
   const [savingAngles, setSavingAngles] = useState(false);
@@ -92,7 +90,7 @@ export function RideSettings() {
 
   return (
     <>
-      <SettingsCard title="Wake mode">
+      {plan.pro && <><SettingsCard title="Wake mode">
         <label
           style={{
             minHeight: 52,
@@ -170,20 +168,7 @@ export function RideSettings() {
         <p>Angles are estimates. Road slopes and movement can affect readings; pitch alone does not confirm a wheelie.</p>
         <button type="button" className="ss-ride-primary" onClick={() => setAnglesInfoOpen(false)}>Done</button>
       </RideDialog>}
-
-      <SettingsCard title="G-force">
-        <p style={{ margin: 0, color: SS_TOKENS.fg1, fontSize: 13, lineHeight: 1.5 }}>
-          Swipe the ride map to see acceleration, braking and cornering G. Your G-force peaks appear
-          inside the circle and in saved ride summaries.
-          Movement G reads approximately 0 G at rest.
-        </p>
-        <p style={{ margin: 0, color: SS_TOKENS.fg1, fontSize: 13, lineHeight: 1.5 }}>
-          Mount your phone securely in portrait, facing you and aligned with the bike. Hold the bike upright
-          and stationary on level ground, then use the calibration button beside Home. Calibrate each ride
-          and after moving the phone. G-force works with Lean and Pitch turned off. Motion recording pauses
-          while the phone is locked or OOS is in the background.
-        </p>
-      </SettingsCard>
+      </>}
 
       <SettingsCard title="Distance bands">
         <p
@@ -222,17 +207,6 @@ export function RideSettings() {
                 >
                   {field.label}
                 </strong>
-                <small
-                  style={{
-                    display: "block",
-                    marginTop: 3,
-                    color: SS_TOKENS.fg2,
-                    fontSize: 12,
-                    lineHeight: 1.35,
-                  }}
-                >
-                  {field.description}
-                </small>
               </span>
               <span
                 style={{

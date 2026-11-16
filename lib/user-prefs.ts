@@ -4,15 +4,15 @@
 // no auth, no DB, just a cookie.
 
 import { cookies } from "next/headers";
+import { parseTimeFormat, type TimeFormat } from "./time-format";
+export { DEFAULT_TIME_FORMAT, type TimeFormat } from "./time-format";
 
 export const TIME_FORMAT_COOKIE = "ss_time_format";
-export type TimeFormat = "24" | "12";
-export const DEFAULT_TIME_FORMAT: TimeFormat = "24";
 
 /** Read the rider's preferred time format. Server Components only. */
 export function getTimeFormatPref(): TimeFormat {
   const v = cookies().get(TIME_FORMAT_COOKIE)?.value;
-  return v === "12" ? "12" : DEFAULT_TIME_FORMAT;
+  return parseTimeFormat(v);
 }
 
 export function isHour12(pref: TimeFormat): boolean {

@@ -1,5 +1,7 @@
 "use client";
 
+import { usePro } from "@/lib/hooks/usePro";
+import { FreeAlertsSettings } from "./ProAccess";
 import { useCallback, useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import {
@@ -29,6 +31,11 @@ type DeliveryState =
   | "denied";
 
 export function AlertsSettings() {
+  const plan = usePro();
+  return plan.pro ? <ProAlertsSettings /> : <FreeAlertsSettings />;
+}
+
+function ProAlertsSettings() {
   const [deliveryState, setDeliveryState] =
     useState<DeliveryState>("checking");
   const [busy, setBusy] = useState(false);

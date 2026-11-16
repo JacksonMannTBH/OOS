@@ -8,6 +8,7 @@ import type { Aircraft } from "@/lib/types";
 import { HelicopterIcon } from "./HelicopterIcon";
 import { PlaneIcon } from "./PlaneIcon";
 import { Tooltip } from "./Tooltip";
+import { usePro } from "@/lib/hooks/usePro";
 
 export function HomeActiveAircraft({ aircraft, nearest, statusColor, mockParam }: {
   aircraft: Aircraft[];
@@ -15,10 +16,11 @@ export function HomeActiveAircraft({ aircraft, nearest, statusColor, mockParam }
   statusColor: string;
   mockParam?: string;
 }) {
+  const plan = usePro();
   const title = aircraft.length > 0 ? "Active Air Support" : "No Eyes";
   return <section className="ss-home-aircraft" aria-label={title}>
     <h1>{title}</h1>
-    {aircraft.length > 0 && <nav aria-label="Active aircraft" className="ss-home-aircraft-scroll ss-scroll">
+    {plan.pro && aircraft.length > 0 && <nav aria-label="Active aircraft" className="ss-home-aircraft-scroll ss-scroll">
       <div className="ss-home-aircraft-track">
         {aircraft.map(plane => {
           const color = aircraftColorForTail(plane.tail);
@@ -38,7 +40,7 @@ export function HomeActiveAircraft({ aircraft, nearest, statusColor, mockParam }
         })}
       </div>
     </nav>}
-    {aircraft.length > 0 && nearest?.distanceNm != null && <NearestAircraftInformation
+    {plan.pro && aircraft.length > 0 && nearest?.distanceNm != null && <NearestAircraftInformation
       plane={nearest.plane} distanceNm={nearest.distanceNm} statusColor={statusColor} mockParam={mockParam} />}
   </section>;
 }

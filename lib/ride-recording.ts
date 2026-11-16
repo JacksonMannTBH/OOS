@@ -1,3 +1,4 @@
+import { assertPro, proSnapshot } from "./pro-access";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { assignLiveTrackingToRide, stopRideLiveTracking } from "./live-tracking";
 import { readRideAnglesEnabled } from "./ride-motion-settings";
@@ -102,6 +103,7 @@ export async function getRideGForceStatus(): Promise<RideGForceStatus> {
   return { supported: false, calibrated: false, receiving: false, reading: null, peaks: null, message: "" };
 }
 export async function startRideRecording(consent = false, startedLiveTracking = false): Promise<RideRecorderStatus> {
+  if (proSnapshot().enabled && !(await getRideRecorderStatus()).active) await assertPro("ride");
   const status = await recorder.start({ consent, recordAngles: readRideAnglesEnabled() });
   if (startedLiveTracking && status.active) await assignLiveTrackingToRide(status.active.id);
   changed();

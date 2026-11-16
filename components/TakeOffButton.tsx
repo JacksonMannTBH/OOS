@@ -1,5 +1,7 @@
 "use client";
 
+import { requirePro } from "@/lib/pro-access";
+import { ProBadge } from "./ProAccess";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SS_TOKENS } from "@/lib/tokens";
@@ -33,6 +35,8 @@ export function TakeOffButton({ variant = "hero", style, children }: Props) {
     let startedLiveTracking = false;
     try {
       const recording = await getRideRecorderStatus();
+      if (recording.active) { router.push("/ride"); return; }
+      if (!await requirePro("ride")) return;
       if (recording.supported && !recording.active && recording.consentRequired && !consent) {
         setConfirm(true);
         return;
@@ -104,6 +108,7 @@ export function TakeOffButton({ variant = "hero", style, children }: Props) {
       }}
     >
       {children ?? <span>{busy ? "Starting Ride…" : label}</span>}
+      {!status?.active && variant !== "map" && <ProBadge />}
     </button>
     {error && !confirm && (variant === "map"
       ? <RideDialog title="Could not start ride" onClose={() => setError("")}>

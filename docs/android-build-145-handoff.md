@@ -1,5 +1,11 @@
 # Android handoff source — updated through build 147
 
+**Superseded November 16, 2026:** the same `android/build-145` branch now carries
+the build 192 source. Start with
+[`android-build-192-handoff.md`](android-build-192-handoff.md) for the current
+release, membership exclusions, Android implementation gaps, and build steps.
+The build 145/147 details below are retained as history.
+
 Branch: `android/build-145`. Originally saved from OOS 1.0.2 (145) on November
 13, 2026, and updated at the owner's request on November 14 with the fixes in
 phone build 147. It starts from the previous `android/build-97` source snapshot.

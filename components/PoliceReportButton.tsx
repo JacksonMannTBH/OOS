@@ -71,11 +71,11 @@ export function PoliceReportButton({ disabled = false, alerting = false }: { dis
     finally { pending.current = false; setBusy(false); }
   };
   const closeDialog = () => { if (!pending.current) { setDialog(null); setError(""); } };
-  return <div style={{ width: 104, position: "relative", flexShrink: 0 }}>
+  return <div style={{ width: "var(--ss-ride-instrument-width, 104px)", position: "relative", flexShrink: 0 }}>
     <button type="button" aria-label={checked ? "Police reported" : "Report police sighting"} aria-busy={busy}
       className={alerting ? "ss-police-report--alerting" : undefined}
       disabled={disabled || busy || now < until} onClick={() => void report()}
-      style={{ width: 104, height: 76, boxSizing: "border-box", display: "grid", placeItems: "center", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 14, background: "rgba(0,0,0,0.72)", color: POLICE_COLOR, boxShadow: "0 12px 30px rgba(0,0,0,0.32)", opacity: disabled || busy || (now < until && !checked) ? .45 : 1, cursor: "pointer", touchAction: "manipulation" }}>
+      style={{ width: "var(--ss-ride-instrument-width, 104px)", height: "var(--ss-ride-instrument-height, 76px)", boxSizing: "border-box", display: "grid", placeItems: "center", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 14, background: "rgba(0,0,0,0.72)", color: POLICE_COLOR, boxShadow: "0 12px 30px rgba(0,0,0,0.32)", opacity: disabled || busy || (now < until && !checked) ? .45 : 1, cursor: "pointer", touchAction: "manipulation" }}>
       {checked ? <svg width="42" height="42" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>
         : <svg width="42" height="42" viewBox="0 0 24 26" aria-hidden="true"><path d={POLICE_ICON_PATH} fill="currentColor" /></svg>}
     </button>

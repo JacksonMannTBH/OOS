@@ -7,7 +7,17 @@
 
 import { test } from "node:test";
 import assert from "node:assert";
-import { fmtAgoTs } from "./time";
+import { fmtAgoTs, formatTs } from "./time";
+import { parseTimeFormat } from "./time-format";
+
+test("time defaults to 12-hour while preserving an explicit 24-hour preference", () => {
+  assert.equal(parseTimeFormat(null), "12");
+  assert.equal(parseTimeFormat("invalid"), "12");
+  assert.equal(parseTimeFormat("24"), "24");
+  const instant = Date.parse("2026-11-15T23:42:00Z");
+  assert.match(formatTs(instant, "time"), /3:42.*PM.*PT/);
+  assert.equal(formatTs(instant, "time", { hour12: false }), "15:42 PT");
+});
 
 test("fmtAgoTs: 5h-old ms timestamp renders as '5h ago' (regression — must not be 'just now')", () => {
   const fiveHoursAgoMs = Date.now() - 5 * 60 * 60 * 1000;

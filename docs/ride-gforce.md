@@ -68,9 +68,12 @@ coordinates; the recorder negates lateral acceleration for load peaks. No
 turn classification or steering input is involved. See the [circular-motion explanation](https://openstax.org/books/physics/pages/6-2-uniform-circular-motion).
 The visible dot eases toward the latest reading with a 200 ms time constant,
 using elapsed time on each animation frame so response is consistent across
-screen refresh rates. Scale changes ease with the dot; a smaller target scale
-must remain appropriate for one second before shrinking, avoiding repeated
-resizing around thresholds. Scale numbers are omitted, leaving that space blank.
+screen refresh rates. The display has a fixed 1 G radius: the center is 0 G,
+the dashed ring is 0.5 G, and the outer edge is 1 G. Each point above 1 G is
+clamped radially to the edge while preserving its direction. The three-second
+fading trail uses the same fixed mapping for every point, so new readings
+cannot enlarge or shrink older movements. Full native readings and saved peaks
+are never clamped. Scale numbers are omitted, leaving that space blank.
 Reduced Motion uses immediate dot updates. The plot unmounts and cancels its
 animation when readings are absent or its view is hidden, so resuming starts
 at the new reading. These display changes never feed back into stored peaks.
@@ -115,6 +118,6 @@ node tests/visual/scripts/ride-motion.mjs
 ```
 
 The UI fixture exercises swipe/keyboard navigation, animated dot coordinates,
-scale easing and hold, unchanged peaks, Reduced Motion, pauses, compact layouts, summary persistence, and
+fixed-scale positions, edge clamping, stable trail geometry, unchanged peaks, Reduced Motion, pauses, compact layouts, summary persistence, and
 G-force calibration with angles disabled. Synthetic tests cannot establish
 accuracy during real riding; that requires a mounted physical iPhone.

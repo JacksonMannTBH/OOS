@@ -64,6 +64,16 @@ Ride recording works independently of aircraft Live Tracking. Stop each session
 to end its background location use. Ride recording does not require internet;
 aircraft data and map tiles still do.
 
+<!-- membership-preview:start -->
+Elite members can choose a username and icon in **Elite Settings**, then enable
+**Visible to other riders** to appear on other users’ maps during a recorded
+ride. Confirming visibility shares your precise current location, including
+while the screen is locked. **Share current speed** separately controls whether
+other riders can see your MPH. End Ride or turning visibility off removes your
+marker. If your connection is lost, the marker disappears within 45 seconds.
+Your profile belongs to this installation, with no login, recovery or transfer.
+<!-- membership-preview:end -->
+
 Swipe the ride map to open the **G-force** meter; swipe again to return to the
 map. The **Stats** button opens ride statistics from either view, and its map
 button returns to the map. Peak acceleration, braking, and left/right
@@ -136,9 +146,10 @@ fuel, fuel quantity, reserve planning, or telemetry from the aircraft.
 ## Privacy and limitations
 
 The server stores aircraft observations, catalog data, state-level push
-subscriptions, and notification delivery history. It does not store a rider's
-continuous live location. Location used for map positioning and Ride Mode is
-processed on the device. Map providers receive requests for the area you view.
+subscriptions, and notification delivery history. <!-- membership-preview:start -->With Elite rider sharing
+enabled, it also stores your rider profile and latest shared position during
+an active ride. It does not store a history of shared positions. <!-- membership-preview:end -->Other map and
+Ride Mode location calculations happen on your device. Map providers receive requests for the area you view.
 If no state has been selected, the map sends one location fix through our server
 to the U.S. Census geocoder to identify the state.
 Read [Legal & privacy](/legal#privacy) for details about alerts, provider requests,

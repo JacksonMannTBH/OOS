@@ -1,3 +1,4 @@
+import { assertPro } from "./pro-access";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
 import { getAppState, getSelectedStateCode } from "./app-states";
@@ -49,6 +50,7 @@ export async function getLiveTrackingStatus(): Promise<LiveTrackingStatus> {
 }
 
 export async function startLiveTracking(): Promise<LiveTrackingStatus> {
+  await assertPro("live");
   const status = await NativeLiveTracking.start(liveTrackingConfiguration());
   await Preferences.remove({ key: RIDE_OWNER_KEY });
   return status;

@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { parseTimeFormat } from "@/lib/time-format";
 import {
   CONTRAST_COOKIE,
   TIME_FORMAT_COOKIE,
@@ -13,7 +14,7 @@ const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 
 export async function setTimeFormatAction(formData: FormData): Promise<void> {
   const raw = formData.get("format");
-  const next: TimeFormat = raw === "12" ? "12" : "24";
+  const next: TimeFormat = parseTimeFormat(raw);
   cookies().set({
     name: TIME_FORMAT_COOKIE,
     value: next,

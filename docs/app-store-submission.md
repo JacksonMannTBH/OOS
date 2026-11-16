@@ -1,5 +1,312 @@
 # Out Of Sight App Store release
 
+## Submitted 1.0.3 (192) — November 16, 2026
+
+After reviewing build 192 on the phone, the owner requested the App Store
+upload. App Store Connect showed 1.0.2 already released, so the marketing
+version was advanced to **1.0.3**, keeping build **192**. The app and widget
+were archived and uploaded successfully through Xcode Organizer. Apple
+processed the build successfully and confirmed **Waiting for Review** at
+22:37 UTC. **Manual release** is retained; approval will not publish the app
+automatically.
+
+- App Store version: `eda93fa3-6c4e-40bf-98ea-26b9b1d08965`
+- Build: `69a0f77a-56d0-4517-997c-54e35dbecb71`
+- Review submission: `46123f68-f527-4a13-9512-75f12b035437`
+
+The upload contains all 211 interface files from the phone-reviewed build,
+with the native sources unchanged apart from the marketing version. Signed
+distribution checks verified app/widget versions, production notifications,
+App Group access, and disabled debugging. Membership pop-ups, Pro/Elite labels,
+Elite Settings, native billing, and rider sharing remain excluded. Their
+verified source backup is preserved in
+`references/membership-preview-2026-11-16/`.
+
+The owner's exact approved description from
+[`references/app-store-1.0.2-192/description-approved.txt`](../references/app-store-1.0.2-192/description-approved.txt)
+is saved and verified in App Store Connect for 1.0.3. Release notes cover the
+Live Tracking layout, stale-aircraft synchronization fix, and ten recent
+rides. Reviewer instructions reflect this build and omit the old membership
+announcement. Eight inherited listing screenshots are complete and ordered.
+Private upload, signing, listing, and submission records are in
+`.local/appstore-1.0.3-192/`. No backend deployment was made.
+
+## Phone review 1.0.2 (192) — November 16, 2026 — memberships held for later
+
+At the owner's request, build 192 excludes membership pop-ups, Pro/Elite tier
+labels, Elite Settings, and rider-sharing UI. Normal mobile builds omit these
+modules and the corresponding Help/Legal copy; direct membership links return
+to Settings. Existing Ride Mode, stats, Live Tracking, takeoff alerts, flight
+paths and nationwide maps remain available. The iPhone Release binary also
+excludes native billing and rider-sharing classes. The latest aircraft-landing
+synchronization fix and the updated Live Activity layout are retained.
+
+The membership source remains in the repository, with a separate verified
+470-file snapshot, file hashes, and restoration instructions in
+`references/membership-preview-2026-11-16/`. The explicit membership-preview
+build mode restores the saved interface for development with iPhone Debug;
+the App Store checker rejects that interface for release upload.
+
+The signed Release app and widget both report **1.0.2 (192)**. Installed and
+launched on Jackson's iPhone for review, preserving all ten saved rides,
+lifetime statistics, and preferences. The packaged interface matches all 211
+tested interface files. Twenty screen checks passed in Chromium and WebKit,
+including saved Free-plan native state, forced upgrade events, and direct
+Elite links. Nine focused access checks, the mobile type check, native binary
+exclusion checks, and local signed-release checks passed.
+
+The owner initially requested phone review before App Store upload. That hold
+was subsequently lifted by the explicit upload request recorded above. Phone
+installation records and private backups are in `.local/release-phone-192/`;
+preparation and UI evidence are in `.local/appstore-1.0.2-192/`.
+
+The owner approved their edited App Store description for this version on
+November 16, 2026. Use the exact copy in
+[`references/app-store-1.0.2-192/description-approved.txt`](../references/app-store-1.0.2-192/description-approved.txt)
+for build 192. This replaces the earlier description naming Washington,
+California, and Texas. The approved wording was subsequently applied to
+version 1.0.3 as recorded above.
+
+## Phone review 1.0.2 (164) — November 15, 2026 — tier tags and ten recent rides
+
+Installed and opened on the owner's iPhone. Free notification settings no
+longer repeat Takeoff notifications beneath the header. Both that card and
+Nationwide map place their Pro tag at the header's top right. Recent Rides
+and the Stats settings entry have Pro tags for Free. Elite Settings has an
+Elite tag for Free/Pro. Pro tags disappear for Pro/Elite; the Elite tag
+disappears for Elite. Existing saved rides remain readable in Free.
+
+Free hides Home's active-aircraft strip and nearest-aircraft information bar,
+and the aircraft strip in the map header. Pro/Elite retain those details.
+The native recent-ride archive and interface now retain and display ten
+rides. Archive format, saved routes, and lifetime statistics are preserved;
+the oldest recent summary is removed when an eleventh is saved. Existing
+visual recording fixtures use the same ten-ride cap.
+
+All 19 native history tests and 10 focused membership/formatting tests passed,
+including retention overflow, deletion, storage round trips, and lifetime
+stats beyond the recent cap. Mobile and scoped app type checks, packaged
+assets, signatures, and signed iPhone build passed. The app type check
+excludes the existing unrelated Play Store screenshot simulation error.
+Chromium/WebKit checked all tiers, card-corner geometry across four layouts,
+settings tags, ten saved rows and opening the tenth, paid aircraft details,
+and Free exclusions on Home/map. Location and map data were mocked; WebKit
+recorded two map-image decoding errors, so map rendering is not verified by
+those browser assertions. Installation preserved saved rides, lifetime stats,
+device preferences, and the current native membership selection. Backend and
+App Store submission are unchanged. Evidence: `.local/membership-ui-164/`.
+
+## Phone review 1.0.2 (163) — November 15, 2026 — membership banner behavior
+
+Installed and opened on the owner's iPhone. The Settings membership banner
+opens the Elite tab for Pro members and the Pro tab for Free members. Elite
+members see no membership banner. A temporary Free button switches the native
+development membership to Free: inside the banner for Free/Pro and on Settings
+for Elite, so hiding the banner does not remove the way to return to Free.
+The control is absent outside the native development membership mode. The
+banner waits for membership status to avoid appearing briefly for Elite.
+
+Seven focused membership tests, mobile type checking, packaged assets,
+signatures, and the signed iPhone build passed. Chromium and WebKit verified
+all three plans across four layouts, repeated banner opening, native switch
+failure recovery, saved rider preferences, trial eligibility after returning
+to Free, and absence of the Free control outside development mode. The Free
+button is separate from the banner's main button, with no nested buttons.
+The owner's Pro selection, three saved rides, lifetime stats, and device
+preferences were preserved during installation. Backend and App Store
+submission are unchanged. Evidence: `.local/membership-banner-163/`.
+
+The recent-ride capacity review found matching limits of three in native
+storage and the recent-rides interface. Retention is unchanged in this build.
+A larger archive should separate completed routes from the active recording,
+because recording currently rewrites the full archive for each location update.
+
+## Phone review 1.0.2 (162) — November 15, 2026 — membership tags and flight time
+
+Installed and opened on the owner's iPhone. Pro badges show only for a ready
+Free membership; Pro and Elite see no upgrade badges. The map Flight Paths
+button and Nationwide map toggle carry the badge for Free. Nationwide map
+opens the Pro membership dialog for Free and honors Pro/Elite access even
+when a nationwide preference remains saved after a downgrade. Settings,
+Help, and Legal page headings no longer show introductory subtext.
+
+Current-flight duration previously depended on a legacy field populated only
+after a confirmed takeoff. The aircraft profile now derives Time airborne
+from confirmed takeoff timestamps, or Time tracked from the recorded tracking
+start. Last-known duration freezes at the last observation. The live ADSB.fi
+sample contained 16 active flights, including 10 with tracking starts and no
+legacy duration; all 10 now resolve to a tracked duration in the client.
+
+All 22 focused tests, mobile type checking, scoped app type checking, packaged
+assets, signatures, and the iPhone build passed. The full app type check still
+reports the existing unrelated Play Store screenshot simulation type error.
+Chromium/WebKit assertions verified tags, membership access, headers, and both
+duration bases across three layouts. Map data was mocked; headless WebKit
+used direct button events and recorded navigation/resource aborts, so these
+checks do not verify its map rendering. The physical app opened successfully.
+The owner's Elite selection, three saved rides, lifetime stats, and device
+preferences were preserved. Backend and App Store submission are unchanged.
+Evidence: `.local/settings-flight-162/`.
+
+## Phone review 1.0.2 (160) — November 14, 2026 — trial eligibility
+
+Installed and launched on the owner's iPhone. The Pro action and introductory
+copy require a ready native status, no active membership and an explicit true
+StoreKit trialEligible result. Used, unknown or loading eligibility shows the
+monthly price instead. Development mode no longer overrides eligibility.
+Elite continues to show $9.99/month without a trial.
+
+Seven focused membership/eligibility tests, mobile type checking, packaged
+interface and signed iPhone build passed. Chromium/WebKit verified returning
+and unknown accounts receive no trial text, confirmed eligible accounts see
+the trial action, active members see the price, and plan/settings behavior
+remains correct across four layouts. App/widget build 160, signatures and
+packaged assets were verified. Saved rides and lifetime stats were preserved.
+Backend and App Store submission are unchanged.
+Evidence: `.local/membership-160/`.
+
+## Phone review 1.0.2 (159) — November 14, 2026 — membership actions
+
+Installed and launched on the owner's iPhone. The separate membership trial
+and monthly-price row is removed. The Pro action reads Free Trial Week; the
+Elite action reads $9.99/month. The selected plan keeps its button label and
+is disabled. Plan selection and the Settings menu entry behave as before.
+
+Mobile type checking, packaged interface and signed iPhone build passed.
+Chromium/WebKit verified the labels and removed row across four layouts,
+plan selection, current-plan button state, all-tier Elite Settings entry and
+saved rider preferences. App/widget build 159, signatures and packaged assets
+were verified. Saved rides and lifetime stats were preserved. Backend and
+App Store submission are unchanged. Evidence: `.local/membership-159/`.
+
+## Phone review 1.0.2 (158) — November 14, 2026 — membership details
+
+Installed and launched on the owner's iPhone. The trial pill and one-week trial
+copy appear on Pro only. The banner feature is now Rider profiles. The Elite
+Settings action has been removed from the membership dialog; the Settings menu
+entry and its all-tier behavior remain available.
+
+Mobile type checking, packaged interface and signed iPhone build passed.
+Chromium/WebKit verified Pro-only trial presentation, prices, banner wording,
+absence of the dialog settings action, plan selection and retained Elite
+preferences across four layouts each. App/widget build 158, signatures and
+packaged assets were verified. Saved rides and lifetime stats were preserved.
+Backend and App Store submission are unchanged.
+Evidence: `.local/membership-158/`.
+
+## Phone review 1.0.2 (156) — November 14, 2026 — membership offers
+
+Installed and launched on the owner's iPhone. Elite Settings is visible to all
+plans: Free and Pro open the membership dialog with Elite selected; Elite opens
+the settings themselves. Direct Elite Settings links apply the same gate.
+The Use Free control is removed. Pro shows $2.99/month and Elite $9.99/month.
+The Elite benefit label is Speed Sharing. The rounded Free Trial Week pill
+appears beside the price on both plan tabs, including the currently selected
+local plan.
+
+Focused membership tests, app/mobile type checks, packaged interface and signed
+iPhone build passed. Chromium/WebKit checked both prices, trial pill, all-tier
+entry behavior, plan changes, saved Elite preferences, and four layouts each.
+The app check excludes the existing unrelated Play Store simulation error.
+App/widget build 156, signatures and packaged assets were verified; saved
+rides and lifetime stats were preserved. Backend and App Store submission are
+unchanged. Evidence: `.local/membership-156/`.
+
+## Phone review 1.0.2 (155) — November 14, 2026 — Elite membership
+
+Installed and launched on the owner's iPhone. Membership titles stay on one
+line. The feature-list banner no longer includes Pro/Elite badges. The trial
+is large on the left and monthly price smaller on the right. Memberships use
+clean Choose Pro / Choose Elite controls, without development notices.
+
+Elite is persisted by the native membership session, includes Pro access,
+and alone exposes Elite Settings. Both the Settings entry and direct route
+are gated; choosing Free or Pro removes Elite Settings without deleting rider
+preferences. Username, rider icon, visibility and speed-sharing controls are
+available in Elite Settings. No Elite price is assigned.
+
+All 229 app tests, app/mobile type checks, packaged interface and signed iPhone
+build passed. Chromium/WebKit verified four layouts, title/trial/price placement,
+Free/Pro/Elite access, direct-route rejection, and saved Elite preferences.
+The app type check continues to exclude the existing unrelated Play Store
+simulation error. App/widget build 155, signature and packaged assets were
+verified. Saved rides and lifetime stats were preserved. Backend and App Store
+submission are unchanged. Evidence: `.local/membership-155/`.
+
+## Phone review 1.0.2 (154) — November 14, 2026 — membership plan selector
+
+Installed and launched on the owner's iPhone. The membership dialog is titled
+“Out Of Sight Membership,” with accessible Pro/Elite tabs directly below it.
+Pro pricing and the trial offer are below the benefits, before the purchase
+control. Elite shows Coming soon without an invented price or billing product.
+The centered Settings banner now uses a dark saffron-accented treatment and
+small Pro/Elite labels.
+
+Mobile type checking, packaged interface and signed iPhone build passed.
+Chromium and WebKit verified both plans, keyboard selection, tier preview
+persistence, legacy links and four layouts each. App/widget build 154,
+signature and packaged assets were verified; saved rides and lifetime stats
+were preserved. Backend and App Store submission are unchanged.
+Evidence: `.local/membership-154/`.
+
+## Phone review 1.0.2 (153) — November 14, 2026 — membership dialog
+
+Installed and launched on the owner's iPhone. The Settings banner now reads
+“Out Of Sight Membership,” centered with no secondary text, and opens the
+existing membership dialog over Settings. The separate membership page has
+been removed; older membership links also open the dialog over Settings.
+
+Mobile type checking, the packaged interface and signed iPhone build passed.
+Chromium and WebKit verified centered text across four layouts, the dialog
+flow, persisted Free/Pro switching, and legacy links. App/widget build 153,
+signature and all packaged assets were verified. Saved rides and lifetime
+stats were preserved. Backend and App Store submission are unchanged.
+Evidence: `.local/membership-153/`.
+
+## Phone review 1.0.2 (152) — November 14, 2026 — membership preview
+
+Installed and launched in the regular Out Of Sight app. Build 36's Free/Pro
+membership preview is merged into the latest source through phone build 151.
+Settings → OOS Pro has the separate saffron entry, one-week free-trial wording,
+$3.99/month card, and persistent Preview Free / Preview Pro controls. Pro gates
+new rides, Live Tracking, takeoff notifications and aircraft paths. Existing
+rides remain resumable and finishable, and saved summaries/stats stay readable.
+Current G-force/calibration behavior and Elite settings are retained.
+
+All 229 app tests, app/mobile type checks, the packaged interface build, and the
+signed iPhone build passed. The app type check excludes an unrelated existing
+Play Store simulation with an optional-coordinate type error. Chromium and
+WebKit checks passed across four layouts each. App/widget versions are both
+1.0.2 (152), signatures and packaged assets were verified, and saved rides and
+lifetime stats were preserved across installation and launch.
+
+This is a native Debug preview; Release, web and Android feature access stays
+as before. Real billing, App Store trial setup, and server subscription checks
+are not enabled. The live backend and submitted App Store build 147 are unchanged.
+Evidence, installation verification and the source backup are in
+`.local/membership-152/`. See `docs/membership-preview.md` for the migration scope.
+
+## App Store 1.0.2 (147) — November 14, 2026 — Waiting for Review
+
+At the owner's request, build 147 was uploaded and submitted with the four new
+iPhone listing designs: overhead map, Ride Mode, ride summary, and takeoff
+alerts. Both iPhone screenshot sets now contain those four images in that
+order; all eight files were processed by Apple and their checksums and sizes
+verified. Release notes and reviewer instructions cover the current G-force,
+ride statistics, angle calibration, nationwide state selection, and background
+location behavior.
+
+The signed Release archive and distribution package match all 211 tested
+interface files. App and widget report 1.0.2 (147), signatures and App Groups
+are valid, production notifications are enabled, and debugging is disabled.
+Apple processed the build as Valid and App Store Eligible. The attached build,
+review submission, and version were verified as Waiting for Review.
+
+Manual release remains selected. The live backend is unchanged and must stay
+unchanged until Apple publishes the app. Build 115 is superseded. Release
+records, archive, distribution package, upload logs, and listing/submission
+confirmation are in `.local/appstore-1.0.2-147/`.
+
 ## Phone review 1.0.2 (147) — November 14, 2026
 
 Installed and launched in the regular Out Of Sight app. G-force now opens from

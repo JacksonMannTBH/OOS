@@ -30,7 +30,7 @@ export function utcDateKey(d: Date): string {
 
 export function fmtPtTime(
   tsSec: number | null | undefined,
-  hour12 = false,
+  hour12 = true,
 ): string {
   if (tsSec == null) return "—";
   return formatTs(tsSec * 1000, "time-sec", { hour12 });
@@ -38,7 +38,7 @@ export function fmtPtTime(
 
 export function fmtPtDateTime(
   tsSec: number | null | undefined,
-  hour12 = false,
+  hour12 = true,
 ): string {
   if (tsSec == null) return "—";
   return formatTs(tsSec * 1000, "datetime", { hour12 });

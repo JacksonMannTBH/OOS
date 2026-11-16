@@ -142,18 +142,18 @@ enum RideHistoryTests {
             restarted.recoverInterruptedRide()
             precondition(restarted.archive.rides.count == 1)
         }
-        try check("only the latest three rides are retained and deletion persists") {
+        try check("only the latest ten rides are retained and deletion persists") {
             var core = RideRecorderCore()
             var ids: [String] = []
-            for i in 0...4 {
+            for i in 0..<12 {
                 try core.start(now: base + Double(i) * 10_000, consent: true)
                 let id = core.archive.active!.id
                 ids.append(id)
                 _ = try core.finish(id: id, now: base + Double(i) * 10_000 + 1000)
             }
-            precondition(core.archive.rides.map(\.id) == Array(ids.suffix(3).reversed()))
+            precondition(core.archive.rides.map(\.id) == Array(ids.suffix(10).reversed()))
             try core.delete(id: ids[3])
-            precondition(core.archive.rides.map(\.id) == [ids[4], ids[2]])
+            precondition(core.archive.rides.map(\.id) == Array(ids[4...11].reversed()) + [ids[2]])
             let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             defer { try? FileManager.default.removeItem(at: folder) }
             let store = RideHistoryStore(url: folder.appendingPathComponent("rides.json"))
@@ -200,14 +200,14 @@ enum RideHistoryTests {
             let first = try core.finish(id: core.archive.active!.id, now: base + 20_000)
             _ = try core.finish(id: first.id, now: base + 30_000)
             precondition(core.archive.lifetimeStats!.rideCount == 1)
-            for index in 1...5 {
+            for index in 1...11 {
                 let start = base + Double(index) * 100_000
                 try core.start(now: start, consent: true)
                 _ = try core.finish(id: core.archive.active!.id, now: start + 10_000)
             }
-            precondition(core.archive.rides.count == 3 && !core.archive.rides.contains(where: { $0.id == first.id }))
+            precondition(core.archive.rides.count == 10 && !core.archive.rides.contains(where: { $0.id == first.id }))
             let stats = core.archive.lifetimeStats!
-            precondition(stats.rideCount == 6 && stats.topSpeedMps == 10)
+            precondition(stats.rideCount == 12 && stats.topSpeedMps == 10)
             precondition(abs(stats.longestDistanceMeters! - 200) < 0.1 && stats.longestDurationSeconds == 20)
             for ride in core.archive.rides { try core.delete(id: ride.id) }
             precondition(core.archive.rides.isEmpty && core.archive.lifetimeStats == stats)
@@ -217,7 +217,7 @@ enum RideHistoryTests {
             try store.write(core.archive)
             let restored = RideRecorderCore(archive: try store.read())
             precondition(restored.archive.lifetimeStats == stats)
-            precondition((stats.payload["rideCount"] as? Int) == 6)
+            precondition((stats.payload["rideCount"] as? Int) == 12)
         }
         try check("legacy migration seeds saved rides once and excludes the active ride") {
             var core = try newRide()

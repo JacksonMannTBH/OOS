@@ -1,5 +1,7 @@
 "use client";
 
+import { requirePro } from "@/lib/pro-access";
+import { ProBadge } from "./ProAccess";
 import { useEffect, useId, useState } from "react";
 import {
   getLiveTrackingStatus,
@@ -55,6 +57,7 @@ export function LiveTrackingButton({ mockOn = false, activeOnly = false, style }
         await stopLiveTracking();
         setStatus(await getLiveTrackingStatus());
       } else {
+        if (!await requirePro("live")) return;
         setStatus(await startLiveTracking());
       }
     } catch (cause) {
@@ -82,6 +85,7 @@ export function LiveTrackingButton({ mockOn = false, activeOnly = false, style }
         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 8px", borderRadius: 20, border: "1px solid rgba(246,196,49,.55)", background: status.active ? "#f6c431" : "rgba(5,6,7,.6)", color: status.active ? "#050505" : "#f6c431", fontSize: 12, fontWeight: 800 }}>
           <span aria-hidden style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor", opacity: status.active ? 1 : 0.35 }} />
           {busy ? "Updating…" : status.active ? "Stop Live Tracking" : "Start Live Tracking"}
+          {!status.active && <ProBadge />}
         </span>
       </button>
       <span id={descriptionId} className="sr-only">{description}</span>

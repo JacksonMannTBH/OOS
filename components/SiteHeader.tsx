@@ -38,6 +38,7 @@ export function SiteHeader() {
 
   return (
     <header
+      className="ss-site-header"
       style={{
         width: "100%",
         position: "sticky",
@@ -63,11 +64,12 @@ export function SiteHeader() {
       }}
     >
       <div
+        className="ss-site-header-inner"
         style={{
-          maxWidth: 560,
+          maxWidth: "var(--ss-site-header-width, 560px)",
           margin: "0 auto",
-          height: "calc(env(safe-area-inset-top, 0px) + clamp(80px, 20vw, 104px))",
-          padding: "env(safe-area-inset-top, 0px) clamp(14px, 4vw, 18px) 0",
+          height: "calc(env(safe-area-inset-top, 0px) + var(--ss-site-header-height, clamp(80px, 20vw, 104px)))",
+          padding: "env(safe-area-inset-top, 0px) max(18px, env(safe-area-inset-right, 0px)) 0 max(18px, env(safe-area-inset-left, 0px))",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

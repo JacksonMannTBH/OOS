@@ -5,6 +5,7 @@ import nextDynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ScreenAwake } from "./ScreenAwake";
+import { RideOrientationButton } from "./RideOrientationButton";
 import { calibrateRideMotion, configureRideMotion, finishRideRecording, getRideRecorderStatus, resetRideGForcePeaks, resetRideMotionPeaks } from "@/lib/ride-recording";
 import { useRideRecorder } from "@/lib/hooks/useRideRecorder";
 import { useSpeedometerVisible } from "@/lib/hooks/useSpeedometerVisible";
@@ -79,6 +80,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
   const resetGForcePending = useRef(false);
   const [calibrating, setCalibrating] = useState(false);
   const [calibrationError, setCalibrationError] = useState("");
+  const [orientationError, setOrientationError] = useState("");
   const calibrationAbort = useRef<AbortController | null>(null);
   const cancelCalibration = useCallback(() => {
     const pending = calibrationAbort.current;
@@ -194,26 +196,11 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
     <main
       className="ss-ride-screen"
       data-aircraft-present={nearest ? "true" : undefined}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 60,
-        boxSizing: "border-box",
-        height: "100dvh",
-        minHeight: "100dvh",
-        padding:
-          "calc(env(safe-area-inset-top, 0px) + var(--ss-ride-top-space, 32px)) 18px calc(env(safe-area-inset-bottom, 0px) + 16px)",
-        background: "#020202",
-        color: "#f5f2e8",
-        display: "grid",
-        gridTemplateRows: "auto auto minmax(max-content, 1fr) auto",
-        gap: "var(--ss-ride-row-gap, 12px)",
-        overflowY: "auto",
-        overscrollBehavior: "contain",
-      }}
+      data-police-nearby={policeNearby ? "true" : undefined}
     >
       <ScreenAwake />
       <header
+        className="ss-ride-header"
         style={{
           textAlign: "center",
           display: "flex",
@@ -229,7 +216,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
           className="ss-police-nearby"
           aria-live="polite"
           style={{
-            fontSize: "clamp(28px, 8.5vw, 42px)",
+            fontSize: "var(--ss-ride-police-size, clamp(28px, 8.5vw, 42px))",
             lineHeight: 1.05,
             fontWeight: 950,
             maxWidth: 440,
@@ -238,16 +225,17 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
         >
           POLICE NEARBY
         </div>}
+        <div className="ss-ride-status-row">
         <div
           className="ss-ride-aircraft-status"
           aria-live="polite"
           style={{
             color: statusColor,
-            fontSize: policeNearby
+            fontSize: `var(--ss-ride-status-size, ${policeNearby
               ? "clamp(20px, 5.5vw, 26px)"
               : status === "warning"
                 ? "clamp(56px, 18.5vw, 104px)"
-                : "clamp(60px, 19.5vw, 108px)",
+                : "clamp(60px, 19.5vw, 108px)"})`,
             lineHeight: policeNearby ? 1.12 : 0.92,
             fontWeight: 950,
             letterSpacing: 0,
@@ -256,7 +244,10 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
         >
           {policeNearby && "Aircraft · "}{statusLabel.toUpperCase()}
         </div>
+        {nearest && <AircraftDistance distanceNm={nearest.distanceNm} color={statusColor} placement="landscape" />}
+        </div>
         {nearest && <div
+          className="ss-ride-aircraft-bar"
           style={{
             width: "min(100%, 460px)",
             marginTop: "var(--ss-ride-aircraft-gap, clamp(12px, 4dvh, 36px))",
@@ -313,22 +304,21 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
 
       <div className="ss-ride-instruments">
         {showSpeedometer ? <RiderSpeedBadge speedMps={riderPos?.speedMps ?? null} /> : <span />}
-        {nearest ? <div className="ss-ride-distance" aria-live="polite" aria-label={`Distance to nearest aircraft: ${nearestSummary.distance}`}>
-          <span className="ss-ride-distance__unit">Nm</span>
-          <span className="ss-ride-distance__value ss-mono" style={{ color: statusColor }}>{nearest.distanceNm.toFixed(1)}</span>
-        </div> : <span aria-hidden="true" />}
+        {nearest ? <AircraftDistance distanceNm={nearest.distanceNm} color={statusColor} placement="portrait" />
+          : <span className="ss-ride-distance-spacer" aria-hidden="true" />}
         <PoliceReportButton alerting={policeNearby} disabled={mockOn || unavailable || !riderPos} />
       </div>
 
       <div
+        className="ss-ride-panel"
         style={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: "var(--ss-ride-panel-justify, center)",
           gap: 10,
           width: "min(100%, 500px)",
-          alignSelf: nearest ? "start" : "center",
+          alignSelf: `var(--ss-ride-panel-align, ${nearest ? "start" : "center"})`,
           justifySelf: "center",
           minHeight: 0,
         }}
@@ -351,7 +341,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
               style={{
                 display: "block",
                 position: "relative",
-                width: "var(--ss-ride-circle-size)",
+                width: "var(--ss-ride-map-size, var(--ss-ride-circle-size))",
                 aspectRatio: "1",
                 flex: "0 0 auto",
               }}
@@ -380,16 +370,10 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
       </div>
 
       <footer
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 10,
-          paddingBottom: 0,
-        }}
+        className="ss-ride-footer"
       >
-        {calibrationError && <p className="ss-ride-error" role="alert" style={{ margin: 0, maxWidth: 420, textAlign: "center", fontSize: 12 }}>
-          {calibrationError}
+        {(calibrationError || orientationError) && <p className="ss-ride-error" role="alert" style={{ margin: 0, maxWidth: 420, textAlign: "center", fontSize: 12 }}>
+          {calibrationError || orientationError}
         </p>}
         <div className="ss-ride-navigation">
           <Link
@@ -402,6 +386,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
               <path d="M3.2 11.2 12 3.6l8.8 7.6v8.3c0 .8-.7 1.5-1.5 1.5h-4.5v-6.2H9.2V21H4.7c-.8 0-1.5-.7-1.5-1.5v-8.3Z" />
             </svg>
           </Link>
+          <RideOrientationButton disabled={ending || calibrating} onError={setOrientationError} />
           <div className="ss-ride-navigation__controls">
             <button type="button"
               className="ss-ride-navigation__calibrate"
@@ -436,16 +421,17 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
         </div>
         <button
           type="button"
+          className="ss-ride-end"
           onClick={() => void endRide()}
           disabled={ending}
           aria-label="End Ride and return to the main app"
           style={{
-            width: "min(100%, 460px)",
+            width: "var(--ss-ride-end-width, min(100%, 460px))",
             minHeight: 54,
             borderRadius: 18,
-            border: "1px solid #f6c431",
+            border: "1px solid var(--ss-ride-end-color)",
             background: "#050505",
-            color: "#f6c431",
+            color: "var(--ss-ride-end-color)",
             fontFamily: "inherit",
             fontSize: 18,
             fontWeight: 900,
@@ -542,6 +528,14 @@ function formatNearestAircraftSummary(contact: RideContact | null): RideSummary 
   };
 }
 
+function AircraftDistance({ distanceNm, color, placement }: { distanceNm: number; color: string; placement: "portrait" | "landscape" }) {
+  return <div className={`ss-ride-distance ss-ride-distance--${placement}`} aria-live="polite"
+    aria-label={`Distance to nearest aircraft: ${distanceNm.toFixed(1)} nm`}>
+    <span className="ss-ride-distance__unit">Nm</span>
+    <span className="ss-ride-distance__value ss-mono" style={{ color }}>{distanceNm.toFixed(1)}</span>
+  </div>;
+}
+
 function RideSummaryMetric({
   label,
   value,
@@ -602,8 +596,8 @@ function RiderSpeedBadge({ speedMps }: { speedMps: number | null }) {
         position: "relative",
         zIndex: 2,
         alignSelf: "flex-start",
-        width: 104,
-        minHeight: 76,
+        width: "var(--ss-ride-instrument-width, 104px)",
+        minHeight: "var(--ss-ride-instrument-height, 76px)",
         boxSizing: "border-box",
         padding: "4px 8px",
         display: "flex",
@@ -633,7 +627,7 @@ function RiderSpeedBadge({ speedMps }: { speedMps: number | null }) {
         className="ss-mono"
         style={{
           color: "#f6c431",
-          fontSize: 54,
+          fontSize: "var(--ss-ride-speed-size, 54px)",
           fontWeight: 950,
           lineHeight: 1,
         }}

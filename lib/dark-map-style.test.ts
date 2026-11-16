@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { StyleSpecification } from "maplibre-gl";
-import { darkMapStyle } from "./dark-map-style";
+import { darkMapStyle, STATE_BOUNDARY_LAYER_ID } from "./dark-map-style";
 
 const provider: StyleSpecification = {
   version: 8,
@@ -43,4 +43,27 @@ test("provider backgrounds and fills are dark before style commitment, without c
 test("Ride's simplified map is prepared before the first frame while radar retains minor roads", () => {
   assert.equal(darkMapStyle(provider, "ride").layers[4]!.layout?.visibility, "none");
   assert.notEqual(darkMapStyle(provider, "radar").layers[4]!.layout?.visibility, "none");
+});
+
+test("state borders appear below overview zoom and survive both map themes without adding county borders", () => {
+  const original: StyleSpecification = { ...provider, layers: [
+    ...provider.layers,
+    { id: "boundary_3", type: "line", source: "base", "source-layer": "boundary", minzoom: 8,
+      filter: ["all", [">=", ["get", "admin_level"], 3], ["<=", ["get", "admin_level"], 6]] },
+  ] };
+  for (const mode of ["radar", "ride"] as const) {
+    const style = darkMapStyle(original, mode);
+    const borders = style.layers.find(layer => layer.id === STATE_BOUNDARY_LAYER_ID)!;
+    assert.equal(borders.type, "line");
+    if (borders.type !== "line") throw new Error("State borders must be lines");
+    assert.equal(borders.source, "base");
+    assert.equal(borders["source-layer"], "boundary");
+    assert.equal(borders.minzoom, 2);
+    assert.deepEqual(borders.filter, ["all", ["==", ["get", "admin_level"], 4], ["!=", ["get", "maritime"], 1]]);
+    assert.equal(borders.layout?.visibility, "visible");
+    assert.equal(borders.paint?.["line-opacity"], 0.8);
+    assert(style.layers.indexOf(borders) < style.layers.findIndex(layer => layer.type === "symbol"));
+    assert.equal(darkMapStyle(style, mode).layers.filter(layer => layer.id === STATE_BOUNDARY_LAYER_ID).length, 1);
+  }
+  assert.equal(original.layers.some(layer => layer.id === STATE_BOUNDARY_LAYER_ID), false);
 });

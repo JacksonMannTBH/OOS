@@ -30,7 +30,7 @@ export function RideStatistics({ ride, showAngles, live = false, calibrated = fa
         : "—"} /></div>
       <div><dt>Top speed</dt><StatisticValue value={ride ? rideSpeed(ride) : "— mph"} /></div>
     </dl>
-    {showAngles && <section className="ss-ride-summary-angles" aria-label="Peak angles">
+    {showAngles && (live || (motion && Number.isFinite(motion.calibratedAt) && motion.calibratedAt > 0)) && <section className="ss-ride-summary-angles" aria-label="Peak angles">
       <div className="ss-ride-angles-heading">
         <h3>Peak angles</h3>
         {live && onResetAngles && <RidePeaksResetButton className="ss-ride-angles-reset"
