@@ -31,6 +31,15 @@ announcement. Eight inherited listing screenshots are complete and ordered.
 Private upload, signing, listing, and submission records are in
 `.local/appstore-1.0.3-192/`. No backend deployment was made.
 
+At the owner's subsequent request, the same build was added to TestFlight's
+existing **Owner Phone Testing** group and all **ten existing individual
+testers**. What to Test and beta-review instructions were saved and verified.
+Apple confirmed **Waiting for Beta Review** at 22:52 UTC on November 16.
+Automatic tester notification remains enabled for distribution after approval;
+no new testers were invited. The public App Store submission still uses manual
+release. Private assignment and beta-review records are saved as
+`testflight-verification.json` and related files in the release folder above.
+
 ## Phone review 1.0.2 (192) — November 16, 2026 — memberships held for later
 
 At the owner's request, build 192 excludes membership pop-ups, Pro/Elite tier
