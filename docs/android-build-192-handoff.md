@@ -1,15 +1,16 @@
-# Android handoff — source through build 193
+# Android handoff — source through build 194
 
 Updated November 16, 2026. Continue using branch **`android/build-145`** so the
 existing Android checkout can pull the latest source without changing branches.
 This supersedes the [build 145/147 handoff](android-build-145-handoff.md).
 
-The reference iPhone release is **1.0.3 (193)**, uploaded and submitted to Apple
-on November 16, replacing build 192 with the expandable MPH view. Apple confirmed
-Waiting for Review; release is manual. The prior phone review used 1.0.2 (192),
-before the marketing version was advanced because 1.0.2 was already live. Build
-193 has 211 verified packaged interface files and adds the speedometer change.
-See [the release record](app-store-submission.md).
+The reference iPhone release is **1.0.3 (194)**, uploaded and submitted on
+November 16 with Waiting for Review confirmed and manual release retained. It retains the expandable MPH
+view from build 193 and adds the persistent membership NEWS banner at the top
+of Settings. The owner reviewed this exact build on the iPhone. Its signed
+Release package contains 213 verified interface files, including two Capacitor
+compatibility files. The App Store release and screenshot records are in
+[the release notes](app-store-submission.md).
 
 This branch saves the shared mobile source and the iPhone implementations for
 the Android update. It is not an Android APK/AAB release, and native Android
@@ -17,6 +18,10 @@ ride recording, motion readings, and ongoing aircraft notifications still need
 implementation and device testing.
 
 ## Shared changes to carry into Android
+
+- Keep the informational membership NEWS banner as the first Settings item. It
+  remains available after reading and can be reopened; closing restores focus
+  to the banner. This does not enable billing, tier badges, or Elite Settings.
 
 - The speedometer update submitted in iPhone build 193 lets the rider
   tap MPH to enlarge speed into the map circle, tap again to restore the map,
@@ -44,8 +49,9 @@ build the interface with memberships disabled. The Vite configuration substitute
 the release modules in `mobile/frontend/release/`, strips held Help sections,
 and rejects preview modules entering a release bundle.
 
-The Android update must have no membership pop-ups, Pro/Elite tier labels,
-Elite Settings, purchases, or rider-sharing interface. Direct Elite links return
+The Android update must have no purchase pop-ups, Pro/Elite tier badges,
+Elite Settings, purchases, or rider-sharing interface. The informational NEWS
+banner and its future-plans notice remain available at the top of Settings. Direct Elite links return
 to Settings. Existing maps, paths, alerts, and supported ride features remain
 available without a membership requirement. A saved development plan must not
 change that release behavior.
@@ -147,12 +153,22 @@ false, and the packaged JavaScript has no membership prompts or Elite Settings.
 Local handoff evidence is in `.local/android-handoff-192/` on the release Mac.
 No Gradle build, Android installation, signing, or Play upload was performed.
 
-The subsequent shared speedometer source in build 193 passed eight packaged
+The shared speedometer source in build 193 passed eight packaged
 interface checks across Chromium/WebKit and portrait/landscape layouts, including
 status rims and swiping from enlarged speed to G-force. The signed iPhone
 distribution package matches all 211 tested interface files and still excludes
 memberships. Evidence is in `.local/appstore-1.0.3-193/`. This update does not
 change Android versioning or provide the missing Android native bridges.
+
+Build 194 adds the persistent Settings news source shared by both platforms.
+Mobile type checking and the production interface build passed. Six browser
+checks cover Chromium and WebKit at portrait, landscape and small-phone sizes,
+including repeat opening, reload persistence, focus restoration and purchase
+exclusions. The iPhone distribution package matches all 213 phone-reviewed
+interface files. Evidence is in `.local/settings-membership-news/` and
+`.local/appstore-1.0.3-194/`. This does not implement or validate the missing
+Android native bridges; rebuild and sync the Android interface on the Android
+machine before signing.
 
 Before the iPhone upload, twenty release screen checks passed across Chromium
 and WebKit, along with the focused membership/access checks, mobile type

@@ -1,0 +1,9 @@
+Tap MPH in Ride Mode to enlarge your speed into the map circle. Tap again to restore the map, or swipe to G-force.
+
+Live Tracking has a clearer layout with larger status text, distance in nautical miles at the top right, and a direction arrow toward the aircraft.
+
+Improved aircraft status updates help keep the Lock Screen notification in sync with the map when aircraft reports expire.
+
+Recent Rides now saves your ten latest ride summaries.
+
+Membership news remains available at the top of Settings.

@@ -1,5 +1,72 @@
 # Out Of Sight App Store release
 
+## Replacement submitted 1.0.3 (194) — November 16, 2026
+
+At the owner's request, build **194** replaces build 193 in App Store review.
+Apple processed the upload as Valid and App Store Eligible, and confirmed
+**Waiting for Review** at `2026-11-17T06:36:50.683Z`. **Manual release** is retained.
+
+- App Store version: `eda93fa3-6c4e-40bf-98ea-26b9b1d08965`
+- Build: `f26041a2-f2c1-4804-bfb5-6f38258a8b04`
+- Review submission: `4c463dcf-c3a2-4e36-9d71-ddcb91659da3`
+
+The exact phone-reviewed build keeps the informational membership NEWS banner
+at the top of Settings. It remains available after reading and can be reopened.
+Purchases, tier badges, Elite Settings, native billing and rider sharing remain
+excluded. The original membership source backup is preserved. Expandable MPH,
+G-force, ten recent rides, and the Live Tracking layout and stale-aircraft
+synchronization fixes remain included.
+
+Both existing iPhone screenshot sets now contain five complete, ordered images.
+The owner's attached Ride Mode image (CLEAR, 72 MPH) replaces the old second
+image. The new front-facing WATCH, 54 MPH G-force image is fifth. The overhead,
+ride-summary and takeoff-alert images are retained unchanged. All ten remote
+checksums, dimensions and order were verified. Approved masters, exact-size
+exports and their checksums are preserved locally in
+`app-store-assets/2026-11-16/build-194/`; public selection and delivery records
+are in `references/app-store-1.0.3-194/`.
+
+The owner's exact approved description is unchanged. Release notes and reviewer
+instructions include the persistent informational news banner. Type checking,
+the production interface build and six Chromium/WebKit checks passed. The
+archive and signed distribution package match all 213 phone-reviewed interface
+files; app and widget report 1.0.3 (194), production notifications and App Groups
+are present, debugging is disabled, and native billing/sharing classes are absent.
+The phone update preserved all ten rides, lifetime statistics and preferences.
+Private signing, upload, listing and submission evidence is in
+`.local/appstore-1.0.3-194/`. No backend deployment was made.
+
+Automatic tester notifications are disabled for build 194. Build 192 remains
+in the separate beta-review queue, so its shared beta-review instructions are
+preserved. No all-tester notification was sent. The Android branch continues
+to save the shared source; see [Android handoff](android-build-192-handoff.md).
+
+## Phone review 1.0.3 (194) — November 16, 2026 — Settings membership news
+
+At the owner's request, installed and launched build **194** on Jackson's
+iPhone. The informational subscription news banner is the first Settings item
+and remains available after reading it. Closing the notice restores focus to
+the banner. The existing one-time Home notice retains its read-state behavior.
+Purchase dialogs, tier badges, Elite Settings, native billing and rider sharing
+remain excluded. Expandable MPH and the preceding Live Tracking fixes remain
+included.
+
+Mobile type checking, the production web build, six Chromium/WebKit layout and
+interaction checks, signed Release app/widget checks and installation checks
+passed. All 211 tested web files match the packaged iPhone interface, plus two
+Capacitor compatibility files. The app and widget report 1.0.3 (194). All ten
+saved rides, lifetime statistics and device preferences were preserved.
+Evidence is in `.local/release-phone-194/` and `.local/settings-membership-news/`.
+At the time of this phone installation, App Store build 193 remained submitted.
+The later build 194 replacement is recorded above.
+
+The owner also approved the revised Ride Mode advertisement with the map,
+right-facing phone angle and 72 MPH. Its selected master is
+`app-store-assets/2026-11-16/masters/02-ride-mode.png`; the selection record and
+checksum are in `app-store-assets/2026-11-16/selected-artwork.json`. The earlier
+artwork and generation prompts are preserved. Listing screenshots were unchanged by the phone installation; the subsequent
+build 194 submission uses the newly approved artwork recorded above.
+
 ## Replacement submitted 1.0.3 (193) — November 16, 2026
 
 At the owner's request, build **193** replaces build 192 in App Store review.

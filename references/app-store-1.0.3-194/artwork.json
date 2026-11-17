@@ -1,0 +1,241 @@
+{
+  "selection": {
+    "approvedByOwner": true,
+    "approvedDate": "2026-11-16",
+    "build": "194",
+    "rideMode": {
+      "master": "masters/02-ride-mode.png",
+      "source": "owner attachment codex-clipboard-ba4b3745-06e0-488e-9c5f-13b481c1a6b5.png",
+      "sha256": "855576fff801ab479a70ee621549723c1eb8e219732e4120b40dd4a55b311ee6",
+      "status": "CLEAR",
+      "mph": 72
+    },
+    "gForce": {
+      "master": "masters/05-g-force.png",
+      "source": "../g-force/05-g-force-watch54-v2.png",
+      "sha256": "50e24b049692325e63656f170a5329b736cea6f75f09fab581723bc9fb2fc6b8",
+      "status": "WATCH",
+      "mph": 54
+    },
+    "screenshotsPerSize": 5,
+    "totalPlacements": 10,
+    "uploadedToStore": true,
+    "appStoreVersionId": "eda93fa3-6c4e-40bf-98ea-26b9b1d08965",
+    "reviewSubmissionId": "4c463dcf-c3a2-4e36-9d71-ddcb91659da3",
+    "buildId": "f26041a2-f2c1-4804-bfb5-6f38258a8b04"
+  },
+  "exports": [
+    {
+      "path": "app-store-assets/2026-11-16/build-194/iphone-6.9/01-know-whats-overhead.png",
+      "fileName": "01-know-whats-overhead.png",
+      "set": "iphone-6.9",
+      "displayType": "APP_IPHONE_67",
+      "width": 1290,
+      "height": 2796,
+      "bytes": 2825779,
+      "sha256": "6917fc7e191ac8e489d629c2d8b7fc53b2b3523b4a0745587251f3459be37c35",
+      "md5": "beb1977bf8601368e2f10843e43d60c0"
+    },
+    {
+      "path": "app-store-assets/2026-11-16/build-194/iphone-6.9/02-ride-mode.png",
+      "fileName": "02-ride-mode.png",
+      "set": "iphone-6.9",
+      "displayType": "APP_IPHONE_67",
+      "width": 1290,
+      "height": 2796,
+      "bytes": 2468212,
+      "sha256": "6bf8be22c13f3ad701ce0d088f10147ed26582201ebba43d7da7423cc93c6f88",
+      "md5": "381cfe907ad93197d64fd9bd4d9ee86c"
+    },
+    {
+      "path": "app-store-assets/2026-11-16/build-194/iphone-6.9/03-your-ride-recorded.png",
+      "fileName": "03-your-ride-recorded.png",
+      "set": "iphone-6.9",
+      "displayType": "APP_IPHONE_67",
+      "width": 1290,
+      "height": 2796,
+      "bytes": 2150144,
+      "sha256": "4762cb3474b600d71f49eca0e6c6a73262c1791701c560b6d5ec31c281d36811",
+      "md5": "b552bea475ea584111a3a25b128da5c2"
+    },
+    {
+      "path": "app-store-assets/2026-11-16/build-194/iphone-6.9/04-takeoff-alerts.png",
+      "fileName": "04-takeoff-alerts.png",
+      "set": "iphone-6.9",
+      "displayType": "APP_IPHONE_67",
+      "width": 1290,
+      "height": 2796,
+      "bytes": 2527188,
+      "sha256": "370c5f8afb8836aa88f31de8d8c440c04de02123ea2af85f37db3551c1bc5960",
+      "md5": "bd82aa86f75049d53c8ba69b6ced976c"
+    },
+    {
+      "path": "app-store-assets/2026-11-16/build-194/iphone-6.9/05-g-force.png",
+      "fileName": "05-g-force.png",
+      "set": "iphone-6.9",
+      "displayType": "APP_IPHONE_67",
+      "width": 1290,
+      "height": 2796,
+      "bytes": 2101501,
+      "sha256": "0a61ca8663900619686a221f4afceb9b8ec15c3cb762814afa4df2a8dbee6e8e",
+      "md5": "d991cdf999ad442eee9bfd10740c1ab3"
+    },
+    {
+      "path": "app-store-assets/2026-11-16/build-194/iphone-6.3/01-know-whats-overhead.png",
+      "fileName": "01-know-whats-overhead.png",
+      "set": "iphone-6.3",
+      "displayType": "APP_IPHONE_61",
+      "width": 1179,
+      "height": 2556,
+      "bytes": 2512140,
+      "sha256": "8e5554f2838003e230831ca637ea7c1970d4925303a7b451671b4fc466c68d5d",
+      "md5": "3768ac7f972d3c596c8ca37d149d7e8e"
+    },
+    {
+      "path": "app-store-assets/2026-11-16/build-194/iphone-6.3/02-ride-mode.png",
+      "fileName": "02-ride-mode.png",
+      "set": "iphone-6.3",
+      "displayType": "APP_IPHONE_61",
+      "width": 1179,
+      "height": 2556,
+      "bytes": 2205367,
+      "sha256": "72a2abf6d650f13d5795a343fde095add6cf1978a3149adefd063827b5e7b105",
+      "md5": "5ca3f334747bec6917755637d795ed64"
+    },
+    {
+      "path": "app-store-assets/2026-11-16/build-194/iphone-6.3/03-your-ride-recorded.png",
+      "fileName": "03-your-ride-recorded.png",
+      "set": "iphone-6.3",
+      "displayType": "APP_IPHONE_61",
+      "width": 1179,
+      "height": 2556,
+      "bytes": 1923125,
+      "sha256": "57cf386196e8a7e2c41ac01bce66d3496043c4f219c4e96ba6c97e37a9d51e65",
+      "md5": "b93fefe773c0fcac06ec6a1c12b086d7"
+    },
+    {
+      "path": "app-store-assets/2026-11-16/build-194/iphone-6.3/04-takeoff-alerts.png",
+      "fileName": "04-takeoff-alerts.png",
+      "set": "iphone-6.3",
+      "displayType": "APP_IPHONE_61",
+      "width": 1179,
+      "height": 2556,
+      "bytes": 2250375,
+      "sha256": "bf7c5c9038d207077e4bea3ea2ccb7ddee92252c45a0211c5f699ae97bed1ff5",
+      "md5": "f81f93a558b98a62d9f163b5ddf61098"
+    },
+    {
+      "path": "app-store-assets/2026-11-16/build-194/iphone-6.3/05-g-force.png",
+      "fileName": "05-g-force.png",
+      "set": "iphone-6.3",
+      "displayType": "APP_IPHONE_61",
+      "width": 1179,
+      "height": 2556,
+      "bytes": 1904604,
+      "sha256": "2bc63fb3e7f26be493782511033fdd156cb56aabb8b8406f6310c06d1d7c6b62",
+      "md5": "f3b05e8fbd86bbffcbb5393576f72a15"
+    }
+  ],
+  "appStoreScreenshots": [
+    {
+      "displayType": "APP_IPHONE_61",
+      "position": 1,
+      "screenshotId": "e9e2f1e2-0c56-4efe-a0fa-af88487369f7",
+      "fileName": "01-know-whats-overhead.png",
+      "md5": "3768ac7f972d3c596c8ca37d149d7e8e",
+      "width": 1179,
+      "height": 2556,
+      "state": "COMPLETE"
+    },
+    {
+      "displayType": "APP_IPHONE_61",
+      "position": 2,
+      "screenshotId": "92400019-6928-80c4-8023-f62848fa37ed",
+      "fileName": "02-ride-mode.png",
+      "md5": "5ca3f334747bec6917755637d795ed64",
+      "width": 1179,
+      "height": 2556,
+      "state": "COMPLETE"
+    },
+    {
+      "displayType": "APP_IPHONE_61",
+      "position": 3,
+      "screenshotId": "6b333678-ffe8-49e0-80ab-8d396a1fda50",
+      "fileName": "03-your-ride-recorded.png",
+      "md5": "b93fefe773c0fcac06ec6a1c12b086d7",
+      "width": 1179,
+      "height": 2556,
+      "state": "COMPLETE"
+    },
+    {
+      "displayType": "APP_IPHONE_61",
+      "position": 4,
+      "screenshotId": "3d7043b3-a879-4f2b-bc65-be9e0d52635d",
+      "fileName": "04-takeoff-alerts.png",
+      "md5": "f81f93a558b98a62d9f163b5ddf61098",
+      "width": 1179,
+      "height": 2556,
+      "state": "COMPLETE"
+    },
+    {
+      "displayType": "APP_IPHONE_61",
+      "position": 5,
+      "screenshotId": "0b800019-6928-80c4-8016-43943e3cdd75",
+      "fileName": "05-g-force.png",
+      "md5": "f3b05e8fbd86bbffcbb5393576f72a15",
+      "width": 1179,
+      "height": 2556,
+      "state": "COMPLETE"
+    },
+    {
+      "displayType": "APP_IPHONE_67",
+      "position": 1,
+      "screenshotId": "63be23a5-99a3-4615-b088-8bf51b37b57e",
+      "fileName": "01-know-whats-overhead.png",
+      "md5": "beb1977bf8601368e2f10843e43d60c0",
+      "width": 1290,
+      "height": 2796,
+      "state": "COMPLETE"
+    },
+    {
+      "displayType": "APP_IPHONE_67",
+      "position": 2,
+      "screenshotId": "98400019-6928-80c4-8033-0eeda3856ec3",
+      "fileName": "02-ride-mode.png",
+      "md5": "381cfe907ad93197d64fd9bd4d9ee86c",
+      "width": 1290,
+      "height": 2796,
+      "state": "COMPLETE"
+    },
+    {
+      "displayType": "APP_IPHONE_67",
+      "position": 3,
+      "screenshotId": "8b9b82ce-37dc-4459-8277-33149acefe94",
+      "fileName": "03-your-ride-recorded.png",
+      "md5": "b552bea475ea584111a3a25b128da5c2",
+      "width": 1290,
+      "height": 2796,
+      "state": "COMPLETE"
+    },
+    {
+      "displayType": "APP_IPHONE_67",
+      "position": 4,
+      "screenshotId": "e0dadc07-24f9-4dfb-85c7-018f65838138",
+      "fileName": "04-takeoff-alerts.png",
+      "md5": "bd82aa86f75049d53c8ba69b6ced976c",
+      "width": 1290,
+      "height": 2796,
+      "state": "COMPLETE"
+    },
+    {
+      "displayType": "APP_IPHONE_67",
+      "position": 5,
+      "screenshotId": "48c00019-6928-80c4-8005-55f87803d29b",
+      "fileName": "05-g-force.png",
+      "md5": "d991cdf999ad442eee9bfd10740c1ab3",
+      "width": 1290,
+      "height": 2796,
+      "state": "COMPLETE"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import { EliteBadge, ProBadge } from "./ProAccess";
 import { usePro } from "@/lib/hooks/usePro";
 import { openPro } from "@/lib/pro-access";
 import { MEMBERSHIP_PREVIEW_ENABLED } from "@/lib/membership-availability";
+import { SubscriptionAnnouncement } from "./SubscriptionAnnouncement";
 
 type SettingsLink = {
   href: string;
@@ -36,6 +37,7 @@ export default function SettingsHub({ includeStore = true, includeElite = false,
   const plan = usePro();
   return (
     <main className="ss-settings-hub">
+      <SubscriptionAnnouncement persistent />
       {proAction}
       <nav aria-label="Settings" className="ss-settings-menu">
         {SETTINGS_GROUPS.map(group => (

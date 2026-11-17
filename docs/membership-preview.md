@@ -1,5 +1,28 @@
 # Memberships — phone build 160
 
+## Settings membership news — November 16, 2026
+
+At the owner's request, the existing subscription news banner is retained as
+the first item on Settings in the shared interface, including normal mobile
+release builds. It stays available after opening and can be reopened later.
+Closing the informational notice returns keyboard focus to its banner. The
+existing one-time Home announcement still records when the news has been read.
+Purchase dialogs, tier badges, Elite Settings, native billing and rider sharing
+remain excluded from normal mobile releases.
+
+This source update was made after App Store build 193 was submitted. At the
+owner's request it was installed and launched as **1.0.3 (194)** on Jackson's
+iPhone, preserving all ten saved rides, lifetime statistics and preferences.
+The owner subsequently requested App Store replacement with build 194. It was
+uploaded and submitted with manual release retained; Apple confirmed Waiting
+for Review. The exact phone-reviewed source and 213 interface files match the
+signed distribution package. Mobile type checking and
+the production interface build passed. Six Chromium/WebKit
+checks verified top placement, persistence after reading and reload, dialog
+closing, focus restoration, portrait/landscape sizing and purchase exclusions.
+Local UI evidence is in `.local/settings-membership-news/`; signed-package,
+installation and saved-data checks are in `.local/release-phone-194/`.
+
 ## Held from build 192 — November 16, 2026
 
 The owner requested that the next App Store build exclude membership pop-ups,

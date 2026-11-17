@@ -7,7 +7,7 @@ import { RideDialog } from "./RideDialog";
 const TITLE = "OOS is moving to a subscription model";
 const SEEN_KEY = "oos_subscription_announcement_seen";
 
-export function SubscriptionAnnouncement() {
+export function SubscriptionAnnouncement({ persistent = false }: { persistent?: boolean }) {
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState(true);
   const returnFocus = useRef<HTMLElement | null>(null);
@@ -24,8 +24,8 @@ export function SubscriptionAnnouncement() {
     wasOpen.current = open;
   }, [open]);
   return <>
-    {!seen && <button type="button" className="ss-subscription-banner" aria-haspopup="dialog" onClick={event => {
-      returnFocus.current = [...(event.currentTarget.parentElement?.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]") ?? [])]
+    {(persistent || !seen) && <button type="button" className="ss-subscription-banner" aria-haspopup="dialog" onClick={event => {
+      returnFocus.current = persistent ? event.currentTarget : [...(event.currentTarget.parentElement?.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]") ?? [])]
         .find(element => element !== event.currentTarget) ?? null;
       setOpen(true);
       setSeen(true);
