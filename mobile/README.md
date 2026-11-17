@@ -6,8 +6,8 @@ project remains in `../android` as a recoverable fallback.
 ## Current Android handoff — November 16, 2026
 
 The `android/build-145` branch now carries the shared source through iPhone
-App Store build **1.0.3 (192)**, with memberships excluded from normal mobile
-builds. Start with the [build 192 Android handoff](../docs/android-build-192-handoff.md)
+App Store build **1.0.3 (193)**, including the expandable MPH view, with memberships
+excluded from normal mobile builds. Start with the [current Android handoff](../docs/android-build-192-handoff.md)
 for build steps, saved membership references, Android versioning, and the
 native recording/motion/notification work still required. No Android APK/AAB
 has been built or uploaded by this handoff.

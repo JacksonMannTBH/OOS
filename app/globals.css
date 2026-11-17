@@ -1572,6 +1572,53 @@ body[data-theme="dark"] textarea {
 .ss-ride-aircraft-type { display: grid; place-items: center; width: 36px; height: 36px; line-height: 0; }
 .ss-ride-aircraft-type > span { display: flex; }
 .ss-ride-screen .ss-helicopter-icon { background-image: var(--ss-heli-static-image); }
+.ss-ride-speedometer {
+  appearance: none;
+  position: relative;
+  z-index: 2;
+  align-self: flex-start;
+  width: var(--ss-ride-instrument-width, 104px);
+  min-height: var(--ss-ride-instrument-height, 76px);
+  box-sizing: border-box;
+  margin: 0;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 14px;
+  background: rgba(0,0,0,.72);
+  color: #fff;
+  box-shadow: 0 12px 30px rgba(0,0,0,.32);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.ss-ride-speedometer__unit { color: #a9a28a; font-size: 11px; font-weight: 900; line-height: 1; }
+.ss-ride-speedometer__value { color: #f6c431; font-size: var(--ss-ride-speed-size, 54px); font-weight: 950; line-height: 1; }
+.ss-ride-speedometer:focus-visible { outline: 2px solid #f6c431; outline-offset: 5px; }
+.ss-ride-speedometer--expanded {
+  align-self: center;
+  width: var(--ss-ride-map-size, var(--ss-ride-circle-size));
+  min-height: 0;
+  aspect-ratio: 1;
+  padding: 18px;
+  gap: 10px;
+  border-width: 3px;
+  border-radius: 50%;
+  background: #0a0d0c;
+  container-type: inline-size;
+  animation: ss-ride-panel-reveal .22s ease-out;
+}
+.ss-ride-speedometer--expanded .ss-ride-speedometer__unit { font-size: 16px; letter-spacing: .12em; }
+.ss-ride-speedometer--expanded .ss-ride-speedometer__value { font-size: 80px; font-size: clamp(48px, 44cqi, 148px); }
+@media (prefers-reduced-motion: reduce) {
+  .ss-ride-speedometer--expanded { animation: none; }
+}
 @media (max-width: 360px) {
   .ss-ride-instruments { gap: 4px; }
   .ss-ride-distance__value { font-size: clamp(24px, calc(20vw - 40px), 32px); }

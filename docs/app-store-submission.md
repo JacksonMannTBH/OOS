@@ -1,5 +1,47 @@
 # Out Of Sight App Store release
 
+## Replacement submitted 1.0.3 (193) — November 16, 2026
+
+At the owner's request, build **193** replaces build 192 in App Store review.
+Apple processed the new upload as Valid and App Store Eligible. Build 192's
+review submission was canceled, build 193 was attached to the existing 1.0.3
+version, and Apple confirmed **Waiting for Review** at 21:19 Pacific on
+November 16. **Manual release** is retained.
+
+- App Store version: `eda93fa3-6c4e-40bf-98ea-26b9b1d08965`
+- Build: `16ffa269-2699-4864-b734-f14f9ab5b76a`
+- Review submission: `4f762227-060f-4823-bd25-2eaa20c1e566`
+
+Ride Mode now lets the rider tap MPH to enlarge speed into the map circle,
+tap again to restore the map, and swipe to G-force. The enlarged rim follows
+aircraft status. Speed, the map, and the active recording continue updating
+while switching views. See [speedometer behavior](ride-speedometer.md).
+
+The approved description and eight existing listing screenshots are preserved.
+Release notes and reviewer instructions include the expandable MPH behavior.
+Membership pop-ups, Pro/Elite labels, Elite Settings, native subscriptions,
+and rider sharing remain excluded. The verified membership reference backup
+is unchanged. No backend deployment was made.
+
+Eight Chromium/WebKit layout checks cover portrait and landscape at two phone
+sizes, speed changes, unavailable readings, status rims, G-force swipes,
+keyboard controls, map/recording continuity, Stats, and Reduced Motion. The
+signed distribution package matches all 211 tested interface files; app and
+widget report 1.0.3 (193), production notifications and App Groups are present,
+debugging is disabled, and native subscription/sharing classes are absent.
+Private upload, package, listing, and submission records are in
+`.local/appstore-1.0.3-193/`.
+
+Build 193 is also assigned to the existing TestFlight group and the same eleven
+individual testers, including the previously requested additional tester.
+Automatic notifications are disabled and no build-wide notice was sent. Apple
+rejected the separate beta-review submission with `ANOTHER_BUILD_IN_REVIEW`:
+build 192 is still waiting for beta review, and only one build per version can
+be in that queue. Submit build 193 for beta review after 192 completes. The
+individual invitation remains pending an installable build; never notify all
+testers to work around this restriction. This does not block the confirmed
+App Store review submission for build 193.
+
 ## Submitted 1.0.3 (192) — November 16, 2026
 
 After reviewing build 192 on the phone, the owner requested the App Store

@@ -1,13 +1,14 @@
-# Android handoff — source through build 192
+# Android handoff — source through build 193
 
 Updated November 16, 2026. Continue using branch **`android/build-145`** so the
 existing Android checkout can pull the latest source without changing branches.
 This supersedes the [build 145/147 handoff](android-build-145-handoff.md).
 
-The reference iPhone release is **1.0.3 (192)**, uploaded and submitted to Apple
-on November 16. Apple confirmed Waiting for Review; release is manual. The phone
-review used 1.0.2 (192), before the marketing version was advanced because 1.0.2
-was already live. The submitted app has the same 211 packaged interface files.
+The reference iPhone release is **1.0.3 (193)**, uploaded and submitted to Apple
+on November 16, replacing build 192 with the expandable MPH view. Apple confirmed
+Waiting for Review; release is manual. The prior phone review used 1.0.2 (192),
+before the marketing version was advanced because 1.0.2 was already live. Build
+193 has 211 verified packaged interface files and adds the speedometer change.
 See [the release record](app-store-submission.md).
 
 This branch saves the shared mobile source and the iPhone implementations for
@@ -17,6 +18,11 @@ implementation and device testing.
 
 ## Shared changes to carry into Android
 
+- The speedometer update submitted in iPhone build 193 lets the rider
+  tap MPH to enlarge speed into the map circle, tap again to restore the map,
+  and swipe to G-force. The rim follows aircraft status. Both orientations and
+  active-recording continuity are covered by eight browser layout checks.
+  See [speedometer behavior and verification](ride-speedometer.md).
 - Updated Home, aircraft map, Ride Mode, settings, Help, Legal, and navigation.
   Ride Mode includes landscape layouts, a direction indicator that stays inside
   the map panel, and revised controls and transitions.
@@ -140,6 +146,13 @@ build manifests and generated compatibility files. Both membership flags are
 false, and the packaged JavaScript has no membership prompts or Elite Settings.
 Local handoff evidence is in `.local/android-handoff-192/` on the release Mac.
 No Gradle build, Android installation, signing, or Play upload was performed.
+
+The subsequent shared speedometer source in build 193 passed eight packaged
+interface checks across Chromium/WebKit and portrait/landscape layouts, including
+status rims and swiping from enlarged speed to G-force. The signed iPhone
+distribution package matches all 211 tested interface files and still excludes
+memberships. Evidence is in `.local/appstore-1.0.3-193/`. This update does not
+change Android versioning or provide the missing Android native bridges.
 
 Before the iPhone upload, twenty release screen checks passed across Chromium
 and WebKit, along with the focused membership/access checks, mobile type

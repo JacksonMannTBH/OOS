@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent, type TouchEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent, type Ref, type TouchEvent } from "react";
 import nextDynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -63,9 +63,19 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
   const recording = useRideRecorder();
   const [showStats, setShowStats] = useState(false);
   const [showGForce, setShowGForce] = useState(false);
+  const [expandedSpeed, setExpandedSpeed] = useState(false);
+  const speedExpanded = showSpeedometer && expandedSpeed;
+  const speedButton = useRef<HTMLButtonElement>(null);
   const rideViewId = useId();
   const [ending, setEnding] = useState(false);
+  const toggleSpeed = () => {
+    setExpandedSpeed(current => !current);
+    setShowStats(false);
+    setShowGForce(false);
+    requestAnimationFrame(() => speedButton.current?.focus({ preventScroll: true }));
+  };
   const switchRideView = () => {
+    setExpandedSpeed(false);
     setShowGForce(current => showStats || !current);
     setShowStats(false);
   };
@@ -303,7 +313,8 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
       </header>
 
       <div className="ss-ride-instruments">
-        {showSpeedometer ? <RiderSpeedBadge speedMps={riderPos?.speedMps ?? null} /> : <span />}
+        {showSpeedometer && !speedExpanded ? <RiderSpeedBadge speedMps={riderPos?.speedMps ?? null}
+          buttonRef={speedButton} controls={rideViewId} onClick={toggleSpeed} disabled={ending} /> : <span aria-hidden="true" />}
         {nearest ? <AircraftDistance distanceNm={nearest.distanceNm} color={statusColor} placement="portrait" />
           : <span className="ss-ride-distance-spacer" aria-hidden="true" />}
         <PoliceReportButton alerting={policeNearby} disabled={mockOn || unavailable || !riderPos} />
@@ -331,13 +342,13 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
               switchRideView();
             }
           }}>
-          <div className="ss-ride-view__map" aria-hidden={showStats || showGForce}>
+          <div className="ss-ride-view__map" aria-hidden={showStats || showGForce || speedExpanded}>
             <Link
               href={mockOn ? "/map?mock=1" : "/map"}
               prefetch={false}
               className="ss-ride-map-link"
               aria-label="Open map, keep ride active"
-              tabIndex={showStats || showGForce ? -1 : undefined}
+              tabIndex={showStats || showGForce || speedExpanded ? -1 : undefined}
               style={{
                 display: "block",
                 position: "relative",
@@ -355,6 +366,8 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
               />
             </Link>
           </div>
+          {speedExpanded && <RiderSpeedBadge speedMps={riderPos?.speedMps ?? null} expanded
+            buttonRef={speedButton} controls={rideViewId} color={statusColor} onClick={toggleSpeed} disabled={ending} />}
           {showGForce && !showStats && <RideGForceView
             onReset={() => void resetGForce()} resetting={resettingGForce}
             resetDisabled={ending || calibrating || resettingAngles || !recording.status?.active}
@@ -404,6 +417,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
               aria-controls={rideViewId}
               disabled={ending}
               onClick={() => {
+                setExpandedSpeed(false);
                 if (showStats) setShowGForce(false);
                 setShowStats(current => !current);
               }}
@@ -582,58 +596,32 @@ function formatGroundSpeed(value: number | null | undefined): string | null {
   return `${Math.round(value)} kt`;
 }
 
-function RiderSpeedBadge({ speedMps }: { speedMps: number | null }) {
+function RiderSpeedBadge({ speedMps, expanded = false, onClick, buttonRef, controls, color, disabled }: {
+  speedMps: number | null; expanded?: boolean; onClick: () => void;
+  buttonRef: Ref<HTMLButtonElement>; controls: string; color?: string; disabled: boolean;
+}) {
   const mph =
     speedMps != null && Number.isFinite(speedMps) && speedMps >= 0
       ? Math.round(speedMps * MPS_TO_MPH)
       : null;
 
   return (
-    <div
+    <button
+      type="button"
+      ref={buttonRef}
+      className={`ss-ride-speedometer${expanded ? " ss-ride-speedometer--expanded" : ""}`}
+      onClick={onClick}
+      disabled={disabled}
+      aria-expanded={expanded}
+      aria-controls={controls}
       aria-live="polite"
-      aria-label={`Your speed: ${mph == null ? "unavailable" : `${mph} miles per hour`}`}
-      style={{
-        position: "relative",
-        zIndex: 2,
-        alignSelf: "flex-start",
-        width: "var(--ss-ride-instrument-width, 104px)",
-        minHeight: "var(--ss-ride-instrument-height, 76px)",
-        boxSizing: "border-box",
-        padding: "4px 8px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 0,
-        border: "1px solid rgba(255,255,255,0.2)",
-        borderRadius: 14,
-        background: "rgba(0,0,0,0.72)",
-        color: "#fff",
-        boxShadow: "0 12px 30px rgba(0,0,0,0.32)",
-        textAlign: "center",
-      }}
+      aria-label={`Your speed: ${mph == null ? "unavailable" : `${mph} miles per hour`}. ${expanded ? "Shrink" : "Expand"} speedometer.`}
+      style={expanded && color ? { borderColor: `color-mix(in srgb, ${color} 78%, #f5f2e8)` } : undefined}
     >
-      <span
-        style={{
-          color: "#a9a28a",
-          fontSize: 11,
-          fontWeight: 900,
-          lineHeight: 1,
-        }}
-      >
-        Mph
-      </span>
-      <span
-        className="ss-mono"
-        style={{
-          color: "#f6c431",
-          fontSize: "var(--ss-ride-speed-size, 54px)",
-          fontWeight: 950,
-          lineHeight: 1,
-        }}
-      >
+      <span className="ss-ride-speedometer__unit">MPH</span>
+      <span className="ss-mono ss-ride-speedometer__value">
         {mph == null ? "—" : mph}
       </span>
-    </div>
+    </button>
   );
 }
