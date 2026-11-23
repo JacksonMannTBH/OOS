@@ -1,0 +1,21 @@
+No sign-in is required. Open the map from Home. Select a state in Settings > Notifications & state. All 50 states are selectable; coverage and active aircraft vary. Live aircraft information requires internet. CHP aircraft appear in both California regions; user-disabled aircraft remain disabled.
+
+Version 1.0.4 (220):
+
+1. Appearance: Settings > Ride mode & display > Color Mode selects the original saffron, black-and-white, red, blue, or green accents. Red, blue, and green mute map topography to gray. Distance Colors is independent: choose one of five rows of four swatches. Palette names and status captions are intentionally absent from this popup. The selected palette also colors Live Tracking on the Lock Screen, Dynamic Island, and CarPlay. Help includes CarPlay instructions.
+
+2. Gauges: Settings > Ride mode & display > Swipe gauge offers G-force, Lean arc, and Moving horizon with previews. Start a ride and swipe the map or Stats area to open the selected gauge; swipe again to return. Mount a physical iPhone rigidly in portrait, screen facing the rider and aligned with the bike. Hold the bike upright and stationary on level ground, then tap the level/calibration icon. G-force: braking moves the dot up, acceleration down, left turns right, and right turns left. Lean arc shows signed roll and confirmed peak markers. Moving horizon shows signed pitch with a large number. Live angles remain available when saving angle peaks is off. Resets clear the corresponding peaks. Readings are estimates; each ride requires calibration. Motion sampling pauses while inactive or locked, independently of GPS recording. Motion readings remain on the device.
+
+3. Ride Mode: Tap the small MPH button to expand speed. Portrait places speed above the map; landscape places the map left and speed right. Status and nautical-mile distance remain visible. Tap the large speed circle to restore controls. Recording continues while switching views. The bar-chart icon opens Stats; the map icon returns. End Ride shows the route and saved statistics. The ten latest summaries are stored on the device and available from Home.
+
+Background location supports two independent, explicitly user-started features:
+
+Ride recording: From Home, tap Start Ride and confirm if prompted. Allow location with Precise Location enabled. Move with the device, then switch apps or lock the phone. Location updates continue measuring speed and distance. Return and tap End Ride to stop recording and show the summary.
+
+Aircraft Live Tracking: From Home, tap Start Live Tracking and accept the prompt. While locked or in another app, location updates calculate nearby aircraft distances for the Live Activity. Return to Home and tap Stop Live Tracking to end the session. The small Home Screen widget launches Ride Mode. Aircraft observations older than four minutes are excluded, matching the map. A healthy feed with no tracked airborne aircraft shows Clear.
+
+End Ride and Stop Live Tracking control separate sessions. When both are off, background location stops. Continuous updates measure ride speed/distance and changing aircraft distances as the user moves. The app does not request an upgrade to Always location authorization.
+
+Police sightings: The ride police icon opens first-use guidance, then reporting at the current precise location. Nearby reports offer Still Here and Not Seen. Details also appear on the main map.
+
+No purchases or subscriptions are enabled. Settings starts with an informational NEWS banner about future plans; it can be reopened. There is no purchase flow, tier badge, Elite Settings, or rider sharing. Existing listing images use example data. This is an informational app, not a navigation or collision-avoidance service.

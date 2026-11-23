@@ -11,7 +11,9 @@ swatch previews, and the G-force/Lean arc/Moving horizon selector. Memberships
 remain excluded from normal mobile builds. Start with the [current Android handoff](../docs/android-build-192-handoff.md)
 for build steps, saved membership references, Android versioning, and the
 native recording/motion/notification work still required. No Android APK/AAB
-has been built or uploaded by this handoff.
+has been built or uploaded by this handoff. The iPhone package is now
+**1.0.4 (220)** and submitted for App Store review; see the
+[release record](../docs/app-store-submission.md).
 
 ## Firebase setup required
 

@@ -9,7 +9,9 @@ supersedes the shared-source baseline through builds 192–194 and the
 The latest tested phone baseline is **Out Of Sight 1.0.3 (220)**. The signed app
 and widget were installed and launched on the owner's iPhone, with all ten saved
 rides, lifetime statistics, and saved preferences preserved. This is a phone
-installation record, not an App Store submission or an Android release.
+installation record. The same source is now submitted as App Store version
+**1.0.4 (220)**, with only app/widget version metadata changed; see the
+[release record](app-store-submission.md). It is not an Android release.
 
 This branch carries the shared screens and iPhone behavior references needed
 for the Android update. Android recording, motion sensors, and ongoing aircraft
@@ -143,10 +145,12 @@ for the existing key password. It writes
 
 Before packaging, set an Android version code greater than the last uploaded
 Play build and choose its version name. Do not copy iPhone build 220 into the
-Android version fields by assumption. The iOS project itself still declares
-206; phone build 220 used the build-time `CURRENT_PROJECT_VERSION=220` override
-for both app and widget. No Android version, signing configuration, Play listing,
-or production release is changed by this source handoff.
+Android version fields by assumption. The iOS project now declares **1.0.4 (220)**
+for App Store packaging because 1.0.3 is already released. The reviewed phone
+baseline remains 1.0.3 (220), with identical interface and native behavior;
+only app/widget version metadata changed. No Android version, signing
+configuration, Play listing, or production release is changed by this source
+handoff.
 
 ## Membership and backend scope
 
