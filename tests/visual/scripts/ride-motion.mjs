@@ -110,7 +110,7 @@ try {
   const toggle = page.getByRole("checkbox", { name: /Lean and Pitch angles in summary/ });
   await toggle.waitFor();
   assert.equal(await page.locator(".ss-settings-card").filter({ has: page.getByRole("heading", { name: "Speedometer", exact: true }) }).getByRole("checkbox").count(), 1);
-  assert.equal(await toggle.evaluate(input => input.closest("section").previousElementSibling.querySelector("h2").textContent), "Speedometer", "Angles have their own card directly below Speedometer");
+  assert.equal(await toggle.evaluate(input => input.closest("section").previousElementSibling.matches("button.ss-ride-gauge-row")), true, "Angles have their own card directly below Swipe gauge");
   assert.equal(await toggle.isChecked(), true, "Lean and Pitch starts enabled");
   const info = page.getByRole("button", { name: "About Lean and Pitch", exact: true });
   const infoDialog = page.getByRole("dialog", { name: "Lean and Pitch", exact: true });
@@ -399,7 +399,7 @@ try {
   });
   await peaks.getByText("32°", { exact: true }).waitFor();
   await reset.waitFor();
-  const mphBeforeReset = await page.getByLabel("Your speed: 34 miles per hour", { exact: true }).textContent();
+  const mphBeforeReset = await page.getByRole("button", { name: /^Your speed: 34 miles per hour\./ }).textContent();
   const beforeReset = await page.evaluate(() => JSON.parse(JSON.stringify(window.motionFixture.active)));
   await page.evaluate(() => { window.motionFixture.resetFailure = "Could not save peak angles."; });
   await reset.click();
@@ -412,7 +412,7 @@ try {
   assert.equal(await peaks.getByText("—°", { exact: true }).count(), 3);
   assert.equal(await calibrationPrompt.count(), 0, "Resetting peaks does not request calibration again");
   assert.equal(await cal.getAttribute("aria-pressed"), "true", "Reset preserves calibration");
-  assert.equal(await page.getByLabel("Your speed: 34 miles per hour", { exact: true }).textContent(), mphBeforeReset, "Reset keeps live MPH");
+  assert.equal(await page.getByRole("button", { name: /^Your speed: 34 miles per hour\./ }).textContent(), mphBeforeReset, "Reset keeps live MPH");
   const afterReset = await page.evaluate(() => window.motionFixture.active);
   assert.deepEqual({ ...afterReset, motion: beforeReset.motion }, beforeReset, "Reset keeps other ride stats");
   await page.evaluate(() => {

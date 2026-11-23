@@ -1886,7 +1886,7 @@ body[data-theme="dark"] textarea {
   touch-action: manipulation;
 }
 .ss-ride-navigation svg { width: 28px; height: 28px; }
-.ss-ride-navigation__calibrate[aria-pressed="true"] { border-color: #39d98a; color: #39d98a; }
+.ss-ride-navigation__calibrate[aria-pressed="true"] { border-color: var(--ss-distance-clear); color: var(--ss-distance-clear); }
 .ss-ride-navigation__calibrate:disabled, .ss-ride-navigation__view:disabled { opacity: .5; cursor: default; }
 .ss-ride-navigation__calibrate[aria-busy="true"] {
   opacity: 1;

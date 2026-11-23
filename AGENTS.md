@@ -1,3 +1,11 @@
+# Phone updates
+
+The owner authorizes phone updates even during an active ride. Do not inspect
+or back up ride history, wait for a ride to end, ask the owner to end a ride,
+or run ride-data preservation checks as part of installing an update. Install
+the requested build normally over the existing app and verify its version and
+launch. This preference applies to the update workflow.
+
 # Aircraft supplier
 
 The owner has selected **ADSB.fi** for aircraft ingestion. Do not change the

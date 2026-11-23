@@ -21,6 +21,81 @@ enum RideMotionTests {
             for i in 0..<4 { angles = tracker.accept(gravity: sample, timestamp: time + Double(i) * 0.04) }
             return angles
         }
+        func fillCalibration(_ window: inout RideCalibrationWindow, at time: Double = 1,
+                             acceleration: Double = 0.1, rotation: Double = 0.15) {
+            for i in 0..<10 {
+                window.accept(gravity: gravity(), acceleration: RideMotionVector(x: acceleration, y: 0, z: 0),
+                    rotationRate: RideMotionVector(x: 0, y: rotation, z: 0), timestamp: time + Double(i) * 0.04)
+            }
+        }
+        check("calibration accepts gentle movement with a short averaged reference") {
+            var window = RideCalibrationWindow()
+            for i in 0..<10 {
+                precondition(window.gravity(at: 1 + Double(i) * 0.04) == nil)
+                window.accept(gravity: gravity(roll: i.isMultiple(of: 2) ? -3 : 3),
+                    acceleration: RideMotionVector(x: 0.1, y: 0, z: 0),
+                    rotationRate: RideMotionVector(x: 0, y: 0.15, z: 0), timestamp: 1 + Double(i) * 0.04)
+            }
+            let reference = window.gravity(at: 1.36)!
+            precondition(abs(reference.x) < 0.001 && abs(reference.y + 1) < 0.001)
+            var tracker = RideMotionTracker()
+            precondition(tracker.calibrate(gravity: reference))
+            _ = tracker.accept(gravity: gravity(roll: 25), timestamp: 2)
+            precondition(abs(tracker.leanReading!.rollDegrees - 25) < 0.001)
+        }
+        check("calibration rejects abrupt acceleration and rotation until a new gentle window") {
+            for (acceleration, rotation) in [(0.2, 0.0), (0.0, 0.3)] {
+                var window = RideCalibrationWindow()
+                fillCalibration(&window)
+                precondition(window.gravity(at: 1.36) != nil)
+                window.accept(gravity: gravity(), acceleration: RideMotionVector(x: acceleration, y: 0, z: 0),
+                    rotationRate: RideMotionVector(x: 0, y: rotation, z: 0), timestamp: 1.4)
+                precondition(window.gravity(at: 1.4) == nil)
+                fillCalibration(&window, at: 1.44)
+                precondition(window.gravity(at: 1.8) != nil)
+            }
+        }
+        check("calibration cannot use stale, future, or artificially burst sensor samples") {
+            var window = RideCalibrationWindow()
+            fillCalibration(&window)
+            precondition(window.gravity(at: 1.56) != nil)
+            precondition(window.gravity(at: 1.67) == nil)
+            precondition(window.gravity(at: 1.3) == nil)
+            precondition(window.gravity(at: .nan) == nil)
+            window.reset()
+            for i in 0..<10 {
+                window.accept(gravity: gravity(), acceleration: RideMotionVector(x: 0, y: 0, z: 0),
+                    rotationRate: RideMotionVector(x: 0, y: 0, z: 0), timestamp: 2 + Double(i) * 0.001)
+            }
+            precondition(window.gravity(at: 2.01) == nil)
+        }
+        check("calibration resets after sensor gaps, duplicates, and out-of-order readings") {
+            for timestamp in [1 + 9 * 0.04, 1.2, 2.0] {
+                var window = RideCalibrationWindow()
+                fillCalibration(&window)
+                window.accept(gravity: gravity(), acceleration: RideMotionVector(x: 0, y: 0, z: 0),
+                    rotationRate: RideMotionVector(x: 0, y: 0, z: 0), timestamp: timestamp)
+                precondition(window.gravity(at: max(timestamp, 1.36)) == nil)
+                fillCalibration(&window, at: 3)
+                precondition(window.gravity(at: 3.36) != nil)
+            }
+        }
+        check("invalid sensor samples and a paused session discard calibration readiness") {
+            let zero = RideMotionVector(x: 0, y: 0, z: 0)
+            let invalid = RideMotionVector(x: .nan, y: 0, z: 0)
+            for (g, a, r, time) in [(zero, zero, zero, 1.4), (invalid, zero, zero, 1.4),
+                                    (gravity(), invalid, zero, 1.4), (gravity(), zero, invalid, 1.4),
+                                    (gravity(), zero, zero, Double.nan)] {
+                var window = RideCalibrationWindow()
+                fillCalibration(&window)
+                window.accept(gravity: g, acceleration: a, rotationRate: r, timestamp: time)
+                precondition(window.gravity(at: 1.4) == nil)
+            }
+            var window = RideCalibrationWindow()
+            fillCalibration(&window)
+            window.reset()
+            precondition(window.gravity(at: 1.4) == nil)
+        }
         check("live lean is immediate, signed, and independent of peak confirmation") {
             var tracker = RideMotionTracker()
             precondition(tracker.leanReading == nil)

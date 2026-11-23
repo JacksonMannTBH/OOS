@@ -44,10 +44,16 @@ that prompt.
 
 When enabled, Ride mode places **Calibrate** immediately to the right of Home. Mount
 the phone rigidly in portrait, screen facing the rider and aligned with the bike.
-Hold the bike upright and stationary on level ground, then tap Calibrate. The native
-recorder requires fresh, steady motion readings before accepting calibration.
+Tap Calibrate to set the reference. Gentle movement is allowed; GPS speed no
+longer blocks calibration. Stopping upright on level ground gives the best
+reference. Calibrating while leaned or on a slope can offset subsequent angles.
+The native recorder averages ten recent gravity samples at 25 Hz (about 0.4 s),
+allowing acceleration below 0.12 G and rotation below 0.2 radians/s. Abrupt
+movement, invalid samples, or a stream gap clear the window. Readings must be
+less than 300 ms old; pauses and new rides discard calibration readiness.
 One tap arms calibration: the button blinks yellow while the client waits for
-the steady-reading condition, without asking the rider to retry after movement.
+the short gentle-reading window, without asking the rider to retry after movement.
+Calibration is only applied on request, with no continuous recentering.
 Readiness is checked serially every 200 ms; native sensor acquisition stays at
 25 Hz. Other failures end the attempt and show an error. Leaving Ride mode,
 locking/backgrounding, disabling angles, or ending the ride cancels the wait.
@@ -104,6 +110,10 @@ and permission behavior still require physical iPhone testing. Android and
 browser ride recording are not supported by the existing native recorder.
 
 ## Validation
+
+Native motion tests cover the relaxed calibration window, averaging, abrupt
+movement, stale/invalid readings, stream gaps, and resets. The thresholds are
+usability heuristics; accuracy during real riding still needs device testing.
 
 ```sh
 npm run typecheck

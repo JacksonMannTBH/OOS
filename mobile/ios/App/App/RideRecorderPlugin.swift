@@ -131,10 +131,8 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
     private var liveGForce: RideGForceReading?
     private var motionMessage = ""
     private var motionReadError: String?
-    private var stableMotionSamples = 0
-    private var lastMotionTimestamp: Double?
+    private var calibrationWindow = RideCalibrationWindow()
     private var lastMotionSaveAt = 0.0
-    private var lastSpeed: Double?
     private var now: Double { Date().timeIntervalSince1970 * 1000 }
 
     override init() {
@@ -212,7 +210,7 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
         try commit(next)
         message = ""
         lastFixAt = nil
-        lastSpeed = nil
+        calibrationWindow.reset()
         motionTracker = RideMotionTracker()
         anglesCalibrated = false
         liveGForce = nil
@@ -301,14 +299,11 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
         guard motionManager.isDeviceMotionAvailable else { throw failure("Motion sensors are unavailable on this device.") }
         guard UIApplication.shared.applicationState == .active else { throw failure("Open Ride mode to calibrate.") }
         if let motionReadError { throw failure(motionReadError) }
-        guard let motion = motionManager.deviceMotion,
-              ProcessInfo.processInfo.systemUptime - motion.timestamp < 0.3,
-              stableMotionSamples >= 15, (lastSpeed ?? 0) < 0.8 else {
+        guard let gravity = calibrationWindow.gravity(at: ProcessInfo.processInfo.systemUptime) else {
             throw RideCalibrationError.notReady
         }
         var tracker = motionTracker
-        guard tracker.calibrate(gravity: RideMotionVector(x: motion.gravity.x, y: motion.gravity.y, z: motion.gravity.z),
-                              orientation: orientation) else {
+        guard tracker.calibrate(gravity: gravity, orientation: orientation) else {
             throw RideCalibrationError.notReady
         }
         var next = core!
@@ -356,19 +351,18 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
                 guard let motion, error == nil else {
                     self.motionMessage = "Motion readings are unavailable. Check Motion & Fitness access for OOS in Settings."
                     self.motionReadError = self.motionMessage
-                    self.stableMotionSamples = 0
+                    self.calibrationWindow.reset()
                     self.liveGForce = nil
                     self.core?.resetGForceCandidates()
                     self.motionTracker.resetSamples()
                     return
                 }
                 self.motionReadError = nil
-                let continuous = self.lastMotionTimestamp.map { motion.timestamp > $0 && motion.timestamp - $0 < 0.2 } ?? false
                 let rotation = RideMotionVector(x: motion.rotationRate.x, y: motion.rotationRate.y, z: motion.rotationRate.z)
                 let acceleration = RideMotionVector(x: motion.userAcceleration.x, y: motion.userAcceleration.y, z: motion.userAcceleration.z)
-                self.stableMotionSamples = rotation.length < 0.1 && acceleration.length < 0.06
-                    ? (continuous ? self.stableMotionSamples + 1 : 1) : 0
-                self.lastMotionTimestamp = motion.timestamp
+                self.calibrationWindow.accept(gravity: RideMotionVector(x: motion.gravity.x,
+                    y: motion.gravity.y, z: motion.gravity.z), acceleration: acceleration,
+                    rotationRate: rotation, timestamp: motion.timestamp)
                 self.liveGForce = self.motionTracker.gForce(acceleration: acceleration,
                     gravity: RideMotionVector(x: motion.gravity.x, y: motion.gravity.y, z: motion.gravity.z),
                     timestamp: motion.timestamp)
@@ -392,8 +386,7 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
         motionManager.stopDeviceMotionUpdates()
         liveGForce = nil
         core?.resetGForceCandidates()
-        stableMotionSamples = 0
-        lastMotionTimestamp = nil
+        calibrationWindow.reset()
         motionTracker.resetSamples()
     }
 
@@ -433,7 +426,6 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
             if let ride = next.archive.active, ride.sampleCount > 0 {
                 lastFixAt = ride.updatedAt
             }
-            lastSpeed = locations.last.flatMap { $0.speed >= 0 && $0.speedAccuracy >= 0 && $0.speedAccuracy <= 3 ? $0.speed : nil }
             #if DEBUG
             if let fix = locations.last { RiderSharingSession.shared.capture(fix) }
             #endif

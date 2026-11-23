@@ -82,6 +82,41 @@ struct RideMotionVector {
     }
 }
 
+// Calibration can use gentle movement. Average a short recent window rather
+// than making GPS speed or a single vibration-sensitive sample the reference.
+struct RideCalibrationWindow {
+    private var samples: [(time: Double, gravity: RideMotionVector)] = []
+
+    mutating func reset() { samples.removeAll(keepingCapacity: true) }
+
+    mutating func accept(gravity: RideMotionVector, acceleration: RideMotionVector,
+                         rotationRate: RideMotionVector, timestamp: Double) {
+        guard timestamp.isFinite, gravity.length > 0.8, gravity.length < 1.2,
+              acceleration.length < 0.12, rotationRate.length < 0.2 else {
+            reset()
+            return
+        }
+        if let last = samples.last {
+            guard timestamp > last.time else { reset(); return }
+            if timestamp - last.time >= 0.2 { reset() }
+        }
+        samples.append((timestamp, gravity))
+        if samples.count > 10 { samples.removeFirst(samples.count - 10) }
+    }
+
+    func gravity(at timestamp: Double) -> RideMotionVector? {
+        guard timestamp.isFinite, samples.count == 10,
+              let first = samples.first, let last = samples.last,
+              last.time - first.time >= 0.32,
+              timestamp >= last.time, timestamp - last.time < 0.3 else { return nil }
+        let sum = samples.reduce(RideMotionVector(x: 0, y: 0, z: 0)) { sum, sample in
+            RideMotionVector(x: sum.x + sample.gravity.x, y: sum.y + sample.gravity.y,
+                             z: sum.z + sample.gravity.z)
+        }
+        return sum.unit
+    }
+}
+
 struct RideMotionAngles {
     var left: Double
     var right: Double

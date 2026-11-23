@@ -103,10 +103,11 @@ negative value means downward pitch. **MAX PITCH** uses your recorded angle
 peak; resetting it also clears the left/right lean peaks. It follows your
 selected color mode and works with Lean and Pitch recording turned off.
 
-Secure your phone in portrait, facing you and aligned with the bike. Before
-each ride, hold the bike upright and stationary on level ground and tap the
-calibration button beside Home. It blinks until the bike is steady enough.
-Calibrate again after moving the phone. The same control calibrates Lean and
+Secure your phone in portrait, facing you and aligned with the bike. Tap the
+calibration button beside Home for each ride. It blinks until readings settle
+briefly; gentle movement is allowed. For the best reference, keep the bike
+upright and stop on level ground. Calibrating while leaned or on a slope can
+offset the readings. Calibrate again after moving the phone. The same control calibrates Lean and
 Pitch when enabled; all live gauges work with angle recording turned off. Motion
 recording pauses when the phone is locked or OOS is in the background, while
 GPS ride recording continues.

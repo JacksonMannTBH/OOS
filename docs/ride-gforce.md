@@ -24,8 +24,10 @@ while Home fades into place. The transition starts immediately without waiting
 for Home's map. Reduced Motion opens Home directly, and ending a ride waits
 until the transition finishes before showing the saved summary.
 
-The native iPhone recorder reuses its 25 Hz Core Motion stream. Calibrate the
-mounted phone upright and stationary at the start of each ride. Calibration
+The native iPhone recorder reuses its 25 Hz Core Motion stream. Calibration
+allows gentle movement and averages a short window without a GPS speed limit.
+Stopping upright on level ground gives the best reference; calibrating while
+leaned or on a slope can offset readings. Calibration
 also serves Lean and Pitch when enabled, but G-force does not require angles
 to be enabled. Turning angles off preserves G-force calibration and recording.
 Each new ride requires calibration; navigating between screens preserves it.
