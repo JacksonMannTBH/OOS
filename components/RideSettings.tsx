@@ -21,6 +21,8 @@ import { writeRideAnglesEnabled } from "@/lib/ride-motion-settings";
 import { configureRideMotion } from "@/lib/ride-recording";
 import { SettingsCard } from "./SettingsCard";
 import { RideDialog } from "./RideDialog";
+import { RideGaugeSetting } from "./RideGaugeSetting";
+import { DistanceColorSetting } from "./DistanceColorSetting";
 import { usePro } from "@/lib/hooks/usePro";
 
 type ThresholdKey = keyof RideStatusThresholds;
@@ -143,6 +145,8 @@ export function RideSettings() {
         </label>
       </SettingsCard>
 
+      <RideGaugeSetting />
+
       <SettingsCard title="Lean and Pitch" headerAccessory={
         <button type="button" className="ss-ride-angles-info-button" aria-label="About Lean and Pitch"
           aria-haspopup="dialog" aria-expanded={anglesInfoOpen} onClick={() => setAnglesInfoOpen(true)}>
@@ -163,12 +167,16 @@ export function RideSettings() {
         <p>Lean is how far your bike tilts left or right. Pitch is how far the front of the bike tilts upward, including beyond 90°. Ride Stats and your ride summary show the highest recorded angle for each.</p>
         <p><strong>Mount your phone.</strong> Secure it to the bike in portrait, facing you and aligned with the bike. Calibration accounts for the mount’s starting tilt.</p>
         <p><strong>Calibrate before riding.</strong> Hold the stopped bike upright on level ground and tap Calibrate beside Home in Ride mode. It blinks yellow until the bike is steady enough. Calibrate for every ride and after moving the phone. Leaving Ride mode or locking the phone cancels a pending attempt.</p>
+        <p><strong>Live lean.</strong> Choose Lean arc under Swipe gauge, then swipe the Ride map to view your current left or right lean. The live arc works with peak recording turned off.</p>
+        <p><strong>Live pitch.</strong> Choose Moving horizon under Swipe gauge to see pitch with a large degree reading. Negative values show downward pitch. The horizon uses the same calibration and works with peak recording turned off.</p>
         <p><strong>View and reset peaks.</strong> Tap Stats in Ride mode to see your angles. The refresh icon starts new peak measurements without changing your calibration or the rest of your ride stats.</p>
         <p><strong>Recording.</strong> Angle recording pauses while the phone is locked or OOS is in the background. A dash means no calibrated readings have been saved.</p>
         <p>Angles are estimates. Road slopes and movement can affect readings; pitch alone does not confirm a wheelie.</p>
         <button type="button" className="ss-ride-primary" onClick={() => setAnglesInfoOpen(false)}>Done</button>
       </RideDialog>}
       </>}
+
+      <DistanceColorSetting />
 
       <SettingsCard title="Distance bands">
         <p

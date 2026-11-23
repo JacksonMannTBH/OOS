@@ -34,7 +34,7 @@ export function SettingsButton({
         gap: 10,
         color: SS_TOKENS.alert,
         background: plain ? "transparent" : "#050505",
-        border: plain ? 0 : "1px solid rgba(246, 196, 49, 0.44)",
+        border: plain ? 0 : "1px solid rgba(var(--ss-ui-f6c431, 246, 196, 49), 0.44)",
         borderRadius: plain ? 0 : 16,
         textDecoration: "none",
         fontSize: 16,

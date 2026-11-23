@@ -5,11 +5,14 @@ type NativeStorage = {
 type BrowserStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 export const DEVICE_PREFERENCE_KEYS = [
+  "oos_color_mode",
+  "oos_distance_palette",
   "oos_elite_ui_preferences",
   "oos_rider_server_profile",
   "oos_subscription_announcement_seen",
   "oos_nationwide_map_enabled",
   "oos_ride_angles_enabled",
+  "oos_ride_gauge",
   "oos_police_reporter_token",
   "oos_police_intro_seen",
   "oos_aircraft_tracking",

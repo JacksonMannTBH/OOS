@@ -103,7 +103,7 @@ export function ArmAlertsCallout() {
           disabled={actionDisabled}
           style={{
             background: SS_TOKENS.alert,
-            color: "#fffdf8",
+            color: "rgb(var(--ss-ui-fffdf8, 255, 253, 248))",
             padding: "8px 14px",
             borderRadius: 999,
             border: 0,

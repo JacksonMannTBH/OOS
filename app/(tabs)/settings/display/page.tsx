@@ -1,4 +1,5 @@
 import { ResetPreferencesButton } from "@/components/ResetPreferencesButton";
+import { ColorModeSetting } from "@/components/ColorModeSetting";
 import { RideSettings } from "@/components/RideSettings";
 import { SettingsPageShell } from "@/components/SettingsPageShell";
 import { TimeFormatSetting } from "@/components/TimeFormatSetting";
@@ -20,6 +21,7 @@ export default function DisplaySettingsPage() {
       title="Ride mode & display"
     >
       <RideSettings />
+      <ColorModeSetting />
       <TimeFormatSetting current={timeFormat} />
       <ResetPreferencesButton />
     </SettingsPageShell>

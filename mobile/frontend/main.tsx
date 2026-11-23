@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { initializeDevicePreferences } from "@/lib/device-preferences";
 import { readAircraftTrackingPreferences } from "@/lib/aircraft-tracking";
+import { applyColorMode, readColorMode } from "@/lib/color-mode";
 import App from "./App";
 import { connectBackend } from "./network";
 import { connectNavigation } from "./navigation";
 import { getContrastPref } from "./preferences";
 import "../../app/globals.css";
+import "../../app/monochrome.css";
 connectBackend();
 connectNavigation();
 function Startup() {
@@ -20,6 +22,7 @@ function Startup() {
       // Do not render default selections or sync them upstream if saved data
       // could not be restored. The user can retry without losing their choices.
       readAircraftTrackingPreferences();
+      applyColorMode(readColorMode());
       try { document.body.dataset.contrast = getContrastPref(); }
       catch { document.body.dataset.contrast = "normal"; }
       if (!cancelled) setReady(true);

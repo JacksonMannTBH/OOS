@@ -1,14 +1,10 @@
 import { haversineNm } from "./geo";
 import type { Aircraft } from "./types";
+import { DISTANCE_STATUS_COLORS } from "./distance-color-palette";
 
 export type RideStatus = "clear" | "watch" | "warning" | "danger";
 
-export const RIDE_STATUS_COLORS: Record<RideStatus, string> = {
-  clear: "#39d98a",
-  watch: "#60a5fa",
-  warning: "#f6c431",
-  danger: "#ff4d4f",
-};
+export const RIDE_STATUS_COLORS: Record<RideStatus, string> = DISTANCE_STATUS_COLORS;
 
 export type RideStatusThresholds = {
   watchNm: number;

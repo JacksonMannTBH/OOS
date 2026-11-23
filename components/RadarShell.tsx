@@ -468,6 +468,7 @@ function MapHeaderAircraftButton({
       <button
         type="button"
         onClick={() => onSelect(aircraft.tail)}
+        className="ss-aircraft-identity"
         aria-label={ariaLabel}
         style={{
           flex: "0 0 auto",
@@ -589,7 +590,7 @@ function AirborneBubbles({
               type="button"
               onClick={() => onSelect(p.tail)}
               aria-label={`Center ${p.tail} on the map`}
-              className="ss-mono"
+              className="ss-mono ss-aircraft-identity"
               style={{
                 flex: "0 0 auto",
                 width: 62,

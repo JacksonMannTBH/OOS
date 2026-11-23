@@ -4,6 +4,8 @@ import { Preferences } from "@capacitor/preferences";
 import { getAppState, getSelectedStateCode } from "./app-states";
 import { readAircraftTrackingPreferences } from "./aircraft-tracking";
 import { getRideStatusThresholds } from "./ride-settings";
+import { readColorMode } from "./color-mode";
+import { readDistancePalette } from "./distance-colors";
 
 export type LiveTrackingStatus = {
   supported: boolean;
@@ -40,6 +42,8 @@ function liveTrackingConfiguration() {
     stateCode,
     stateName: getAppState(stateCode).label,
     excludedTails: readAircraftTrackingPreferences()[stateCode] ?? [],
+    colorMode: readColorMode(),
+    distancePalette: readDistancePalette(),
     ...getRideStatusThresholds(),
   };
 }

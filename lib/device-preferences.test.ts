@@ -33,6 +33,105 @@ const aircraft = "oos_aircraft_tracking";
 const device = "oos_aircraft_alert_device_id";
 const optIn = "oos_aircraft_alert_opt_in";
 
+test("distance palette survives storage loss without changing the app accent, and failed saves retain the choice", async () => {
+  const f = fixture();
+  // Older native snapshots have no distance palette: use Classic, not a stale web value.
+  f.native.set("oos_device_preferences_v1", JSON.stringify({ oos_color_mode: "red" }));
+  f.web.set("oos_distance_palette", "sunset");
+  const app = f.restart();
+  await app.initialize();
+  assert.equal(app.get("oos_distance_palette"), null);
+  await app.update({ oos_distance_palette: "ocean" });
+  f.web.clear();
+  const reopened = f.restart();
+  await reopened.initialize();
+  assert.equal(reopened.get("oos_distance_palette"), "ocean");
+  assert.equal(reopened.get("oos_color_mode"), "red");
+  f.failSave(true);
+  await assert.rejects(reopened.update({ oos_distance_palette: "sunset" }));
+  assert.equal(reopened.get("oos_distance_palette"), "ocean");
+  f.failSave(false);
+  await reopened.update({ oos_distance_palette: "sunset" });
+  const sunset = f.restart();
+  await sunset.initialize();
+  assert.equal(sunset.get("oos_distance_palette"), "sunset");
+  for (const palette of ["electric", "frost"]) {
+    await sunset.update({ oos_distance_palette: palette });
+    f.web.clear();
+    const restored = f.restart();
+    await restored.initialize();
+    assert.equal(restored.get("oos_distance_palette"), palette);
+    assert.equal(restored.get("oos_color_mode"), "red");
+  }
+  await sunset.update({ oos_distance_palette: null });
+  assert.equal(sunset.get("oos_distance_palette"), null);
+});
+
+test("swipe gauge survives storage loss, failed saves, and preference reset", async () => {
+  const f = fixture();
+  const app = f.restart();
+  await app.initialize();
+  assert.equal(app.get("oos_ride_gauge"), null);
+  await app.update({ oos_ride_gauge: "lean", oos_ride_angles_enabled: "0" });
+  f.web.clear();
+  const reopened = f.restart();
+  await reopened.initialize();
+  assert.equal(reopened.get("oos_ride_gauge"), "lean");
+  assert.equal(reopened.get("oos_ride_angles_enabled"), "0");
+  f.failSave(true);
+  await assert.rejects(reopened.update({ oos_ride_gauge: "gforce" }));
+  assert.equal(reopened.get("oos_ride_gauge"), "lean");
+  f.failSave(false);
+  await reopened.update({ oos_ride_gauge: "gforce" });
+  const changed = f.restart();
+  await changed.initialize();
+  assert.equal(changed.get("oos_ride_gauge"), "gforce");
+  await changed.update({ oos_ride_gauge: "pitch" });
+  f.web.clear();
+  const horizon = f.restart();
+  await horizon.initialize();
+  assert.equal(horizon.get("oos_ride_gauge"), "pitch");
+  assert.equal(horizon.get("oos_ride_angles_enabled"), "0");
+  await changed.update({ oos_ride_gauge: null });
+  assert.equal(changed.get("oos_ride_gauge"), null);
+});
+
+test("color mode survives web-storage loss and failed saves preserve the selected mode", async () => {
+  const f = fixture();
+  const app = f.restart();
+  await app.initialize();
+  await app.update({ oos_color_mode: "monochrome", [aircraft]: '{"WA":["N102LP"]}' });
+  f.web.clear();
+  const reopened = f.restart();
+  await reopened.initialize();
+  assert.equal(reopened.get("oos_color_mode"), "monochrome");
+  assert.equal(reopened.get(aircraft), '{"WA":["N102LP"]}');
+  f.failSave(true);
+  await assert.rejects(reopened.update({ oos_color_mode: "color" }));
+  assert.equal(reopened.get("oos_color_mode"), "monochrome");
+  f.failSave(false);
+  await reopened.update({ oos_color_mode: "color" });
+  const color = f.restart();
+  await color.initialize();
+  assert.equal(color.get("oos_color_mode"), "color");
+  await color.update({ oos_color_mode: null });
+  assert.equal(color.get("oos_color_mode"), null);
+});
+
+test("red, blue, and green selections survive native storage restoration", async () => {
+  const f = fixture();
+  for (const mode of ["red", "blue", "green"]) {
+    const app = f.restart();
+    await app.initialize();
+    await app.update({ oos_color_mode: mode });
+    f.web.clear();
+    const reopened = f.restart();
+    await reopened.initialize();
+    assert.equal(reopened.get("oos_color_mode"), mode);
+    assert.equal(f.web.get("oos_color_mode"), mode);
+  }
+});
+
 test("migration retains choices and identity across repeated web-storage loss and app restarts", async () => {
   const f = fixture();
   const saved = JSON.stringify({ WA: ["N102LP"], CA: ["N103CG"] });

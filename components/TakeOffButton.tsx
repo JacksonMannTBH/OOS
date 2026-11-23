@@ -82,10 +82,10 @@ export function TakeOffButton({ variant = "hero", style, children }: Props) {
         border: plain
           ? 0
           : compact
-          ? "1px solid rgba(246, 196, 49, 0.34)"
-          : "1px solid #f6c431",
-        background: plain ? "transparent" : busy ? "#1b1608" : "#f6c431",
-        color: plain ? SS_TOKENS.alert : busy ? "#f6c431" : "#050505",
+          ? "1px solid rgba(var(--ss-ui-f6c431, 246, 196, 49), 0.34)"
+          : "1px solid rgb(var(--ss-ui-f6c431, 246, 196, 49))",
+        background: plain ? "transparent" : busy ? "rgb(var(--ss-ui-1b1608, 27, 22, 8))" : "rgb(var(--ss-ui-f6c431, 246, 196, 49))",
+        color: plain ? SS_TOKENS.alert : busy ? "rgb(var(--ss-ui-f6c431, 246, 196, 49))" : "#050505",
         boxShadow: plain
           ? "none"
           : compact

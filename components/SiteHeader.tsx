@@ -51,7 +51,7 @@ export function SiteHeader() {
         color: "#ffffff",
         borderBottom: fadesIntoContent
           ? "none"
-          : "0.5px solid rgba(244, 196, 48, 0.34)",
+          : "0.5px solid rgba(var(--ss-ui-f4c430, 244, 196, 48), 0.34)",
         boxShadow: fadesIntoContent
           ? "0 10px 24px rgba(0, 0, 0, 0.14)"
           : "none",

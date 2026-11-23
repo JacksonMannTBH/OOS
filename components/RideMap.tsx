@@ -1,5 +1,9 @@
 "use client";
 
+import { setMapDisplayStyle } from "@/lib/map-display-style";
+import { readColorMode } from "@/lib/color-mode";
+import { colorModeMapPaint } from "@/lib/map-color-palette";
+
 import { MapHeadingCone } from "./MapHeadingCone";
 import { useEffect, useRef, useState } from "react";
 import type { PoliceSighting } from "@/lib/police-sightings";
@@ -19,13 +23,13 @@ import {
   isHelicopterRole,
 } from "@/lib/brand/helicopter-sprite";
 import { trackMapOpeningCamera } from "@/lib/map-opening-camera";
-import { MAP_STYLE_URL } from "@/lib/map-style";
-import { darkMapStyle, STATE_BOUNDARY_LAYER_ID } from "@/lib/dark-map-style";
+import { STATE_BOUNDARY_LAYER_ID } from "@/lib/dark-map-style";
 import { rideMapBounds } from "@/lib/ride-map-camera";
-import type {
-  RideContact,
-  RideStatus,
-  RideStatusThresholds,
+import {
+  RIDE_STATUS_COLORS,
+  type RideContact,
+  type RideStatus,
+  type RideStatusThresholds,
 } from "@/lib/ride-mode";
 
 type RiderPoint = { lat: number; lon: number; heading?: number | null };
@@ -45,13 +49,6 @@ type StyleLayerLike = {
   type?: string;
   layout?: Record<string, unknown>;
   "source-layer"?: string;
-};
-
-const STATUS_COLORS: Record<RideStatus, string> = {
-  clear: "#39d98a",
-  watch: "#60a5fa",
-  warning: "#f6c431",
-  danger: "#ff4d4f",
 };
 
 const MAP_ICON_SIZE = 52;
@@ -108,8 +105,8 @@ export default function RideMap(props: Props) {
           inset: 0,
           borderRadius: "50%",
           overflow: "hidden",
-          border: `3px solid color-mix(in srgb, ${STATUS_COLORS[props.status]} 78%, #f5f2e8)`,
-          background: "#0a0d0c",
+          border: `3px solid color-mix(in srgb, ${RIDE_STATUS_COLORS[props.status]} 78%, #f5f2e8)`,
+          background: "rgb(var(--ss-ui-0a0d0c, 10, 13, 12))",
           boxShadow: "0 18px 48px rgba(0,0,0,0.48)",
         }}
       >
@@ -121,51 +118,28 @@ export default function RideMap(props: Props) {
       </div>
 
       {offMapBearingDeg != null && nearestOffMap && (
-        <OffMapAircraftArrow bearingDeg={offMapBearingDeg} color={aircraftColorForTail(nearestOffMap.plane.tail)} />
+        <OffMapAircraftArrow bearingDeg={offMapBearingDeg} />
       )}
     </section>
   );
 }
 
-function OffMapAircraftArrow({ bearingDeg, color }: { bearingDeg: number; color: string }) {
-  const radians = ((bearingDeg - 90) * Math.PI) / 180;
-  const radiusPercent = 55;
-  const left = 50 + Math.cos(radians) * radiusPercent;
-  const top = 50 + Math.sin(radians) * radiusPercent;
+function OffMapAircraftArrow({ bearingDeg }: { bearingDeg: number }) {
+  const [rotation, setRotation] = useState(bearingDeg);
+  useEffect(() => {
+    // Continue across north by the shortest turn, without spinning a full lap.
+    setRotation(current => current + shortestHeadingDelta(normalizeDegrees(current), bearingDeg));
+  }, [bearingDeg]);
 
   return (
     <div
-      className="ss-ride-off-map-arrow"
+      className="ss-ride-off-map-orbit"
       aria-hidden
-      style={{
-        position: "absolute",
-        zIndex: 5,
-        left: `${left}%`,
-        top: `${top}%`,
-        width: 28,
-        height: 28,
-        borderRadius: "50%",
-        border: `1.5px solid ${color}`,
-        background: "#050505",
-        boxShadow:
-          `0 0 0 3px ${color}2e, 0 0 16px ${color}ad`,
-        display: "grid",
-        placeItems: "center",
-        pointerEvents: "none",
-        transform: `translate(-50%, -50%) rotate(${bearingDeg}deg)`,
-        transformOrigin: "center",
-      }}
+      style={{ transform: `rotate(${rotation}deg)` }}
     >
-      <span
-        style={{
-          width: 0,
-          height: 0,
-          borderLeft: "5px solid transparent",
-          borderRight: "5px solid transparent",
-          borderBottom: `13px solid ${color}`,
-          transform: "translateY(-1px)",
-        }}
-      />
+      <svg className="ss-ride-off-map-arrow" viewBox="0 0 14 14" fill="none">
+        <path d="M7 1 13 12H1Z" fill="#fff" stroke="#020202" strokeWidth="1" strokeLinejoin="round" />
+      </svg>
     </div>
   );
 }
@@ -210,7 +184,7 @@ function RideMapCanvas(props: RideMapState) {
     collapseMapAttribution(container);
     mapRef.current = map;
     setPoliceMap(map);
-    map.setStyle(MAP_STYLE_URL, { transformStyle: (_, style) => darkMapStyle(style, "ride") });
+    const stopColorMode = setMapDisplayStyle(map, "ride");
     let disposed = false;
     const notifyReady = () => {
       if (map.isMoving()) return;
@@ -242,7 +216,7 @@ function RideMapCanvas(props: RideMapState) {
       map.off("load", onLoad);
       map.off("render", notifyReady);
       stopTrackingCamera();
-      map.remove();
+      stopColorMode(); map.remove();
       mapRef.current = null;
     };
     // The map owns its lifecycle; prop changes flow through the effect below.
@@ -274,7 +248,7 @@ function RideMapCanvas(props: RideMapState) {
       style={{
         position: "absolute",
         inset: 0,
-        background: "#111514",
+        background: "var(--ss-map-background, #111514)",
       }}
     /></>
   );
@@ -291,7 +265,7 @@ function LocationPlaceholder() {
         placeItems: "center",
         background:
           "radial-gradient(circle, rgba(96,165,250,0.13), transparent 62%)",
-        color: "#a9a28a",
+        color: "var(--ss-fg1)",
         fontSize: 12,
         fontWeight: 900,
         letterSpacing: "0.08em",
@@ -497,6 +471,7 @@ function setCamera(map: MaplibreMap, state: RideMapState, animate: boolean) {
 }
 
 function applyRideMapTheme(map: MaplibreMap) {
+  const color = (value: string) => colorModeMapPaint(value, readColorMode());
   const layers = (map.getStyle().layers ?? []) as StyleLayerLike[];
   for (const layer of layers) {
     if (layer.id.startsWith(MAP_LAYER_PREFIX) || layer.id === STATE_BOUNDARY_LAYER_ID) continue;
@@ -528,20 +503,20 @@ function applyRideMapTheme(map: MaplibreMap) {
         map.setPaintProperty(
           layer.id,
           "fill-color",
-          isWater ? "#081013" : isGreen ? "#273128" : "#2f3435",
+          color(isWater ? "#081013" : isGreen ? "#273128" : "#2f3435"),
         );
         map.setPaintProperty(layer.id, "fill-opacity", 1);
       } else if (layer.type === "line") {
         map.setPaintProperty(
           layer.id,
           "line-color",
-          isWater
+          color(isWater
             ? "#101a1d"
             : isRoad
               ? "#8b7330"
               : isBoundary
                 ? "#555851"
-                : "#3b4142",
+                : "#3b4142"),
         );
         map.setPaintProperty(layer.id, "line-opacity", isRoad ? 0.58 : 0.66);
       }

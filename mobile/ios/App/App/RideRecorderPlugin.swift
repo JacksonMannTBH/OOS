@@ -10,6 +10,7 @@ public class RideRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "status", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "gForceStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "leanStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "finish", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "configureMotion", returnType: CAPPluginReturnPromise),
@@ -43,6 +44,11 @@ public class RideRecorderPlugin: CAPPlugin, CAPBridgedPlugin {
                     recordAngles: call.getBool("recordAngles") ?? false)
                 call.resolve(try RideRecordingSession.shared.status())
             } catch { call.reject(error.localizedDescription) }
+        }
+    }
+    @objc func leanStatus(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            call.resolve(RideRecordingSession.shared.leanStatus())
         }
     }
     @objc func finish(_ call: CAPPluginCall) {
@@ -262,6 +268,20 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
                 "message": motionMessage]
     }
 
+    func leanStatus() -> [String: Any] {
+        let fresh = motionTracker.leanReading.flatMap { reading -> RideLeanReading? in
+            guard core?.archive.active != nil, motionManager.isDeviceMotionActive,
+                  UIApplication.shared.applicationState == .active,
+                  ProcessInfo.processInfo.systemUptime - reading.timestamp < 0.3 else { return nil }
+            return reading
+        }
+        return ["supported": motionManager.isDeviceMotionAvailable,
+                "calibrated": motionTracker.calibrated, "receiving": fresh != nil,
+                "reading": fresh.map { $0.payload as Any } ?? NSNull(),
+                "peaks": core?.archive.active?.motion.map { $0.payload as Any } ?? NSNull(),
+                "recordingPeaks": motionEnabled && anglesCalibrated, "message": motionMessage]
+    }
+
     func configureMotion(enabled: Bool) throws {
         try load()
         if !enabled {
@@ -354,9 +374,10 @@ final class RideRecordingSession: NSObject, @preconcurrency CLLocationManagerDel
                     timestamp: motion.timestamp)
                 if let reading = self.liveGForce { self.core?.acceptGForce(reading) }
                 else { self.core?.resetGForceCandidates() }
-                if self.motionEnabled && self.anglesCalibrated,
-                   let angles = self.motionTracker.accept(gravity: RideMotionVector(x: motion.gravity.x,
-                    y: motion.gravity.y, z: motion.gravity.z), timestamp: motion.timestamp, rotationRate: rotation) {
+                // Maintain live lean even when saving angle peaks is turned off.
+                if let angles = self.motionTracker.accept(gravity: RideMotionVector(x: motion.gravity.x,
+                    y: motion.gravity.y, z: motion.gravity.z), timestamp: motion.timestamp, rotationRate: rotation),
+                   self.motionEnabled && self.anglesCalibrated {
                     self.core?.acceptMotion(angles)
                 }
                 if self.now - self.lastMotionSaveAt >= 2000, let core = self.core {

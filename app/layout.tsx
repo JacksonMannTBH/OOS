@@ -9,6 +9,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { AircraftAlertPreferenceSync } from "@/components/AircraftAlertPreferenceSync";
 import { getContrastPref } from "@/lib/user-prefs";
 import "./globals.css";
+import "./monochrome.css";
 
 const TITLE = "Out Of Sight";
 const DESCRIPTION =

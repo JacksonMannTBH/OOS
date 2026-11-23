@@ -18,7 +18,7 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>UIAppFonts</key>
 	<array>
-		<string>Manrope-Variable.ttf</string>
+		<string>SpaceGrotesk-Regular.ttf</string>
 	</array>
 	<key>NSExtension</key>
 	<dict>

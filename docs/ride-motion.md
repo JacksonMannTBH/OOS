@@ -2,8 +2,37 @@
 
 The iPhone ride recorder can save estimated peak left roll, right roll, and
 nose-up pitch locally with each ride. Settings → Ride mode & display has a
-separate **Lean and Pitch** card immediately below **Speedometer**. Its summary
+separate **Lean and Pitch** card below **Swipe gauge**. Its summary
 toggle defaults on and uses the native device preference store.
+
+**Swipe gauge** selects G-force (the existing default), Lean arc, or Moving
+horizon. The Settings row shows its current selection on the right. Tapping opens a
+menu with an instrument preview, description, and selected checkmark for each
+gauge. Choosing an option saves and closes the menu; a failed save keeps the
+previous choice and lets the rider retry. Cancel, Escape, and the backdrop
+dismiss without changing the selection, returning focus to the row. The durable
+`oos_ride_gauge` preference does not alter the angle-recording toggle. Swiping
+Ride's map opens the selected gauge; another swipe returns to the map. Arrow
+keys provide the same behavior. Lean arc uses the shared mount calibration,
+current signed roll, and selected color-mode accent. Its fixed arc spans ±60°;
+only the needle is clamped, while the number and stored peaks retain full angles.
+Peak markers use the same confirmed angle peaks shown in Stats. Reset clears
+all three angle peaks and pending candidates while retaining live orientation.
+
+Moving horizon uses immediate signed pitch from the same calibrated orientation.
+Its fixed center marker stays level while the neutral horizon field moves.
+The 68px pitch value replaces directional captions, retains negative values,
+and shows zero without a negative sign. MAX PITCH uses existing confirmed
+angle peaks; its reset still clears all three angle peaks. Pitch projection
+handles vertical poses and inversion without clamping the numeric reading.
+No visible caption on this gauge says “nose up”.
+
+`leanStatus` exposes the tracker's immediate signed roll, signed pitch, and existing peaks as a
+small payload. Polling runs only while the gauge is mounted and foregrounded,
+with stale async responses discarded across a pause. The native bridge withholds
+readings after 300 ms without fresh motion or when inactive. Invalid samples,
+pauses, and recalibration clear live orientation. Live lean and pitch continue when peak
+recording is off; the existing guard still prevents saving angle samples.
 
 The card shows only “Track your maximum left/right lean and nose-up pitch.” beside its
 toggle. An info button at the top right opens mounting, calibration, recording,

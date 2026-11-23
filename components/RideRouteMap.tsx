@@ -1,10 +1,10 @@
 "use client";
 
+import { setMapDisplayStyle } from "@/lib/map-display-style";
+
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { MAP_STYLE_URL } from "@/lib/map-style";
-import { darkMapStyle } from "@/lib/dark-map-style";
 import type { RideRoutePoint } from "@/lib/ride-recording";
 
 export function RideRouteMap({ route }: { route?: RideRoutePoint[] }) {
@@ -29,9 +29,8 @@ export function RideRouteMap({ route }: { route?: RideRoutePoint[] }) {
       center: coordinates[0] as [number, number], zoom: 15,
       bounds, fitBoundsOptions: { padding: 36, maxZoom: 16 }, renderWorldCopies: false,
     });
-    // A summary needs neighborhood streets and buildings, including short rides.
-    // Ride Mode intentionally hides those details and can look empty at this scale.
-    map.setStyle(MAP_STYLE_URL, { transformStyle: (_, style) => darkMapStyle(style) });
+    // Keep neighborhood streets for short rides without showing buildings.
+    const stopColorMode = setMapDisplayStyle(map, "radar");
     map.on("load", () => {
       map.addSource("ride-route", { type: "geojson", data: {
         type: "Feature", properties: {}, geometry: {
@@ -62,7 +61,7 @@ export function RideRouteMap({ route }: { route?: RideRoutePoint[] }) {
       map.fitBounds(bounds, { padding: 36, maxZoom: 16, duration: 0 });
     });
     observer.observe(container.current);
-    return () => { observer.disconnect(); map.remove(); };
+    return () => { observer.disconnect(); stopColorMode(); map.remove(); };
   }, [route]);
   // Older rides have no saved GPS trace; never substitute a fictional route.
   if (!route?.length) return null;

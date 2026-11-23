@@ -1,5 +1,16 @@
 import Foundation
 
+struct RideLeanReading: Equatable {
+    var timestamp: Double
+    // Positive is right lean; negative is left, relative to the calibrated mount.
+    var rollDegrees: Double
+    // The same fresh orientation supplies signed pitch, including past vertical.
+    var pitchDegrees: Double
+    var payload: [String: Any] {
+        ["timestamp": timestamp, "rollDegrees": rollDegrees, "pitchDegrees": pitchDegrees]
+    }
+}
+
 struct RideGForceReading: Equatable {
     var timestamp: Double
     var longitudinalG: Double
@@ -109,6 +120,10 @@ struct RideMotionTracker {
     private var recent: [(time: Double, angles: RideMotionAngles)] = []
     private var orientation: (time: Double, roll: Double, pitch: Double)?
     var calibrated: Bool { up != nil }
+    // Live orientation is immediate. Saved peaks still require sustained samples.
+    var leanReading: RideLeanReading? {
+        orientation.map { RideLeanReading(timestamp: $0.time, rollDegrees: $0.roll, pitchDegrees: $0.pitch) }
+    }
 
     // Project the mounted bike's forward axis onto the current horizontal plane.
     // Bike lean must not turn vertical load into sideways cornering acceleration.

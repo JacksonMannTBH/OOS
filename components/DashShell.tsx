@@ -170,7 +170,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
             prefetch={false}
             aria-label="View Map"
             title="Open full map"
-            style={{ position: "absolute", top: 10, right: 10, zIndex: 2, width: 60, height: 60, borderRadius: 16, display: "grid", placeItems: "center", background: "rgba(5,5,5,.82)", color: "#f5f1e6", textDecoration: "none" }}
+            style={{ position: "absolute", top: 10, right: 10, zIndex: 2, width: 60, height: 60, borderRadius: 16, display: "grid", placeItems: "center", background: "rgba(5,5,5,.82)", color: "rgb(var(--ss-ui-f5f1e6, 245, 241, 230))", textDecoration: "none" }}
           >
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 3l6 6m12-6-6 6M3 21l6-6m12 6-6-6" />
@@ -197,7 +197,7 @@ export function DashShell({ initial = EMPTY_AIRCRAFT_SNAPSHOT, mockOn = false, m
             aria-label="Recent Rides"
             onClick={() => setHistoryOpen(true)}
             aria-haspopup="dialog"
-            style={{ width: "100%", minWidth: 0, minHeight: 56, height: "var(--ss-home-action-height, 64px)", padding: "var(--ss-home-action-padding, 0)", lineHeight: 1.25, boxSizing: "border-box", borderRadius: 18, border: "1px solid rgba(255,255,255,.24)", background: "#151613", color: "#f5f1e6", font: "inherit", fontSize: "var(--ss-home-action-font-size, 18px)", fontWeight: 800, cursor: "pointer" }}
+            style={{ width: "100%", minWidth: 0, minHeight: 56, height: "var(--ss-home-action-height, 64px)", padding: "var(--ss-home-action-padding, 0)", lineHeight: 1.25, boxSizing: "border-box", borderRadius: 18, border: "1px solid rgba(255,255,255,.24)", background: "rgb(var(--ss-ui-151613, 21, 22, 19))", color: "rgb(var(--ss-ui-f5f1e6, 245, 241, 230))", font: "inherit", fontSize: "var(--ss-home-action-font-size, 18px)", fontWeight: 800, cursor: "pointer" }}
           >
             Recent Rides
           </button>

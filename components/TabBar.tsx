@@ -91,7 +91,7 @@ export function TabBar() {
           gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
           alignItems: "center",
           gap: 6,
-          background: "rgba(9, 10, 10, 0.96)",
+          background: "rgba(var(--ss-ui-090a0a, 9, 10, 10), 0.96)",
           border: "1px solid rgba(255, 255, 255, 0.18)",
           borderRadius: 0,
           boxShadow: "0 6px 16px rgba(0, 0, 0, 0.34)",

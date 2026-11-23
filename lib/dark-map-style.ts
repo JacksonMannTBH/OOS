@@ -55,8 +55,8 @@ export function darkMapStyle(style: StyleSpecification, mode: "radar" | "ride" =
           break;
         case "fill-extrusion": paint = { "fill-extrusion-color": "#3b4041" }; break;
       }
-      const hide = ride && (
-        /building|structure|address|housenumber|poi|shop|amenity|transit|rail|airport|aeroway/.test(descriptor) ||
+      const hide = layer.type === "fill-extrusion" || /building|structure|address|housenumber/.test(descriptor) || ride && (
+        /poi|shop|amenity|transit|rail|airport|aeroway/.test(descriptor) ||
         (road && /minor|service|residential|unclassified|living_street|track|path|footway|cycleway|pedestrian|steps|driveway|alley/.test(descriptor)) ||
         (layer.type === "symbol" && road && Boolean(layer.layout?.["text-field"]))
       );

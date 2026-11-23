@@ -1,17 +1,11 @@
 "use client";
 
-import type {
-  RideContact,
-  RideStatus,
-  RideStatusThresholds,
+import {
+  RIDE_STATUS_COLORS,
+  type RideContact,
+  type RideStatus,
+  type RideStatusThresholds,
 } from "@/lib/ride-mode";
-
-const STATUS_COLORS: Record<RideStatus, string> = {
-  clear: "#39d98a",
-  watch: "#60a5fa",
-  warning: "#f6c431",
-  danger: "#ff4d4f",
-};
 
 type Props = {
   status: RideStatus;
@@ -30,7 +24,7 @@ export function RideCompass({
   distanceBands,
   highlightTrackingArrow = false,
 }: Props) {
-  const color = STATUS_COLORS[status];
+  const color = RIDE_STATUS_COLORS[status];
   const arrowColor = highlightTrackingArrow ? "#ff1f2d" : "#050505";
   const hasMarker = contact != null && displayBearingDeg != null;
   const marker = hasMarker ? markerPosition(displayBearingDeg) : null;
@@ -53,7 +47,7 @@ export function RideCompass({
           "radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08) 0 3px, transparent 4px 100%), radial-gradient(circle, #171712 0%, #080808 58%, #020202 100%)",
         boxShadow:
           status === "danger"
-            ? `0 0 0 6px rgba(255,77,79,0.18), 0 0 44px rgba(255,77,79,0.42)`
+            ? `0 0 0 6px color-mix(in srgb, ${color} 18%, transparent), 0 0 44px color-mix(in srgb, ${color} 42%, transparent)`
             : `0 0 0 1px rgba(255,255,255,0.06), 0 24px 70px rgba(0,0,0,0.64)`,
         overflow: "hidden",
       }}

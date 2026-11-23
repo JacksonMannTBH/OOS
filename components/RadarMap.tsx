@@ -1,5 +1,9 @@
 "use client";
 
+import { setMapDisplayStyle } from "@/lib/map-display-style";
+import { readColorMode } from "@/lib/color-mode";
+import { colorModeMapPaint } from "@/lib/map-color-palette";
+
 import { useEffect, useRef } from "react";
 import maplibregl, {
   Map as MaplibreMap,
@@ -10,8 +14,8 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { trackMapOpeningCamera, type MapOpeningCamera } from "@/lib/map-opening-camera";
-import { MAP_LABEL_FONT, MAP_STYLE_URL } from "@/lib/map-style";
-import { darkMapStyle, STATE_BOUNDARY_LAYER_ID } from "@/lib/dark-map-style";
+import { MAP_LABEL_FONT } from "@/lib/map-style";
+import { STATE_BOUNDARY_LAYER_ID } from "@/lib/dark-map-style";
 import { SS_TOKENS } from "@/lib/tokens";
 import type { Aircraft } from "@/lib/types";
 import {
@@ -175,7 +179,7 @@ function setThemedPaint(
   value: unknown,
 ) {
   rememberPaint(map, store, id, prop);
-  map.setPaintProperty(id, prop, value);
+  map.setPaintProperty(id, prop, colorModeMapPaint(value, readColorMode()));
 }
 
 function restoreMapTheme(map: MaplibreMap, store: ThemePaintStore) {
@@ -278,7 +282,7 @@ function createAircraftNameTag(label: string, color: string): ImageData {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Unable to create aircraft name tag");
-  const font = '400 10px "Manrope", sans-serif';
+  const font = '400 10px "Space Grotesk", sans-serif';
   const spacing = 0.7;
   context.font = font;
   const letters = Array.from(label);
@@ -584,7 +588,7 @@ export default function RadarMap({
     map.on("styledata", collapseAttributionPreset);
     collapseAttributionPreset();
     mapRef.current = map;
-    map.setStyle(MAP_STYLE_URL, { transformStyle: (_, style) => darkMapStyle(style, "radar") });
+    const stopColorMode = setMapDisplayStyle(map, "radar");
     const motionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)") ?? null;
     reducedMotionRef.current = Boolean(motionQuery?.matches);
     const onMotionPreferenceChange = (event: MediaQueryListEvent) => {
@@ -601,7 +605,7 @@ export default function RadarMap({
         { length: HELICOPTER_ICON_FRAMES },
         (_, frame) => ({ key: helicopterIconKeyFor(frame), frame }),
       );
-      await document.fonts.load('400 10px "Manrope"').catch(() => []);
+      await document.fonts.load('400 10px "Space Grotesk"').catch(() => []);
       const [riderImg, planeImg, ...iconImgs] = await Promise.all([
         loadSvgBitmap(RIDER_SVG, 48),
         loadImageBitmap(
@@ -909,7 +913,7 @@ export default function RadarMap({
       popupRef.current = null;
       onMapReadyRef.current?.(null);
       stopTrackingCamera();
-      map.remove();
+      stopColorMode(); map.remove();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1382,7 +1386,7 @@ export default function RadarMap({
       style={{
         position: "absolute",
         inset: 0,
-        background: "#050607",
+        background: "var(--ss-bg0)",
       }}
     />
   );

@@ -1,9 +1,12 @@
 "use client";
 
+import { setMapDisplayStyle } from "@/lib/map-display-style";
+import { COLOR_MODE_EVENT, COLOR_MODE_KEY, readColorMode } from "@/lib/color-mode";
+import { colorModeMapPaint } from "@/lib/map-color-palette";
+
 import { useEffect, useRef } from "react";
 import maplibregl, { Map as MaplibreMap } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { MAP_STYLE_URL } from "@/lib/map-style";
 import { SS_TOKENS } from "@/lib/tokens";
 import type { TrackPoint } from "@/lib/tracks";
 
@@ -19,12 +22,21 @@ export default function TracksMap({ samples }: { samples: TrackPoint[] }) {
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: MAP_STYLE_URL,
       center: coords[0]!,
       zoom: 11,
       attributionControl: { compact: true },
     });
+    const stopColorMode = setMapDisplayStyle(map, null);
     mapRef.current = map;
+    const trackColor = () => colorModeMapPaint("#f6c431", readColorMode()) as string;
+    const endpointColors = (): maplibregl.ExpressionSpecification => ["match", ["get", "kind"], "start", "#9ee8b5", "end", "#ff6b6b", trackColor()];
+    const updateTrackColors = () => {
+      if (map.getLayer("track")) map.setPaintProperty("track", "line-color", trackColor());
+      if (map.getLayer("endpoints")) map.setPaintProperty("endpoints", "circle-color", endpointColors());
+    };
+    const storage = (event: StorageEvent) => { if (!event.key || event.key === COLOR_MODE_KEY) updateTrackColors(); };
+    window.addEventListener(COLOR_MODE_EVENT, updateTrackColors);
+    window.addEventListener("storage", storage);
 
     map.on("load", () => {
       // Polyline of the flight.
@@ -42,7 +54,7 @@ export default function TracksMap({ samples }: { samples: TrackPoint[] }) {
         source: "track",
         layout: { "line-cap": "round", "line-join": "round" },
         paint: {
-          "line-color": "#f6c431",
+          "line-color": trackColor(),
           "line-width": 3,
         },
       });
@@ -74,15 +86,7 @@ export default function TracksMap({ samples }: { samples: TrackPoint[] }) {
           "circle-radius": 6,
           "circle-stroke-width": 2,
           "circle-stroke-color": "#fff",
-          "circle-color": [
-            "match",
-            ["get", "kind"],
-            "start",
-            "#9ee8b5",
-            "end",
-            "#ff6b6b",
-            "#f6c431",
-          ],
+          "circle-color": endpointColors(),
         },
       });
 
@@ -107,7 +111,9 @@ export default function TracksMap({ samples }: { samples: TrackPoint[] }) {
     });
 
     return () => {
-      map.remove();
+      window.removeEventListener(COLOR_MODE_EVENT, updateTrackColors);
+      window.removeEventListener("storage", storage);
+      stopColorMode(); map.remove();
       mapRef.current = null;
     };
   }, [samples]);

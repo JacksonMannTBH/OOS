@@ -272,7 +272,7 @@ function LeadIdentity({
         display: "inline-block",
         marginTop: 6,
         fontSize: 11.5,
-        color: "#edfbed",
+        color: "rgb(var(--ss-ui-edfbed, 237, 251, 237))",
         letterSpacing: ".04em",
         textDecoration: "none",
       }}

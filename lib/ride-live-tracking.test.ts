@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { DISTANCE_PALETTES } from "./distance-color-palette";
 
 test("ending a ride stops only Live Tracking owned by that ride", async () => {
   Object.defineProperty(globalThis, "CapacitorCustomPlatform", { configurable: true, value: { name: "ios" } });
@@ -19,9 +20,11 @@ test("ending a ride stops only Live Tracking owned by that ride", async () => {
     remove: async ({ key }: { key: string }) => { values.delete(key); },
   } });
   let stops = 0;
+  const configurations: Record<string, unknown>[] = [];
   registerPlugin("OOSLiveTracking", { ios: {
     start: async () => ({ supported: true, enabled: true, active: true }),
     stop: async () => { stops++; },
+    configure: async (options: Record<string, unknown>) => { configurations.push(options); },
   } });
   let rideId = "ride-1";
   registerPlugin("OOSRideRecorder", { ios: {
@@ -31,7 +34,7 @@ test("ending a ride stops only Live Tracking owned by that ride", async () => {
   const { initializeDevicePreferences } = await import("./device-preferences");
   await initializeDevicePreferences();
   const { startRideRecording, finishRideRecording } = await import("./ride-recording");
-  const { startLiveTracking, stopLiveTracking, stopRideLiveTracking } = await import("./live-tracking");
+  const { startLiveTracking, stopLiveTracking, stopRideLiveTracking, configureLiveTracking } = await import("./live-tracking");
 
   await startRideRecording(true, true);
   await startRideRecording(); // Resuming must preserve the owning ride.
@@ -53,4 +56,25 @@ test("ending a ride stops only Live Tracking owned by that ride", async () => {
   await startLiveTracking(); // A manual restart belongs to the user.
   await finishRideRecording(rideId);
   assert.equal(stops, 2);
+
+  const { updateDevicePreferences } = await import("./device-preferences");
+  for (const mode of ["color", "monochrome", "red", "blue", "green"]) {
+    await updateDevicePreferences({ oos_color_mode: mode });
+    await configureLiveTracking();
+    assert.equal(configurations.at(-1)?.colorMode, mode, "Forward every saved mode to widgets and Live Activities");
+  }
+  const { colorMode: _, ...first } = configurations[0]!;
+  for (const { colorMode: _, ...configuration } of configurations) assert.deepEqual(configuration, first);
+  assert.equal(stops, 2, "Color synchronization must not stop Live Tracking");
+
+  const baseline = configurations[0]!;
+  configurations.length = 0;
+  for (const { id: palette } of DISTANCE_PALETTES) {
+    await updateDevicePreferences({ oos_distance_palette: palette });
+    await configureLiveTracking();
+    assert.equal(configurations.at(-1)?.distancePalette, palette, "Forward distance colors to Live Activities and CarPlay");
+    assert.deepEqual(configurations.at(-1), { ...baseline, colorMode: "green", distancePalette: palette },
+      "Changing colors leaves thresholds, aircraft exclusions, and region alone");
+  }
+  assert.equal(stops, 2, "Palette synchronization must not stop Live Tracking");
 });

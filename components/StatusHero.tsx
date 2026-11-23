@@ -35,8 +35,8 @@ export function StatusHero({
         color: SS_TOKENS.fg0,
         background: frameless
           ? "transparent"
-          : "linear-gradient(145deg, rgba(20, 19, 13, 0.98), rgba(5, 6, 7, 0.98) 64%)",
-        border: frameless ? 0 : "1px solid rgba(246, 196, 49, 0.44)",
+          : "linear-gradient(145deg, rgba(var(--ss-ui-14130d, 20, 19, 13), 0.98), rgba(var(--ss-ui-050607, 5, 6, 7), 0.98) 64%)",
+        border: frameless ? 0 : "1px solid rgba(var(--ss-ui-f6c431, 246, 196, 49), 0.44)",
         borderRadius: frameless ? 0 : 18,
         boxShadow: frameless
           ? "none"
@@ -81,7 +81,7 @@ export function StatusHero({
               height: 1,
               marginTop: 18,
               background:
-                "linear-gradient(90deg, rgba(246, 196, 49, 0.95), rgba(246, 196, 49, 0.25) 16%, rgba(255, 255, 255, 0.10) 100%)",
+                "linear-gradient(90deg, rgba(var(--ss-ui-f6c431, 246, 196, 49), 0.95), rgba(var(--ss-ui-f6c431, 246, 196, 49), 0.25) 16%, rgba(255, 255, 255, 0.10) 100%)",
             }}
           />
         )}
@@ -118,7 +118,7 @@ function StatusPill({ label, alert }: { label: string; alert: boolean }) {
         display: "inline-flex",
         alignItems: "center",
         gap: 12,
-        color: SS_TOKENS.alert,
+        color: SS_TOKENS.statusAlert,
         background: "rgba(0, 0, 0, 0.30)",
         border: "1px solid rgba(255, 255, 255, 0.16)",
         borderRadius: 26,
@@ -135,9 +135,9 @@ function StatusPill({ label, alert }: { label: string; alert: boolean }) {
           borderRadius: "50%",
           display: "grid",
           placeItems: "center",
-          color: "#050607",
-          background: SS_TOKENS.alert,
-          boxShadow: alert ? `0 0 18px ${SS_TOKENS.alert}` : undefined,
+          color: "rgb(var(--ss-ui-050607, 5, 6, 7))",
+          background: SS_TOKENS.statusAlert,
+          boxShadow: alert ? `0 0 18px ${SS_TOKENS.statusAlert}` : undefined,
         }}
       >
         {alert ? <DotIcon /> : <CheckIcon />}

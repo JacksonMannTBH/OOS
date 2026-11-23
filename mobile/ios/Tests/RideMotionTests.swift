@@ -21,6 +21,34 @@ enum RideMotionTests {
             for i in 0..<4 { angles = tracker.accept(gravity: sample, timestamp: time + Double(i) * 0.04) }
             return angles
         }
+        check("live lean is immediate, signed, and independent of peak confirmation") {
+            var tracker = RideMotionTracker()
+            precondition(tracker.leanReading == nil)
+            precondition(tracker.calibrate(gravity: gravity(mount: 35)))
+            precondition(tracker.leanReading == nil)
+            precondition(tracker.accept(gravity: gravity(mount: 35, roll: -32, pitch: 24), timestamp: 1) == nil)
+            precondition(abs(tracker.leanReading!.rollDegrees + 32) < 0.001)
+            precondition(abs(tracker.leanReading!.pitchDegrees - 24) < 0.001)
+            precondition(abs(tracker.leanReading!.payload["pitchDegrees"] as! Double - 24) < 0.001)
+            precondition(tracker.leanReading!.timestamp == 1)
+            precondition(tracker.accept(gravity: gravity(mount: 35, roll: 21, pitch: -12), timestamp: 1.04) == nil)
+            precondition(abs(tracker.leanReading!.rollDegrees - 21) < 0.001)
+            precondition(abs(tracker.leanReading!.pitchDegrees + 12) < 0.001)
+        }
+        check("pause and invalid readings clear live lean; peak resets preserve it") {
+            var tracker = RideMotionTracker()
+            precondition(tracker.calibrate(gravity: gravity()))
+            _ = tracker.accept(gravity: gravity(roll: 25), timestamp: 1)
+            let reading = tracker.leanReading
+            tracker.resetSamples(preservingOrientation: true)
+            precondition(tracker.leanReading == reading)
+            tracker.resetSamples()
+            precondition(tracker.leanReading == nil && tracker.calibrated)
+            _ = tracker.accept(gravity: gravity(roll: -20), timestamp: 2)
+            precondition(tracker.leanReading != nil)
+            _ = tracker.accept(gravity: RideMotionVector(x: .nan, y: 0, z: 0), timestamp: 2.04)
+            precondition(tracker.leanReading == nil)
+        }
         check("uncalibrated motion never produces angle records") {
             var tracker = RideMotionTracker()
             precondition(sustained(&tracker, gravity(roll: 40)) == nil)
@@ -118,6 +146,7 @@ enum RideMotionTests {
                             precondition(angles.left <= max(0, -roll) + 0.001)
                             precondition(angles.right <= max(0, roll) + 0.001)
                             precondition(abs(angles.noseUp - Double(max(0, degrees - 3))) < 0.001)
+                            precondition(abs(tracker.leanReading!.pitchDegrees - Double(degrees)) < 0.001)
                         }
                     }
                     let inverted = sustained(&tracker, gravity(mount: mount, roll: roll, pitch: 180), at: 8.24)!

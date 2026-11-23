@@ -51,7 +51,7 @@ export function TrailStatusBadge({ airborne }: { airborne: Aircraft[] }) {
     status.kind === "ok" && status.points > 0
       ? SS_TOKENS.clear
       : status.kind === "error"
-        ? SS_TOKENS.alert
+        ? SS_TOKENS.statusAlert
         : SS_TOKENS.fg2;
 
   return (

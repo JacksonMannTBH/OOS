@@ -1,5 +1,42 @@
 import Foundation
 
+enum OOSColorMode: String, Codable, CaseIterable {
+    case color, monochrome, red, blue, green
+
+    var accentRGB: (red: Double, green: Double, blue: Double) {
+        let rgb: (Double, Double, Double)
+        switch self {
+        case .color: rgb = (246, 196, 49)
+        case .monochrome: rgb = (245, 245, 245)
+        case .red: rgb = (229, 57, 53)
+        case .blue: rgb = (47, 128, 237)
+        case .green: rgb = (30, 215, 96)
+        }
+        return (rgb.0 / 255, rgb.1 / 255, rgb.2 / 255)
+    }
+}
+
+enum OOSDistancePalette: String, Codable, CaseIterable {
+    case classic, ocean, sunset, electric, frost
+
+    // Electric's bright lime needs extra darkening on CarPlay's light cards.
+    var lightTextBrightness: Double { self == .electric ? 0.5 : 0.55 }
+
+    func rgb(for rideState: String) -> (red: Double, green: Double, blue: Double)? {
+        let colors: [Int]
+        switch self {
+        case .classic: colors = [0x39d98a, 0x60a5fa, 0xf6c431, 0xff4d4f]
+        case .ocean: colors = [0x62d0ff, 0x9a9cff, 0xffb454, 0xff6080]
+        case .sunset: colors = [0x78d6ba, 0xf2cf66, 0xff9654, 0xf76fa0]
+        case .electric: colors = [0xb6f35d, 0x3bd9ec, 0xffd24a, 0xff5353]
+        case .frost: colors = [0xa5d3d8, 0x96a8d6, 0xdfbd86, 0xe37a72]
+        }
+        guard let index = ["Clear", "Watch", "Warning", "Stop"].firstIndex(of: rideState) else { return nil }
+        let hex = colors[index]
+        return (Double((hex >> 16) & 255) / 255, Double((hex >> 8) & 255) / 255, Double(hex & 255) / 255)
+    }
+}
+
 // Shared with the widget so freshness and labels have a single definition.
 struct RideTrackingContent: Codable, Hashable {
     var aircraft: String
@@ -12,6 +49,8 @@ struct RideTrackingContent: Codable, Hashable {
     var aircraftTail: String? = nil
     var vehicleLabel: String? = nil
     var bearingDegrees: Double? = nil
+    var colorMode: OOSColorMode? = nil
+    var distancePalette: OOSDistancePalette? = nil
 
     var hasKnownRideState: Bool {
         ["Clear", "Watch", "Warning", "Stop"].contains(rideState)
@@ -36,7 +75,8 @@ struct RideTrackingContent: Codable, Hashable {
         aircraft == other.aircraft && rideState == other.rideState &&
         message == other.message && stateName == other.stateName &&
         distanceNm.map { ($0 * 10).rounded() } == other.distanceNm.map { ($0 * 10).rounded() } &&
-        direction == other.direction
+        direction == other.direction && (colorMode ?? .color) == (other.colorMode ?? .color) &&
+        (distancePalette ?? .classic) == (other.distancePalette ?? .classic)
     }
 
     // Reuse the complete last result, including its observation time. On first

@@ -1,8 +1,8 @@
 "use client";
 
-import { SS_TOKENS } from "./tokens";
 import {
   DEFAULT_RIDE_STATUS_THRESHOLDS,
+  RIDE_STATUS_COLORS,
   normalizeRideStatusThresholds,
   type RideStatusThresholds,
 } from "./ride-mode";
@@ -22,10 +22,10 @@ export function proximityBandForDistance(
 ): ProximityBandInfo {
   const normalized = normalizeRideStatusThresholds(thresholds);
   if (distanceNm <= normalized.stopNm) {
-    return { band: "stop", label: "STOP", color: SS_TOKENS.danger, severity: 3 };
+    return { band: "stop", label: "STOP", color: RIDE_STATUS_COLORS.danger, severity: 3 };
   }
   if (distanceNm <= normalized.warningNm) {
-    return { band: "slow", label: "SLOW", color: SS_TOKENS.warn, severity: 2 };
+    return { band: "slow", label: "SLOW", color: RIDE_STATUS_COLORS.warning, severity: 2 };
   }
-  return { band: "watch", label: "Watch", color: SS_TOKENS.sky, severity: 1 };
+  return { band: "watch", label: "Watch", color: RIDE_STATUS_COLORS.watch, severity: 1 };
 }

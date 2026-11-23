@@ -138,10 +138,10 @@ function iconButtonStyle(
     padding: 0,
     borderRadius: 14,
     background: active
-      ? "rgba(246, 196, 49, 0.18)"
+      ? "rgba(var(--ss-ui-f6c431, 246, 196, 49), 0.18)"
       : "rgba(15, 15, 15, 0.72)",
     border: active
-      ? "1px solid rgba(246, 196, 49, 0.70)"
+      ? "1px solid rgba(var(--ss-ui-f6c431, 246, 196, 49), 0.70)"
       : `1px solid ${SS_TOKENS.hairline}`,
     color: disabled
       ? SS_TOKENS.fg3

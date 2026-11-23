@@ -1,5 +1,7 @@
 "use client";
 
+import { setMapDisplayStyle } from "@/lib/map-display-style";
+
 // Renders the most-recent-flight track for a single tail as a polyline
 // over the same OpenFreeMap dark base used on /map. Native MapLibre
 // interactions are enabled (pinch, drag, double-tap, +/- buttons) so
@@ -25,8 +27,6 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
-import { MAP_STYLE_URL } from "@/lib/map-style";
-import { darkMapStyle } from "@/lib/dark-map-style";
 import { SS_TOKENS } from "@/lib/tokens";
 import type { TrackPoint } from "@/lib/tracks";
 
@@ -123,7 +123,7 @@ function ProPlaneTrackMap({
       doubleClickZoom: true,
     });
     mapRef.current = map;
-    map.setStyle(MAP_STYLE_URL, { transformStyle: (_, style) => darkMapStyle(style, "radar") });
+    const stopColorMode = setMapDisplayStyle(map, "radar");
 
     map.addControl(new NavigationControl({ showCompass: true }), "top-right");
 
@@ -205,7 +205,7 @@ function ProPlaneTrackMap({
     return () => {
       if (pulseRef.current != null) cancelAnimationFrame(pulseRef.current);
       styleLoadedRef.current = false;
-      map.remove();
+      stopColorMode(); map.remove();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

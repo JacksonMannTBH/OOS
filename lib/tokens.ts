@@ -11,6 +11,8 @@ export const SS_TOKENS = {
   fg3: "var(--ss-fg3)",
   alert: "var(--ss-alert)",
   alertDim: "var(--ss-alert-dim)",
+  statusAlert: "var(--ss-status-alert)",
+  statusAlertDim: "var(--ss-status-alert-dim)",
   warn: "var(--ss-warn)",
   warnDim: "var(--ss-warn-dim)",
   danger: "var(--ss-danger)",

@@ -9,7 +9,7 @@ type LogoProps = {
   markSize?: number;
   /** Retained for older call sites; the new mark is already compact-safe. */
   compact?: boolean;
-  /** Retained for older call sites; the new mark keeps its brand colors. */
+  /** Retained for older call sites; color follows the selected mode. */
   mono?: boolean;
   /** Render the wordmark "Out Of Sight" alongside the mark. */
   wordmark?: boolean;
@@ -37,6 +37,7 @@ export function LogoMark({
 }: LogoMarkProps) {
   const renderedWidth =
     width ?? (typeof height === "number" ? Math.round(height * 1.5) : undefined);
+  const markClassName = `ss-eye-mark${className ? ` ${className}` : ""}`;
   const frameStyle: CSSProperties = {
     display: "block",
     width: renderedWidth,
@@ -48,7 +49,7 @@ export function LogoMark({
   if (variant === "closed") {
     return (
       <span
-        className={className}
+        className={`${markClassName} ss-eye-mark--closed`}
         aria-hidden="true"
         style={{
           ...frameStyle,
@@ -68,26 +69,35 @@ export function LogoMark({
             transform: "scale(1.35)",
           }}
         />
+        <svg className="ss-eye-themed-closed" viewBox="6 12 52 40" width="100%" height="100%" focusable="false">
+          <EyeShape />
+          <path d="M 17 49 L 52 15" stroke="#000" strokeWidth="4.5" strokeLinecap="round" />
+          <path d="M 17 49 L 52 15" stroke="var(--ss-logo-sclera, #fff)" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
       </span>
     );
   }
 
   return (
     <svg
-      className={className}
+      className={markClassName}
       viewBox="8 16 48 32"
       aria-hidden="true"
       focusable="false"
       style={frameStyle}
     >
-      <path
-        d="M 8 32 C 14 21 23 16 32 16 C 41 16 50 21 56 32 C 50 43 41 48 32 48 C 23 48 14 43 8 32 Z"
-        fill="#ffffff"
-      />
-      <circle cx="32" cy="32" r="9.5" fill="#f6c431" />
-      <circle cx="32" cy="32" r="4.1" fill="#000000" />
+      <EyeShape />
     </svg>
   );
+}
+
+function EyeShape() {
+  return <>
+    <path d="M 8 32 C 14 21 23 16 32 16 C 41 16 50 21 56 32 C 50 43 41 48 32 48 C 23 48 14 43 8 32 Z"
+      fill="var(--ss-logo-sclera, #ffffff)" />
+    <circle cx="32" cy="32" r="9.5" fill="var(--ss-logo-iris, #f6c431)" />
+    <circle cx="32" cy="32" r="4.1" fill="#000000" />
+  </>;
 }
 
 export function Logo({

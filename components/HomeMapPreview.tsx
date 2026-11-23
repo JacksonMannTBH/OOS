@@ -1,12 +1,12 @@
 "use client";
 
+import { setMapDisplayStyle } from "@/lib/map-display-style";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import maplibregl, { type Map, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getMapOpeningCamera, trackMapOpeningCamera } from "@/lib/map-opening-camera";
-import { MAP_STYLE_URL } from "@/lib/map-style";
-import { darkMapStyle } from "@/lib/dark-map-style";
 import { getAppState, getSelectedStateCode } from "@/lib/app-states";
 import type { Aircraft } from "@/lib/types";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
@@ -132,7 +132,7 @@ export default function HomeMapPreview({ rider, aircraft }: { rider: Point | nul
     current.on("zoomstart", onGesture);
     current.on("moveend", onMoveEnd);
     current.on("rotate", () => setBearing(current.getBearing()));
-    current.setStyle(MAP_STYLE_URL, { transformStyle: (_, style) => darkMapStyle(style, "radar") });
+    const stopColorMode = setMapDisplayStyle(current, "radar");
     current.on("load", () => {
       current.addSource("preview-points", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       current.addLayer({ id: "preview-points", type: "circle", source: "preview-points", paint: {
@@ -155,7 +155,7 @@ export default function HomeMapPreview({ rider, aircraft }: { rider: Point | nul
       document.removeEventListener("pause", pause);
       document.removeEventListener("resume", resume);
       document.removeEventListener("visibilitychange", visibility);
-      resize.disconnect(); stopTrackingCamera(); popup.current?.remove(); current.remove();
+      resize.disconnect(); stopTrackingCamera(); popup.current?.remove(); stopColorMode(); current.remove();
     };
   }, []);
   useEffect(() => {
@@ -199,13 +199,13 @@ export default function HomeMapPreview({ rider, aircraft }: { rider: Point | nul
     popup.current.getElement().style.zIndex = String(orderedAircraft.length + 2);
     popup.current.on("close", () => setSelectedTail(current => current === plane.tail ? null : current));
   };
-  return <><div ref={container} style={{ position: "absolute", inset: 0, background: "#121515", isolation: "isolate" }} /><MapHeadingCone map={map} rider={rider} />
+  return <><div ref={container} style={{ position: "absolute", inset: 0, background: "var(--ss-map-background, #121515)", isolation: "isolate" }} /><MapHeadingCone map={map} rider={rider} />
     <RiderLayer map={map} />
     {map && orderedAircraft.map((plane, index) =>
       <PreviewAircraft key={plane.tail} map={map} aircraft={plane} bearing={bearing}
         layerOrder={selectedTail === plane.tail ? orderedAircraft.length + 1 : index + 1} onSelect={selectAircraft} />)}
     {map && rider && <button type="button" aria-label="Center preview on your location" onClick={() => resetPreview.current?.()}
-      style={{ position: "absolute", right: 10, bottom: 10, zIndex: 2, width: 44, height: 44, display: "grid", placeItems: "center", border: 0, borderRadius: 12, background: "rgba(5,5,5,.82)", color: "#f5f1e6", cursor: "pointer" }}>
+      style={{ position: "absolute", right: 10, bottom: 10, zIndex: 2, width: 44, height: 44, display: "grid", placeItems: "center", border: 0, borderRadius: 12, background: "rgba(5,5,5,.82)", color: "var(--ss-fg0)", cursor: "pointer" }}>
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="6" /><path d="M12 2v4m0 12v4M2 12h4m12 0h4" /><circle cx="12" cy="12" r="1" /></svg>
     </button>}
   </>;

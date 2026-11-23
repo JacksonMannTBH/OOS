@@ -21,8 +21,8 @@ export function StatusPill({
   style,
 }: Props) {
   const isAlert = kind === "alert";
-  const c = isAlert ? SS_TOKENS.alert : SS_TOKENS.clear;
-  const bg = isAlert ? SS_TOKENS.alertDim : SS_TOKENS.clearDim;
+  const c = isAlert ? SS_TOKENS.statusAlert : SS_TOKENS.clear;
+  const bg = isAlert ? SS_TOKENS.statusAlertDim : SS_TOKENS.clearDim;
   const pill = (
     <span
       role="status"
@@ -36,7 +36,7 @@ export function StatusPill({
         background: bg,
         border: `.5px solid ${
           isAlert
-            ? "color-mix(in srgb, var(--ss-alert) 42%, transparent)"
+            ? "color-mix(in srgb, var(--ss-status-alert) 42%, transparent)"
             : SS_TOKENS.hairline2
         }`,
         boxShadow: big ? SS_TOKENS.shadowSm : "none",
@@ -57,7 +57,7 @@ export function StatusPill({
           borderRadius: "50%",
           background: c,
           animation: isAlert ? "ss-blink 1.4s ease-in-out infinite" : "none",
-          boxShadow: `0 0 0 4px ${isAlert ? SS_TOKENS.alertDim : SS_TOKENS.clearDim}`,
+          boxShadow: `0 0 0 4px ${isAlert ? SS_TOKENS.statusAlertDim : SS_TOKENS.clearDim}`,
         }}
       />
       <span>{label}</span>

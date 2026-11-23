@@ -1,117 +1,129 @@
-# Android handoff — source through build 194
+# Android handoff — source through phone build 220
 
-Updated November 16, 2026. Continue using branch **`android/build-145`** so the
-existing Android checkout can pull the latest source without changing branches.
-This supersedes the [build 145/147 handoff](android-build-145-handoff.md).
+Updated November 23, 2026. Continue using **`android/build-145`**. The existing
+Android checkout can pull this branch without changing branches. This document
+keeps its original filename so existing handoff links continue to work; it
+supersedes the shared-source baseline through builds 192–194 and the
+[145/147 handoff](android-build-145-handoff.md).
 
-The reference iPhone release is **1.0.3 (194)**, uploaded and submitted on
-November 16 with Waiting for Review confirmed and manual release retained. It retains the expandable MPH
-view from build 193 and adds the persistent membership NEWS banner at the top
-of Settings. The owner reviewed this exact build on the iPhone. Its signed
-Release package contains 213 verified interface files, including two Capacitor
-compatibility files. The App Store release and screenshot records are in
-[the release notes](app-store-submission.md).
+The latest tested phone baseline is **Out Of Sight 1.0.3 (220)**. The signed app
+and widget were installed and launched on the owner's iPhone, with all ten saved
+rides, lifetime statistics, and saved preferences preserved. This is a phone
+installation record, not an App Store submission or an Android release.
 
-This branch saves the shared mobile source and the iPhone implementations for
-the Android update. It is not an Android APK/AAB release, and native Android
-ride recording, motion readings, and ongoing aircraft notifications still need
-implementation and device testing.
+This branch carries the shared screens and iPhone behavior references needed
+for the Android update. Android recording, motion sensors, and ongoing aircraft
+notifications still require native implementation and device testing. Android
+source versioning remains **versionCode 7 / versionName 1.1.5**; select the next
+Android version against the current Play Console release before signing.
 
-## Shared changes to carry into Android
+## Changes since the previous handoff
 
-- Keep the informational membership NEWS banner as the first Settings item. It
-  remains available after reading and can be reopened; closing restores focus
-  to the banner. This does not enable billing, tier badges, or Elite Settings.
+- **Space Grotesk** is bundled throughout the app, map labels, offline page, and
+  iPhone widget/Live Activity. Retain both
+  `public/fonts/space-grotesk/SpaceGrotesk-Regular.ttf` and `OFL.txt`. No font
+  download is required at runtime. The font uses SIL Open Font License 1.1.
+- **Color Mode** appears above the 12/24-hour setting. Its row has the label on
+  the left and current mode on the right; tapping opens the options. Color,
+  Black & white, Red, Blue, and Green replace the original saffron accents.
+  Red is `#e53935`, Blue is `#2f80ed`, and Green is `#1ed760`. Tinted maps use
+  dull gray topography; the chosen accent colors the original accent areas,
+  including roads, rather than recoloring every aircraft or map overlay.
+- **Distance colors** has five palettes, independent of Color Mode. The final
+  build 220 UI shows four swatches and a selection check per option, with no
+  visible palette names or Clear/Watch/Warning/Stop captions in the popup.
+  The closed Settings row also shows the selected swatches instead of a name.
+  Accessible names remain available to screen readers. Colors are listed below
+  for implementation; the distance thresholds and classification are unchanged.
+- **Swipe gauge** offers G-force, Lean arc, and Moving horizon. Its menu shows
+  instrument previews, descriptions, and the selected checkmark. Swiping the
+  Ride map opens the selected instrument; another swipe returns to the map.
+  Cancel/backdrop/Escape preserve the saved choice, and failed saves keep the
+  previous choice visible. See [motion behavior](ride-motion.md).
+- **Lean arc** displays immediate signed left/right lean with a fixed ±60° arc;
+  only the needle position is clamped. It shares mount calibration and the
+  confirmed peaks displayed in Stats. **Moving horizon** uses signed pitch,
+  including negative readings and vertical/inverted poses, with a 68px pitch
+  value and no “nose up” caption. Both live displays work when peak recording
+  is switched off.
+- **Live tracking colors** follow the distance palette, including existing
+  sessions. The iPhone implementation applies them to the Lock Screen, Dynamic
+  Island, and CarPlay. Its light CarPlay presentation darkens text to preserve
+  contrast, including an additional adjustment for Electric's lime. Android
+  needs equivalent readable presentation in its own ongoing notification.
+- Help now includes CarPlay instructions, the gauge options, Color Mode, and
+  distance palettes. CarPlay remains an iPhone feature; this does not add
+  Android Auto support.
+- The prior expandable MPH view, eye/slash transitions, portrait/landscape
+  layouts, white distance rings, aircraft direction, ten recent ride summaries,
+  saved routes, and lifetime statistics remain included. See
+  [speedometer](ride-speedometer.md), [G-force](ride-gforce.md), and
+  [ride stats](ride-stats.md).
 
-- The speedometer update submitted in iPhone build 193 lets the rider
-  tap MPH to enlarge speed into the map circle, tap again to restore the map,
-  and swipe to G-force. The rim follows aircraft status. Both orientations and
-  active-recording continuity are covered by eight browser layout checks.
-  See [speedometer behavior and verification](ride-speedometer.md).
-- Updated Home, aircraft map, Ride Mode, settings, Help, Legal, and navigation.
-  Ride Mode includes landscape layouts, a direction indicator that stays inside
-  the map panel, and revised controls and transitions.
-- Aircraft profiles resolve current-flight duration from takeoff or tracking
-  timestamps. Map aircraft filtering and the shared display remain in sync.
-- Twelve-hour time is the default; an explicitly saved 24-hour choice remains
-  supported. Existing preferences and aircraft exclusions must survive updates.
-- The saved ride interface supports ten recent summaries. The iPhone native
-  store also retains ten; an Android recorder must implement the same capacity
-  while preserving existing routes and lifetime statistics.
-- The receiver and nationwide aircraft support from the earlier handoff remain
-  included. Coverage and active aircraft vary. The source contains the existing
-  v1/v2/v3 negotiation; this handoff does not deploy a backend format change.
+### Distance palette contract
 
-## Memberships remain excluded from the release
+Use `lib/distance-color-palette.ts` as the shared source of truth. The internal
+`danger` state is displayed as **Stop**. Preview and notification colors must
+use the same ordering and values:
 
-Normal `npm run build:web`, `npm run sync`, and the Android signing helper all
-build the interface with memberships disabled. The Vite configuration substitutes
-the release modules in `mobile/frontend/release/`, strips held Help sections,
-and rejects preview modules entering a release bundle.
+| Internal ID | Clear | Watch | Warning | Stop |
+| --- | --- | --- | --- | --- |
+| `classic` | `#39d98a` | `#60a5fa` | `#f6c431` | `#ff4d4f` |
+| `ocean` | `#62d0ff` | `#9a9cff` | `#ffb454` | `#ff6080` |
+| `sunset` | `#78d6ba` | `#f2cf66` | `#ff9654` | `#f76fa0` |
+| `electric` | `#b6f35d` | `#3bd9ec` | `#ffd24a` | `#ff5353` |
+| `frost` | `#a5d3d8` | `#96a8d6` | `#dfbd86` | `#e37a72` |
 
-The Android update must have no purchase pop-ups, Pro/Elite tier badges,
-Elite Settings, purchases, or rider-sharing interface. The informational NEWS
-banner and its future-plans notice remain available at the top of Settings. Direct Elite links return
-to Settings. Existing maps, paths, alerts, and supported ride features remain
-available without a membership requirement. A saved development plan must not
-change that release behavior.
+Persist `oos_distance_palette`, `oos_color_mode`, and `oos_ride_gauge` through
+the existing native preference snapshot `oos_device_preferences_v1`.
+`lib/device-preference-store.ts` includes all three keys. Missing/invalid shared
+palette values default to Classic; the gauge defaults to G-force. An older
+native snapshot must not import a stale browser-storage choice. Only publish
+new choices after a successful durable save; a failed write keeps the previous
+choice. Restore choices after web-storage loss and app restart, and preserve
+other preferences, tracking exclusions, and device identity.
 
-After rebuilding and syncing, both `mobile/www/bundle-info.json` and
-`mobile/android/app/src/main/assets/public/bundle-info.json` must contain
-`"membershipPreview": false`; `release-features.json` must agree. Do not use
-`build:web:membership-preview` or `sync:ios:membership-preview` for store builds.
-
-The original preview source remains available for future development. The
-complete 470-file reference snapshot, manifest, and restoration notes are in
-[`references/membership-preview-2026-11-16/`](../references/membership-preview-2026-11-16/README.md).
-The archive SHA-256 is
-`09c7c15a1044c30d521a07c773f80e8fda827b070a897b5aff6734256a506525`.
-Extract it separately and merge selected changes; do not restore old shared
-files over the fixes in this branch. See [membership notes](membership-preview.md).
+`lib/live-tracking.ts` forwards `colorMode` and `distancePalette` with state,
+excluded aircraft, and distance thresholds. `LiveTrackingPreferenceSync`
+reconciles display changes even when Home/Ride is unmounted. Treat palette
+changes as display changes: update the existing notification without stopping
+tracking, clearing a measured distance, or changing observation timestamps.
 
 ## Native Android work still required
 
-`mobile/android/app/src/main/java/live/outofsight/app/MainActivity.java` is
-currently a plain Capacitor activity. `hasRideRecorder()` and
-`hasNativeLiveTracking()` still select the iPhone bridges only. Copying the
-shared screens does not provide Android recording, motion sampling, or a
-background aircraft notification.
+`mobile/android/app/src/main/java/live/outofsight/app/MainActivity.java` remains
+a plain Capacitor activity. `hasRideRecorder()` and `hasNativeLiveTracking()`
+still select iPhone bridges only. Shared screens do not supply these native
+Android capabilities. Implement and register the equivalents, then update the
+platform checks only after they are available and tested:
 
-Use the following iPhone sources as behavior references when implementing
-Android equivalents:
-
-| Feature | Reference and behavior to preserve |
+| Feature | Reference and required behavior |
 | --- | --- |
-| Ride recording and history | `mobile/ios/App/App/RideRecorderPlugin.swift`, `SharedLocationService.swift`, and `mobile/ios/App/Shared/RideHistory.swift`: explicit start/end, location lifecycle, saved routes, ten recent rides, lifetime stats, and safe update/migration behavior. |
-| Motion and calibration | `mobile/ios/App/Shared/RideMotion.swift` and its tests: calibrated lean/pitch and G-force, portrait/landscape handling, separate reset controls, and pause/resume behavior. Normalize Android sensor axes before using shared readings. |
-| G-force compatibility | Preserve the outward-load convention: braking up, acceleration down, left turns right, right turns left. `maxLeftG`/`maxRightG` describe load direction. Keep the peak-confirmation behavior and migrate old unmarked summaries once to `lateralReference: "load"`. |
-| Orientation and wake behavior | `ScreenAwakePlugin.swift`, `lib/device-ride-orientation.ts`, and `lib/device-screen-wake.ts`: implement an Android bridge before enabling its controls; unsupported devices should retain the current fallback. |
-| Ongoing aircraft notification | `LiveTrackingPlugin.swift`, `RideTrackingData.swift`, and `LiveTrackingWidget.swift`: status at top left, nautical-mile distance at top right, aircraft details/update time at bottom left, and bearing arrow plus direction at bottom right. Use larger status text. The bearing points from the user toward the aircraft, independently of aircraft heading. |
+| Recording/history | `mobile/ios/App/App/RideRecorderPlugin.swift`, `SharedLocationService.swift`, and `mobile/ios/App/Shared/RideHistory.swift`: explicit start/end, location lifecycle, routes, ten summaries, lifetime stats, and safe migrations. |
+| Motion/calibration | `mobile/ios/App/Shared/RideMotion.swift`, `mobile/ios/Tests/RideMotionTests.swift`, and `docs/ride-motion.md`: normalize Android sensor axes; preserve mounting calibration, confirmed peaks, independent resets, and pause/resume behavior. |
+| Immediate gauge readings | Implement `OOSRideRecorder.leanStatus` as used by `lib/ride-recording.ts` and `lib/hooks/useRideLean.ts`, exposing signed `rollDegrees`, `pitchDegrees`, timestamp, calibration/receiving flags, and peaks. The iPhone reference withholds readings after 300 ms without a fresh sample. Ignore stale async results after pause/unmount; keep live angles available with peak recording off. |
+| G-force compatibility | Braking up, acceleration down, left turns right, right turns left. Peaks describe load direction. Preserve peak confirmation and the one-time `lateralReference: "load"` migration for older summaries. |
+| Orientation/wake | `ScreenAwakePlugin.swift`, `lib/device-ride-orientation.ts`, and `lib/device-screen-wake.ts`; retain the existing unsupported-device fallback until Android bridges work. |
+| Ongoing aircraft notification | `LiveTrackingPlugin.swift`, `RideTrackingData.swift`, `HomeWidgetStore.swift`, and `LiveTrackingWidget.swift`: current state, distance in nautical miles, aircraft details, update time, direction from the user, and the selected distance palette. Persist/recover the latest measured result without making old readings fresh. |
 
-For aircraft status, apply the same four-minute timeout as the map to each
-aircraft's original `observed_at` observation. A newer fleet response must not
-refresh an old aircraft's age. Support the older timestamp fallbacks in
-`RideTrackingData.swift`; exclude unobserved, grounded, and expired contacts.
-A healthy current feed with no tracked airborne aircraft can clear the previous
-aircraft, distance, and direction without a new GPS fix. Distances to remaining
-airborne contacts require current user location. An unavailable feed retains
-the last result with its original timestamp; it must not invent a fresh Clear.
+Apply the map's four-minute timeout to each aircraft's original observation;
+new fleet responses must not extend old aircraft reports. Preserve the older
+timestamp fallbacks, exclusions, grounded/unobserved filtering, and nearest
+located contact selection in `RideTrackingData.swift`. A healthy empty feed can
+clear the aircraft without a new GPS fix. Other distance calculations need
+current location. Unavailable data retains the last result and original update
+time, without inventing a fresh Clear.
 
-Keep ride recording and aircraft tracking independent: ending a ride must not
-stop a manually started tracking session. Verify start/stop, lock screen,
-background/resume, lost connection, landing/expiry, and permission behavior on
-an Android device. iPhone Dynamic Island, CarPlay, and Watch layouts are iPhone
+Recording and Live Tracking remain independent: ending a ride stops tracking
+only when that ride started it. Test locking, background/resume, lost connection,
+landing/expiry, permissions, calibration, and all three gauges on an Android
+device. iPhone Live Activities, Dynamic Island, CarPlay, and Watch layouts are
 reference behavior, not Android implementations.
-
-More detail: [G-force](ride-gforce.md), [motion](ride-motion.md),
-[ride stats](ride-stats.md), and [Live Activity changes](carplay-live-activity.md).
 
 ## Build on the Android machine
 
-Use the Capacitor project in **`mobile/android`**. The root `android/` directory
-is the older Bubblewrap/TWA project.
-
-From the existing checkout on `android/build-145`:
+Use **`mobile/android`**, the Capacitor project. The root `android/` folder is
+the older Bubblewrap/TWA fallback. In the existing checkout:
 
 ```sh
 git pull --ff-only origin android/build-145
@@ -124,61 +136,60 @@ npm run open
 ```
 
 Retain the Android machine's Firebase `google-services.json`, SDK settings, and
-existing Play upload key; they are intentionally excluded from Git. Do not
-replace an existing upload key. The Windows `npm run build:bundle` helper
-rebuilds/syncs before signing and prompts locally for the key password.
+existing Play upload key. These local files are excluded from Git. The Windows
+`npm run build:bundle` helper rebuilds/syncs before signing and prompts locally
+for the existing key password. It writes
+`mobile/android/out-of-sight-capacitor-release.aab`.
 
-`mobile/android/app/build.gradle` still contains **versionCode 7** and
-**versionName 1.1.5**. Check the current Play release and set the next Android
-code/name before uploading. Do not copy the iPhone build number or version
-blindly. No Android version number, signing setup, Play listing, or production
-release has been changed by this handoff.
+Before packaging, set an Android version code greater than the last uploaded
+Play build and choose its version name. Do not copy iPhone build 220 into the
+Android version fields by assumption. The iOS project itself still declares
+206; phone build 220 used the build-time `CURRENT_PROJECT_VERSION=220` override
+for both app and widget. No Android version, signing configuration, Play listing,
+or production release is changed by this source handoff.
 
-The approved iPhone description is saved at
-[`references/app-store-1.0.2-192/description-approved.txt`](../references/app-store-1.0.2-192/description-approved.txt).
-It mentions recording, angles, G-force, and Lock Screen tracking. Use it as
-reference for Android copy after those capabilities work on Android. The
-iPhone release notes are not evidence of Android native feature parity.
+## Membership and backend scope
 
-## Validation and backend scope
+Normal `npm run build:web`, `npm run sync`, and the Android signing helper keep
+memberships disabled. Vite substitutes `mobile/frontend/release/`, strips held
+Help sections, and rejects preview modules in the release. Both `bundle-info.json`
+and `release-features.json` in the generated and Android-packaged assets must
+contain `"membershipPreview": false`. Do not use membership-preview commands
+for store builds.
 
-The exact source selected for this handoff was exported into a clean folder,
-without the Mac's private configuration or pending backend files. All **246
-shared automated checks**, the mobile type check, the release interface build,
-and **Capacitor Android sync** passed. All 209 generated web files copied
-unchanged; Android adds two Capacitor compatibility scripts for 211 packaged
-files. Shared runtime assets match the submitted iPhone interface, excluding
-build manifests and generated compatibility files. Both membership flags are
-false, and the packaged JavaScript has no membership prompts or Elite Settings.
-Local handoff evidence is in `.local/android-handoff-192/` on the release Mac.
-No Gradle build, Android installation, signing, or Play upload was performed.
+Keep purchase dialogs, tier badges, Elite Settings, native billing, and rider
+sharing excluded. The informational Settings NEWS banner stays available and
+reopens after reading. Existing maps, paths, alerts, and supported ride features
+remain available without a membership requirement. The saved
+[membership source reference](../references/membership-preview-2026-11-16/README.md)
+remains separate.
 
-The shared speedometer source in build 193 passed eight packaged
-interface checks across Chromium/WebKit and portrait/landscape layouts, including
-status rims and swiping from enlarged speed to G-force. The signed iPhone
-distribution package matches all 211 tested interface files and still excludes
-memberships. Evidence is in `.local/appstore-1.0.3-193/`. This update does not
-change Android versioning or provide the missing Android native bridges.
+Keep the production backend, **ADSB.fi** supplier, credentials, and schedules
+unchanged. This branch update deploys no functions or migrations. Pending rider
+backend source, backend scripts/configuration, local diagnostics, private device
+data, and unrelated store artwork on the Mac are outside this handoff.
 
-Build 194 adds the persistent Settings news source shared by both platforms.
-Mobile type checking and the production interface build passed. Six browser
-checks cover Chromium and WebKit at portrait, landscape and small-phone sizes,
-including repeat opening, reload persistence, focus restoration and purchase
-exclusions. The iPhone distribution package matches all 213 phone-reviewed
-interface files. Evidence is in `.local/settings-membership-news/` and
-`.local/appstore-1.0.3-194/`. This does not implement or validate the missing
-Android native bridges; rebuild and sync the Android interface on the Android
-machine before signing.
+## Validation record
 
-Before the iPhone upload, twenty release screen checks passed across Chromium
-and WebKit, along with the focused membership/access checks, mobile type
-check, native tracking tests, signed package checks, and exact 211-file asset
-comparison. The submitted binary excludes native billing and rider sharing.
-These are iPhone/shared-interface checks, not Android installation or native
-sensor tests. Local iPhone evidence is in `.local/appstore-1.0.3-192/` on the
-release Mac; source, tests, and the membership reference archive are in Git.
+Phone build 220 passed mobile type checking, the production web build, signed
+app/widget verification, and installation/launch checks. Chromium and WebKit
+checks cover the final five-option popup, twenty unchanged swatches, removed
+visible names/captions, selected swatches in Settings, persistence, accessible
+descriptions, and compact portrait/landscape layouts. Earlier palette checks
+also verified all twenty status colors and contrast on dark/light notification
+presentations. Phone evidence is local in `.local/distance-swatches-220/`.
 
-Keep the production backend, ADSB.fi supplier, credentials, and schedules
-unchanged. This branch update does not deploy functions or migrations. The
-separate pending rider backend changes in the Mac working tree are outside
-this Android source handoff; the saved preview archive remains reference only.
+The exact selected source was exported into a clean folder, excluding local
+private configuration and pending backend work, and checked using the existing
+installed dependencies. All **261 shared automated checks**, the mobile type
+check, production interface build, and **Capacitor Android sync** passed. All
+**212 generated web files** match their Android copies; Android adds two
+Capacitor compatibility scripts for **214 packaged files**. Shared runtime
+assets match the installed iPhone build 220, excluding generated build metadata,
+and both membership flags remain false. The clean source also matches every
+file in build 220's recorded source manifest.
+
+The native motion and widget-storage reference tests also passed from this
+export. Evidence is local in `.local/android-handoff-220/` on the release Mac.
+Native Gradle packaging, Android installation, native sensor testing, signing,
+and Play upload were not performed.

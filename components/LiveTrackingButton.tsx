@@ -80,16 +80,16 @@ export function LiveTrackingButton({ mockOn = false, activeOnly = false, style }
         aria-label={busy ? "Updating Live Tracking" : status.active ? "Stop Live Tracking" : "Start Live Tracking"}
         aria-describedby={descriptionId}
         title={description}
-        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44, padding: "0 3px", border: 0, background: "transparent", color: "#f6c431", cursor: busy ? "wait" : "pointer", font: "inherit", opacity: disabled ? 0.6 : 1, touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 44, minHeight: 44, padding: "0 3px", border: 0, background: "transparent", color: "rgb(var(--ss-ui-f6c431, 246, 196, 49))", cursor: busy ? "wait" : "pointer", font: "inherit", opacity: disabled ? 0.6 : 1, touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
       >
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 8px", borderRadius: 20, border: "1px solid rgba(246,196,49,.55)", background: status.active ? "#f6c431" : "rgba(5,6,7,.6)", color: status.active ? "#050505" : "#f6c431", fontSize: 12, fontWeight: 800 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 8px", borderRadius: 20, border: "1px solid rgba(var(--ss-ui-f6c431, 246, 196, 49), .55)", background: status.active ? "rgb(var(--ss-ui-f6c431, 246, 196, 49))" : "rgba(var(--ss-ui-050607, 5, 6, 7), .6)", color: status.active ? "#050505" : "rgb(var(--ss-ui-f6c431, 246, 196, 49))", fontSize: 12, fontWeight: 800 }}>
           <span aria-hidden style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor", opacity: status.active ? 1 : 0.35 }} />
           {busy ? "Updating…" : status.active ? "Stop Live Tracking" : "Start Live Tracking"}
           {!status.active && <ProBadge />}
         </span>
       </button>
       <span id={descriptionId} className="sr-only">{description}</span>
-      {(error || status.message) && <p role="alert" style={{ position: "absolute", left: 0, top: "100%", zIndex: 4, width: "min(270px, 78vw)", padding: 12, borderRadius: 12, background: "#11120e", border: "1px solid rgba(246,196,49,.5)", color: "#f6c431", fontSize: 14, lineHeight: 1.5, margin: 0, overflowWrap: "anywhere" }}>{error || status.message}</p>}
+      {(error || status.message) && <p role="alert" style={{ position: "absolute", left: 0, top: "100%", zIndex: 4, width: "min(270px, 78vw)", padding: 12, borderRadius: 12, background: "rgb(var(--ss-ui-11120e, 17, 18, 14))", border: "1px solid rgba(var(--ss-ui-f6c431, 246, 196, 49), .5)", color: "rgb(var(--ss-ui-f6c431, 246, 196, 49))", fontSize: 14, lineHeight: 1.5, margin: 0, overflowWrap: "anywhere" }}>{error || status.message}</p>}
     </section>
   );
 }

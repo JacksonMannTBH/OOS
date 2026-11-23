@@ -2,6 +2,20 @@ import ActivityKit
 import SwiftUI
 import WidgetKit
 
+extension OOSColorMode {
+    func accent(brightness: Double = 1) -> Color {
+        let rgb = accentRGB
+        return Color(red: rgb.red * brightness, green: rgb.green * brightness, blue: rgb.blue * brightness)
+    }
+}
+
+extension OOSDistancePalette {
+    func color(for rideState: String, brightness: Double = 1) -> Color {
+        guard let rgb = rgb(for: rideState) else { return .gray }
+        return Color(red: rgb.red * brightness, green: rgb.green * brightness, blue: rgb.blue * brightness)
+    }
+}
+
 @main
 struct OOSWidgetBundle: WidgetBundle {
     var body: some Widget {
@@ -35,21 +49,21 @@ struct OOSLiveTrackingWidget: Widget {
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     Text(label(context).isEmpty ? "Live tracking" : label(context))
-                        .font(.custom("Manrope-Bold", size: 22, relativeTo: .title2))
+                        .font(.custom("SpaceGrotesk-Regular", size: 22, relativeTo: .title2))
                         .foregroundStyle(tint(context)).lineLimit(1).minimumScaleFactor(0.5)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(context.state.distanceValueLabel)
-                        .font(.custom("Manrope-Bold", size: 20, relativeTo: .title3))
+                        .font(.custom("SpaceGrotesk-Regular", size: 20, relativeTo: .title3))
                         .monospacedDigit().foregroundStyle(tint(context))
                         .lineLimit(1).minimumScaleFactor(0.5)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        Text(context.state.aircraft).font(.custom("Manrope-Bold", size: 17, relativeTo: .headline)).lineLimit(1)
+                        Text(context.state.aircraft).font(.custom("SpaceGrotesk-Regular", size: 17, relativeTo: .headline)).lineLimit(1)
                         Spacer()
                         AircraftDirectionLabel(content: context.state)
-                            .font(.custom("Manrope-Bold", size: 20, relativeTo: .title3))
+                            .font(.custom("SpaceGrotesk-Regular", size: 20, relativeTo: .title3))
                             .foregroundStyle(tint(context))
                     }
                     .padding(.top, 4)
@@ -57,10 +71,10 @@ struct OOSLiveTrackingWidget: Widget {
                 }
             } compactLeading: {
                 Text(label(context))
-                    .font(.custom("Manrope-Bold", size: 11, relativeTo: .caption2)).foregroundStyle(tint(context))
+                    .font(.custom("SpaceGrotesk-Regular", size: 11, relativeTo: .caption2)).foregroundStyle(tint(context))
             } compactTrailing: {
                 Text(compactDistance(context))
-                    .font(.custom("Manrope-Bold", size: 11, relativeTo: .caption2)).monospacedDigit().foregroundStyle(tint(context))
+                    .font(.custom("SpaceGrotesk-Regular", size: 11, relativeTo: .caption2)).monospacedDigit().foregroundStyle(tint(context))
             } minimal: {
                 Image(systemName: "airplane").foregroundStyle(tint(context))
                     .accessibilityLabel("OOS \(label(context)), \(distance(context))")
@@ -88,13 +102,7 @@ struct OOSLiveTrackingWidget: Widget {
         return String(format: "%.1f", distance)
     }
     private func tint(_ context: ActivityViewContext<RideTrackingAttributes>, brightness: Double = 1) -> Color {
-        switch context.state.rideState {
-        case "Stop": return Color(red: 1 * brightness, green: 0.30 * brightness, blue: 0.31 * brightness)
-        case "Warning": return Color(red: 0.96 * brightness, green: 0.77 * brightness, blue: 0.19 * brightness)
-        case "Watch": return Color(red: 0.38 * brightness, green: 0.65 * brightness, blue: 0.98 * brightness)
-        case "Clear": return Color(red: 0.22 * brightness, green: 0.85 * brightness, blue: 0.54 * brightness)
-        default: return .gray
-        }
+        (context.state.distancePalette ?? .classic).color(for: context.state.rideState, brightness: brightness)
     }
 }
 
@@ -107,11 +115,11 @@ private struct LockScreenLiveTrackingView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Text(status.isEmpty ? "Live tracking" : status)
-                    .font(.custom("Manrope-Bold", size: 26, relativeTo: .title2))
+                    .font(.custom("SpaceGrotesk-Regular", size: 26, relativeTo: .title2))
                     .lineLimit(1).minimumScaleFactor(0.5)
                 Spacer(minLength: 0)
                 Text(content.distanceValueLabel)
-                    .font(.custom("Manrope-Bold", size: 22, relativeTo: .title2))
+                    .font(.custom("SpaceGrotesk-Regular", size: 22, relativeTo: .title2))
                     .monospacedDigit().lineLimit(1).minimumScaleFactor(0.5)
             }
             .foregroundStyle(tint)
@@ -123,16 +131,16 @@ private struct LockScreenLiveTrackingView: View {
                             Text("Updated")
                             Text(content.updatedAt, style: .time)
                         }
-                        .font(.custom("Manrope-Regular", size: 11, relativeTo: .caption2))
+                        .font(.custom("SpaceGrotesk-Regular", size: 11, relativeTo: .caption2))
                         .foregroundStyle(Color.white.opacity(0.65))
                         .lineLimit(1).minimumScaleFactor(0.7)
                         Text(content.aircraft)
-                            .font(.custom("Manrope-Bold", size: 17, relativeTo: .headline))
+                            .font(.custom("SpaceGrotesk-Regular", size: 17, relativeTo: .headline))
                             .lineLimit(1).minimumScaleFactor(0.8)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     AircraftDirectionLabel(content: content)
-                        .font(.custom("Manrope-Bold", size: 22, relativeTo: .title2))
+                        .font(.custom("SpaceGrotesk-Regular", size: 22, relativeTo: .title2))
                         .foregroundStyle(tint)
                 }
             }
@@ -193,36 +201,32 @@ private struct SmallLiveTrackingView: View {
     private var statusColor: Color {
         guard colorScheme == .light else { return tint }
         // Keep the status hues readable against CarPlay's light cards.
-        switch content.rideState {
-        case "Stop": return Color(red: 0.70, green: 0.12, blue: 0.14)
-        case "Warning": return tint
-        case "Watch": return Color(red: 0.16, green: 0.37, blue: 0.67)
-        case "Clear": return Color(red: 0.10, green: 0.43, blue: 0.25)
-        default: return .primary
-        }
+        guard content.hasKnownRideState else { return .primary }
+        let palette = content.distancePalette ?? .classic
+        return palette.color(for: content.rideState, brightness: palette.lightTextBrightness)
     }
 
     private var statusText: Text {
         Text(status.isEmpty ? "Live tracking" : status)
-            .font(.system(.title3, design: .rounded, weight: .bold))
+            .font(.custom("SpaceGrotesk-Regular", size: 20, relativeTo: .title3))
             .foregroundColor(status.isEmpty ? .primary : statusColor)
     }
 
     private var distanceText: Text {
         Text(content.distanceValueLabel)
-            .font(.system(.title3, design: .rounded, weight: .bold))
+            .font(.custom("SpaceGrotesk-Regular", size: 20, relativeTo: .title3))
             .monospacedDigit()
     }
 
     private var aircraftLabel: some View {
         Text(content.aircraft)
-            .font(.system(.footnote, weight: .semibold))
+            .font(.custom("SpaceGrotesk-Regular", size: 13, relativeTo: .footnote))
             .lineLimit(1).minimumScaleFactor(0.8)
     }
 
     private var updatedLabel: some View {
         Text("Updated \(Text(content.updatedAt, style: .time))")
-        .font(.system(.caption, weight: .medium))
+        .font(.custom("SpaceGrotesk-Regular", size: 12, relativeTo: .caption))
         .foregroundStyle(Color.primary.opacity(0.8))
         .lineLimit(1).minimumScaleFactor(0.5)
     }
@@ -237,7 +241,7 @@ private struct SmallLiveTrackingView: View {
                     .accessibilityHidden(true)
                 Text(direction)
             }
-            .font(.system(compact ? .subheadline : .title3, design: .rounded, weight: .bold))
+            .font(.custom("SpaceGrotesk-Regular", size: compact ? 15 : 20, relativeTo: compact ? .subheadline : .title3))
             .fixedSize()
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Aircraft direction from you: \(direction)")
@@ -255,7 +259,7 @@ private struct SmallLiveTrackingView: View {
                 // Scale both readings together when the regular row cannot fit,
                 // so the status stays complete at narrow widths or larger type.
                 Text("\(Text(status.isEmpty ? "Live tracking" : status).foregroundColor(status.isEmpty ? .primary : statusColor))  \(Text(content.distanceValueLabel).monospacedDigit())")
-                    .font(.system(.headline, design: .rounded, weight: .bold))
+                    .font(.custom("SpaceGrotesk-Regular", size: 17, relativeTo: .headline))
                     .lineLimit(1).minimumScaleFactor(0.4)
             }
 
@@ -275,7 +279,7 @@ private struct SmallLiveTrackingView: View {
                             ViewThatFits(in: .horizontal) {
                                 updatedLabel.fixedSize(horizontal: true, vertical: false)
                                 Text(content.updatedAt, style: .time)
-                                    .font(.system(.caption, weight: .medium))
+                                    .font(.custom("SpaceGrotesk-Regular", size: 12, relativeTo: .caption))
                                     .foregroundStyle(Color.primary.opacity(0.8))
                                     .lineLimit(1).minimumScaleFactor(0.5)
                                     .accessibilityLabel(Text("Updated \(Text(content.updatedAt, style: .time))"))

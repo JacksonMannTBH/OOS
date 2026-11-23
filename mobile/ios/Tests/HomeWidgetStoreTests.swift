@@ -86,6 +86,63 @@ enum HomeWidgetStoreTests {
             require(store.configure(configuration), "Recover by resaving settings")
             require(store.publish(result("Warning"), for: configuration), "Recover actual data")
         }
+        try check("color changes preserve readings, timestamps and tracking configuration across app and widget readers") {
+            store.configure(configuration)
+            store.setColorMode(.color)
+            let known = result("Warning")
+            store.publish(known, for: configuration)
+            for mode in OOSColorMode.allCases {
+                store.setColorMode(mode)
+                let restored = HomeWidgetStore(directory: directory).read()
+                require(restored.configuration == configuration, "A color change cannot reset tracking preferences")
+                require(restored.content?.aircraft == known.aircraft && restored.content?.distanceNm == known.distanceNm,
+                        "Keep the measured aircraft and distance")
+                require(restored.content?.updatedAt == known.updatedAt && restored.content?.validUntil == known.validUntil,
+                        "A color change cannot make old readings fresh")
+                let content = restored.liveContent(for: configuration)
+                require((content.colorMode ?? .color) == mode, "A restarted Live Activity receives the selected color")
+                require(content.hasSameReadings(as: known) == (mode == .color), "Publish color changes even when readings do not change")
+                require(!store.setColorMode(mode), "Unchanged colors do not repeatedly reload widgets")
+                let roundTrip = try JSONDecoder().decode(RideTrackingContent.self, from: JSONEncoder().encode(content))
+                require(roundTrip == content, "ActivityKit content retains its mode")
+            }
+            store.setColorMode(.color)
+            let old = try JSONEncoder().encode(store.read())
+            require(!String(decoding: old, as: UTF8.self).contains("colorMode"), "Default mode remains compatible with older saved data")
+            require(try JSONDecoder().decode(HomeWidgetState.self, from: old).content == known,
+                    "Older records without a color mode still restore")
+        }
+        try check("distance palettes preserve cached readings and publish cosmetic changes without resetting tracking") {
+            store.configure(configuration)
+            store.setColorMode(.color)
+            for (index, palette) in OOSDistancePalette.allCases.enumerated() {
+                let known = result("Warning", at: now.addingTimeInterval(Double(index * 10)))
+                store.publish(known, for: configuration)
+                store.setDistancePalette(palette)
+                let restored = HomeWidgetStore(directory: directory).read()
+                require(restored.configuration == configuration, "Colors cannot change tracking configuration")
+                var expected = known
+                expected.distancePalette = palette == .classic ? nil : palette
+                require(restored.content == expected, "Preserve every reading and its timestamp")
+                require(restored.liveContent(for: configuration) == expected, "Restart keeps the selected palette")
+                require(expected.hasSameReadings(as: known) == (palette == .classic), "Publish changed colors with identical readings")
+                require(!store.setDistancePalette(palette), "Identical palette does not reload widgets")
+                require(store.publish(result("Watch", at: known.updatedAt.addingTimeInterval(1)), for: configuration), "New data can still publish")
+                require((store.read().content?.distancePalette ?? .classic) == palette, "New results inherit the selected palette")
+                let roundTrip = try JSONDecoder().decode(RideTrackingContent.self, from: JSONEncoder().encode(expected))
+                require(roundTrip == expected, "ActivityKit content carries the palette")
+                for state in ["Clear", "Watch", "Warning", "Stop"] {
+                    require(palette.rgb(for: state) != nil, "All distance states have colors")
+                }
+                require(palette.rgb(for: "Updating") == nil, "Unavailable data never invents a distance state")
+            }
+            store.setDistancePalette(.classic)
+            let known = store.read().content
+            let legacy = try JSONEncoder().encode(store.read())
+            require(!String(decoding: legacy, as: UTF8.self).contains("distancePalette"), "Classic remains compatible with older records")
+            require(try JSONDecoder().decode(HomeWidgetState.self, from: legacy).content == known,
+                    "Records without a palette still restore as Classic")
+        }
         check("a missing app group cannot crash or pretend that data was saved") {
             let unavailable = HomeWidgetStore(directory: nil)
             require(!unavailable.configure(configuration), "No write without a container")

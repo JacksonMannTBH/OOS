@@ -5,10 +5,15 @@ import Foundation
 struct HomeWidgetState: Codable {
     var configuration: RideTrackingConfiguration?
     var content: RideTrackingContent?
+    var colorMode: OOSColorMode?
+    var distancePalette: OOSDistancePalette?
 
     func liveContent(for configuration: RideTrackingConfiguration) -> RideTrackingContent {
-        RideTrackingContent.initial(stateName: configuration.stateName,
+        var result = RideTrackingContent.initial(stateName: configuration.stateName,
             previous: self.configuration == configuration ? content : nil)
+        result.colorMode = colorMode
+        result.distancePalette = distancePalette
+        return result
     }
 }
 
@@ -37,6 +42,28 @@ struct HomeWidgetStore {
     }
 
     @discardableResult
+    func setColorMode(_ mode: OOSColorMode) -> Bool {
+        mutate { state in
+            let stored: OOSColorMode? = mode == .color ? nil : mode
+            guard state.colorMode != stored else { return false }
+            state.colorMode = stored
+            state.content?.colorMode = stored
+            return true
+        }
+    }
+
+    @discardableResult
+    func setDistancePalette(_ palette: OOSDistancePalette) -> Bool {
+        mutate { state in
+            let stored: OOSDistancePalette? = palette == .classic ? nil : palette
+            guard state.distancePalette != stored else { return false }
+            state.distancePalette = stored
+            state.content?.distancePalette = stored
+            return true
+        }
+    }
+
+    @discardableResult
     func configure(_ configuration: RideTrackingConfiguration) -> Bool {
         mutate { state in
             guard state.configuration != configuration else { return false }
@@ -52,6 +79,9 @@ struct HomeWidgetStore {
         guard candidate.hasKnownRideState else { return false }
         return mutate { state in
             guard state.configuration == configuration else { return false }
+            var candidate = candidate
+            candidate.colorMode = state.colorMode
+            candidate.distancePalette = state.distancePalette
             if let previous = state.content, previous.updatedAt > candidate.updatedAt { return false }
             guard state.content != candidate else { return false }
             state.content = candidate

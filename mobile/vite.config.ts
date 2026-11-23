@@ -77,6 +77,9 @@ return {
   },
   oxc: { jsx: { runtime: "automatic" } },
   css: { postcss: mobile },
-  build: { outDir: path.join(mobile, "www"), emptyOutDir: true, manifest: true, target: "es2022", sourcemap: false },
+  build: {
+    outDir: path.join(mobile, "www"), emptyOutDir: true, manifest: true, target: "es2022", sourcemap: false,
+    rolldownOptions: { input: { main: path.join(frontend, "index.html"), offline: path.join(frontend, "offline.html") } },
+  },
 };
 });

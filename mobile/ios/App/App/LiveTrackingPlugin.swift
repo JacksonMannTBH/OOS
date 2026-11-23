@@ -39,7 +39,9 @@ public class LiveTrackingPlugin: CAPPlugin, CAPBridgedPlugin {
                 guard ProSubscriptionSession.shared.pro else { call.reject("OOS Pro is required for Live Tracking."); return }
                 #endif
                 let config = try self.configuration(call)
-                HomeWidgetAppUpdater.shared.configure(config)
+                HomeWidgetAppUpdater.shared.configure(config,
+                    colorMode: OOSColorMode(rawValue: call.getString("colorMode") ?? "") ?? .color,
+                    distancePalette: OOSDistancePalette(rawValue: call.getString("distancePalette") ?? "") ?? .classic)
                 try LiveTrackingSession.shared.start(config)
                 call.resolve(LiveTrackingSession.shared.status)
             } catch { call.reject(error.localizedDescription) }
@@ -51,7 +53,9 @@ public class LiveTrackingPlugin: CAPPlugin, CAPBridgedPlugin {
             guard #available(iOS 16.2, *) else { call.resolve(); return }
             do {
                 let config = try self.configuration(call)
-                HomeWidgetAppUpdater.shared.configure(config)
+                HomeWidgetAppUpdater.shared.configure(config,
+                    colorMode: OOSColorMode(rawValue: call.getString("colorMode") ?? "") ?? .color,
+                    distancePalette: OOSDistancePalette(rawValue: call.getString("distancePalette") ?? "") ?? .classic)
                 LiveTrackingSession.shared.configure(config)
                 call.resolve()
             } catch { call.reject(error.localizedDescription) }
@@ -226,9 +230,11 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
         }
         configuration = config
         HomeWidgetStore.shared.configure(config)
-        if changed {
+        let display = HomeWidgetStore.shared.read()
+        if changed || activity?.content.state.colorMode != display.colorMode ||
+            activity?.content.state.distancePalette != display.distancePalette {
             // Never carry a previous region or excluded aircraft into new settings.
-            scheduleContent(HomeWidgetStore.shared.read().liveContent(for: config))
+            scheduleContent(display.liveContent(for: config))
         }
         persistSession()
         refresh()
@@ -380,6 +386,10 @@ final class LiveTrackingSession: NSObject, @preconcurrency CLLocationManagerDele
     private func scheduleContent(_ content: RideTrackingContent) {
         guard let config = configuration, let id = sessionID else { return }
         guard let current = activity else { return }
+        var content = content
+        let display = HomeWidgetStore.shared.read()
+        content.colorMode = display.colorMode
+        content.distancePalette = display.distancePalette
         // Skip sub-decimal GPS changes, but publish when the compass direction changes.
         let previousContent = lastScheduledContent ?? current.content.state
         if previousContent.hasSameReadings(as: content),

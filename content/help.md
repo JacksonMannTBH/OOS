@@ -47,6 +47,12 @@ open. Use **Show speedometer** in these settings to show or hide your MPH
 speedometer in Ride Mode. End Ride restores normal screen sleep. Screen-wake
 support varies by browser and device.
 
+Tap **Distance colors** in the same settings to preview and choose a palette.
+Each preview shows the four distance colors. The palette applies to
+distance indicators in Home, Ride Mode, Live Activities, and CarPlay. Color Mode
+controls the app's accent separately; choosing a palette keeps your distance
+bands unchanged.
+
 On iPhone, **Start Ride** records top speed, estimated distance in miles, and
 duration after you confirm recording and allow Precise Location. Recording
 continues while the screen is locked or you use another app. **Resume Ride**
@@ -74,19 +80,34 @@ marker. If your connection is lost, the marker disappears within 45 seconds.
 Your profile belongs to this installation, with no login, recovery or transfer.
 <!-- membership-preview:end -->
 
-Swipe the ride map to open the **G-force** meter; swipe again to return to the
-map. The **Stats** button opens ride statistics from either view, and its map
+Choose **G-force**, **Lean arc**, or **Moving horizon** under **Settings → Ride mode & display →
+Swipe gauge**. Tap the Swipe gauge row to see previews and descriptions,
+then choose a gauge; a checkmark identifies your current choice. Swipe the
+ride map to open your chosen gauge; swipe again to
+return to the map. G-force is the default. The **Stats** button opens ride statistics from either view, and its map
 button returns to the map. Peak acceleration, braking, and left/right
 cornering G appear inside the G-force circle and in saved ride summaries.
 The meter shows movement G,
 approximately **0 G at rest**, with a dot indicating acceleration direction.
 Completed ride summaries retain these peaks locally.
 
+The **Lean arc** shows your current lean angle and whether you are leaning
+left or right, using your selected color mode. Its arc spans 60° each way; the
+number continues to show the full angle beyond that scale. Maximum left and
+right lean appear below when Lean and Pitch recording is enabled. The reset
+button clears angle peaks, including pitch, without changing calibration.
+
+The **Moving horizon** shows estimated pitch with a large, signed degree
+reading. Its center marker stays fixed while the level reference moves. A
+negative value means downward pitch. **MAX PITCH** uses your recorded angle
+peak; resetting it also clears the left/right lean peaks. It follows your
+selected color mode and works with Lean and Pitch recording turned off.
+
 Secure your phone in portrait, facing you and aligned with the bike. Before
 each ride, hold the bike upright and stationary on level ground and tap the
 calibration button beside Home. It blinks until the bike is steady enough.
 Calibrate again after moving the phone. The same control calibrates Lean and
-Pitch when enabled; G-force works with those angles turned off. Motion
+Pitch when enabled; all live gauges work with angle recording turned off. Motion
 recording pauses when the phone is locked or OOS is in the background, while
 GPS ride recording continues.
 
@@ -122,13 +143,39 @@ to reopen Home.
 
 Live tracking requires iOS 16.2 or later, location permission, and Live Activities
 enabled for OOS in iPhone Settings. The Live Activity appears after the first
-known aircraft state. Its color follows your distance settings: green for Clear,
-blue for Watch, amber for Warning, and red for Stop. If updates pause, it keeps
+known aircraft state. Its color follows your selected Distance colors palette.
+Classic uses green for Clear, blue for Watch, amber for Warning, and red for Stop.
+If updates pause, it keeps
 the last available state, aircraft, and distance; the Updated time shows when
 that result was recorded. Connectivity, location availability, and iOS background limits affect
 updates. Force-quitting OOS stops updating; reopen it to start a new session.
 Apple ends a Live Activity after at most eight hours. This feature is separate
 from takeoff notifications.
+
+## CarPlay
+
+On an iPhone running iOS 26 or later, Live Tracking can appear as a compact card
+in CarPlay Dashboard.
+
+1. Before driving, open OOS on your iPhone and tap **Start Live Tracking** on Home.
+   Allow location access and enable Live Activities for OOS in iPhone Settings
+   if needed.
+2. Connect your iPhone to CarPlay and open Dashboard. CarPlay controls whether
+   and where the Live Activity appears.
+3. To end the session, tap **Stop Live Tracking** on Home on your iPhone.
+
+The card shows the nearest tracked airborne aircraft in your selected state,
+its proximity status, distance in nautical miles, compass direction from you,
+aircraft label, and last-update time. It follows the same distance bands as
+Live Tracking on your iPhone. If updates pause, the last-update time identifies
+the retained reading.
+
+Start, stop, and settings controls stay on your iPhone. The CarPlay card is
+read-only and does not include a map. Starting or ending Ride Mode is separate
+from Live Tracking; end each session on your iPhone when finished. If the card
+is missing, check that Live Tracking is active and Live Activities are enabled
+for OOS on your iPhone. CarPlay visibility settings and Focus can affect whether
+it appears.
 
 ## Flight time and fuel
 

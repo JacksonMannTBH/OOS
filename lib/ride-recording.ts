@@ -44,6 +44,18 @@ export type RideGForceStatus = {
   message: string;
 };
 
+// One fresh, calibrated orientation feeds both the lean arc and pitch horizon.
+export type RideLeanReading = { timestamp: number; rollDegrees: number; pitchDegrees: number };
+export type RideLeanStatus = {
+  supported: boolean;
+  calibrated: boolean;
+  receiving: boolean;
+  reading: RideLeanReading | null;
+  peaks: RideMotionSummary | null;
+  recordingPeaks: boolean;
+  message: string;
+};
+
 export type RideRoutePoint = { latitude: number; longitude: number; startsSegment: boolean };
 export type RecordedRide = {
   id: string;
@@ -80,6 +92,7 @@ export const RIDE_RECORDING_CHANGED = "oos:ride-recording";
 const recorder = registerPlugin<{
   status(): Promise<RideRecorderStatus>;
   gForceStatus(): Promise<RideGForceStatus>;
+  leanStatus(): Promise<RideLeanStatus>;
   start(options: { consent: boolean; recordAngles: boolean }): Promise<RideRecorderStatus>;
   configureMotion(options: { enabled: boolean }): Promise<RideMotionStatus>;
   calibrateMotion(options: { rideId: string }): Promise<RideMotionStatus>;
@@ -101,6 +114,10 @@ export async function getRideRecorderStatus(): Promise<RideRecorderStatus> {
 export async function getRideGForceStatus(): Promise<RideGForceStatus> {
   if (hasRideRecorder()) return recorder.gForceStatus();
   return { supported: false, calibrated: false, receiving: false, reading: null, peaks: null, message: "" };
+}
+export async function getRideLeanStatus(): Promise<RideLeanStatus> {
+  if (hasRideRecorder()) return recorder.leanStatus();
+  return { supported: false, calibrated: false, receiving: false, reading: null, peaks: null, recordingPeaks: false, message: "" };
 }
 export async function startRideRecording(consent = false, startedLiveTracking = false): Promise<RideRecorderStatus> {
   if (proSnapshot().enabled && !(await getRideRecorderStatus()).active) await assertPro("ride");

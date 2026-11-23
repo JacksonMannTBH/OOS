@@ -45,6 +45,21 @@ test("Ride's simplified map is prepared before the first frame while radar retai
   assert.notEqual(darkMapStyle(provider, "radar").layers[4]!.layout?.visibility, "none");
 });
 
+test("Home and summary maps hide building footprints, outlines, labels, and extrusions while retaining neighborhood roads", () => {
+  const original: StyleSpecification = { ...provider, layers: [...provider.layers,
+    { id: "footprints", type: "fill", source: "base", "source-layer": "building" },
+    { id: "building-outline", type: "line", source: "base", "source-layer": "building" },
+    { id: "address-label", type: "symbol", source: "base", layout: { "text-field": "{address}" } },
+    { id: "3d-city", type: "fill-extrusion", source: "base", "source-layer": "other" },
+  ] };
+  const result = darkMapStyle(original, "radar");
+  for (const id of ["footprints", "building-outline", "address-label", "3d-city"]) {
+    assert.equal(result.layers.find(layer => layer.id === id)?.layout?.visibility, "none", id);
+  }
+  assert.notEqual(result.layers.find(layer => layer.id === "road-minor")?.layout?.visibility, "none");
+  assert.equal(original.layers.find(layer => layer.id === "footprints")?.layout?.visibility, undefined);
+});
+
 test("state borders appear below overview zoom and survive both map themes without adding county borders", () => {
   const original: StyleSpecification = { ...provider, layers: [
     ...provider.layers,

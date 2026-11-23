@@ -1,0 +1,79 @@
+/* Neutral UI palette. Each variable falls back to its existing color in
+   Color mode; status colors use independent tokens and are never filtered. */
+html[data-color-mode="monochrome"],
+body[data-theme="dark"][data-color-mode="monochrome"] {
+  --ss-map-background: #141414;
+  --ss-ui-60a5fa: 159, 159, 159;
+  --ss-ui-050607: 6, 6, 6;
+  --ss-ui-071012: 14, 14, 14;
+  --ss-ui-080a08: 9, 9, 9;
+  --ss-ui-090a0a: 10, 10, 10;
+  --ss-ui-090b08: 10, 10, 10;
+  --ss-ui-0a0d0c: 12, 12, 12;
+  --ss-ui-0b0c09: 12, 12, 12;
+  --ss-ui-0c0d0b: 13, 13, 13;
+  --ss-ui-0d0e0b: 14, 14, 14;
+  --ss-ui-0e0f0d: 15, 15, 15;
+  --ss-ui-10110d: 16, 16, 16;
+  --ss-ui-10110e: 17, 17, 17;
+  --ss-ui-10110f: 17, 17, 17;
+  --ss-ui-10151c: 20, 20, 20;
+  --ss-ui-11120e: 17, 17, 17;
+  --ss-ui-14130d: 19, 19, 19;
+  --ss-ui-141511: 20, 20, 20;
+  --ss-ui-15150f: 21, 21, 21;
+  --ss-ui-151613: 22, 22, 22;
+  --ss-ui-17150d: 21, 21, 21;
+  --ss-ui-1b1608: 22, 22, 22;
+  --ss-ui-1c1a10: 26, 26, 26;
+  --ss-ui-202526: 36, 36, 36;
+  --ss-ui-24200f: 32, 32, 32;
+  --ss-ui-242011: 32, 32, 32;
+  --ss-ui-292313: 35, 35, 35;
+  --ss-ui-47402b: 64, 64, 64;
+  --ss-ui-4da3ff: 151, 151, 151;
+  --ss-ui-5c574e: 87, 87, 87;
+  --ss-ui-77736a: 115, 115, 115;
+  --ss-ui-a8aa9e: 169, 169, 169;
+  --ss-ui-a9a28a: 162, 162, 162;
+  --ss-ui-a9c9ed: 197, 197, 197;
+  --ss-ui-aaa89e: 168, 168, 168;
+  --ss-ui-adbac9: 184, 184, 184;
+  --ss-ui-b7b2a7: 178, 178, 178;
+  --ss-ui-b8ad88: 173, 173, 173;
+  --ss-ui-c3beb3: 190, 190, 190;
+  --ss-ui-d2d0c7: 208, 208, 208;
+  --ss-ui-d8d3c8: 211, 211, 211;
+  --ss-ui-e0d8bd: 216, 216, 216;
+  --ss-ui-e2dfd1: 223, 223, 223;
+  --ss-ui-edfbed: 247, 247, 247;
+  --ss-ui-f4c430: 245, 245, 245;
+  --ss-ui-f5f1e6: 241, 241, 241;
+  --ss-ui-f5f2e8: 242, 242, 242;
+  --ss-ui-f6c431: 245, 245, 245;
+  --ss-ui-fff4c6: 243, 243, 243;
+  --ss-ui-fff8e6: 248, 248, 248;
+  --ss-ui-fffdf8: 253, 253, 253;
+}
+
+/* Basemap paint is desaturated separately so aircraft keep their colors. */
+body[data-color-mode="monochrome"] :is(
+  img, .ss-map-heading-cone
+) { filter: grayscale(1); }
+
+body[data-color-mode="monochrome"] .ss-eye-mark img { filter: none; }
+
+body[data-color-mode="monochrome"] .ss-police-report:not(.ss-police-report--alerting) {
+  color: var(--ss-fg0) !important;
+}
+
+/* Every alternative mode replaces saffron accents; the eye's white stays white. */
+:is(html, body):is([data-color-mode="monochrome"], [data-color-mode="red"], [data-color-mode="blue"], [data-color-mode="green"]) {
+  --ss-logo-iris: var(--ss-alert);
+  --ss-status-alert: var(--ss-alert);
+  --ss-status-alert-dim: var(--ss-alert-dim);
+}
+
+.ss-eye-themed-closed { display: none; }
+body:is([data-color-mode="monochrome"], [data-color-mode="red"], [data-color-mode="blue"], [data-color-mode="green"]) .ss-eye-mark--closed img { display: none; }
+body:is([data-color-mode="monochrome"], [data-color-mode="red"], [data-color-mode="blue"], [data-color-mode="green"]) .ss-eye-themed-closed { display: block; }

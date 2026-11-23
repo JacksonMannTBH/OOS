@@ -4,15 +4,17 @@ import { configureLiveTracking, hasNativeLiveTracking } from "@/lib/live-trackin
 import { AIRCRAFT_TRACKING_CHANGE_EVENT } from "@/lib/aircraft-tracking";
 import { STATE_CHANGE_EVENT } from "@/lib/app-states";
 import { RIDE_STATUS_THRESHOLDS_EVENT } from "@/lib/ride-settings";
+import { COLOR_MODE_EVENT } from "@/lib/color-mode";
+import { DISTANCE_PALETTE_EVENT } from "@/lib/distance-colors";
 
 // A Live Activity can continue while Home and Ride are unmounted. Reconcile
-// state, aircraft exclusions, and distance bands from anywhere in the app.
+// state, aircraft exclusions, distance bands, and display colors from anywhere in the app.
 export function LiveTrackingPreferenceSync() {
   useEffect(() => {
     if (!hasNativeLiveTracking()) return;
     const sync = () => { void configureLiveTracking().catch(() => { /* Retry on return or the next preference change. */ }); };
     const visible = () => { if (document.visibilityState === "visible") sync(); };
-    const events = [AIRCRAFT_TRACKING_CHANGE_EVENT, STATE_CHANGE_EVENT, RIDE_STATUS_THRESHOLDS_EVENT, "storage", "pageshow"];
+    const events = [AIRCRAFT_TRACKING_CHANGE_EVENT, STATE_CHANGE_EVENT, RIDE_STATUS_THRESHOLDS_EVENT, COLOR_MODE_EVENT, DISTANCE_PALETTE_EVENT, "storage", "pageshow"];
     for (const event of events) window.addEventListener(event, sync);
     document.addEventListener("visibilitychange", visible);
     sync();

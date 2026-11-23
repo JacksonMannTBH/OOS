@@ -30,9 +30,13 @@ import { hasNearbyPolice } from "@/lib/police-sightings";
 import { PoliceReportButton } from "./PoliceReportButton";
 import { RideStatistics } from "./RideStatistics";
 import { RideGForceView } from "./RideGForce";
+import { RideLeanArcView } from "./RideLeanArc";
+import { RidePitchHorizonView } from "./RidePitchHorizon";
+import { useRideGauge } from "@/lib/hooks/useRideGauge";
 import { RideCalibrationIcon } from "./RideCalibrationIcon";
 import { HelicopterIcon } from "./HelicopterIcon";
 import { PlaneIcon } from "./PlaneIcon";
+import { RideSpeedTransition } from "./RideSpeedTransition";
 
 const RideMap = nextDynamic(() => import("./RideMap"), { ssr: false });
 
@@ -58,28 +62,52 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
   const rideThresholds = useRideStatusThresholds();
   const showSpeedometer = useSpeedometerVisible();
   const showRideAngles = useRideAnglesEnabled();
+  const rideGauge = useRideGauge();
   const policeSightings = usePoliceSightings(!mockOn);
   const policeNearby = hasNearbyPolice(policeSightings, riderPos);
   const recording = useRideRecorder();
   const [showStats, setShowStats] = useState(false);
-  const [showGForce, setShowGForce] = useState(false);
+  const [showGauge, setShowGauge] = useState(false);
   const [expandedSpeed, setExpandedSpeed] = useState(false);
   const speedExpanded = showSpeedometer && expandedSpeed;
+  const [speedTransition, setSpeedTransition] = useState(false);
+  const speedTransitionPending = useRef(false);
+  const rideContent = useRef<HTMLDivElement>(null);
   const speedButton = useRef<HTMLButtonElement>(null);
   const rideViewId = useId();
   const [ending, setEnding] = useState(false);
-  const toggleSpeed = () => {
-    setExpandedSpeed(current => !current);
+  const revealExpandedSpeed = useCallback(() => {
+    setExpandedSpeed(true);
     setShowStats(false);
-    setShowGForce(false);
+    setShowGauge(false);
+  }, []);
+  const completeSpeedTransition = useCallback(() => {
+    speedTransitionPending.current = false;
+    setSpeedTransition(false);
     requestAnimationFrame(() => speedButton.current?.focus({ preventScroll: true }));
+  }, []);
+  const toggleSpeed = () => {
+    if (ending || speedTransitionPending.current) return;
+    if (speedExpanded) {
+      setExpandedSpeed(false);
+      completeSpeedTransition();
+    } else if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      revealExpandedSpeed();
+      completeSpeedTransition();
+    } else {
+      speedTransitionPending.current = true;
+      setSpeedTransition(true);
+    }
   };
+  useEffect(() => {
+    if (rideContent.current) rideContent.current.inert = speedTransition;
+  }, [speedTransition]);
   const switchRideView = () => {
     setExpandedSpeed(false);
-    setShowGForce(current => showStats || !current);
+    setShowGauge(current => showStats || !current);
     setShowStats(false);
   };
-  const rideViewSwipe = useRideViewSwipe(switchRideView, ending);
+  const rideViewSwipe = useRideViewSwipe(switchRideView, ending || speedExpanded || speedTransition);
   const finishing = useRef(false);
   const [endError, setEndError] = useState("");
   const [resettingAngles, setResettingAngles] = useState(false);
@@ -207,13 +235,17 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
       className="ss-ride-screen"
       data-aircraft-present={nearest ? "true" : undefined}
       data-police-nearby={policeNearby ? "true" : undefined}
+      data-speed-expanded={speedExpanded ? "true" : undefined}
+      data-speed-transition={speedTransition ? "true" : undefined}
+      aria-busy={speedTransition || ending}
     >
       <ScreenAwake />
+      <div className="ss-ride-content" ref={rideContent}>
       <header
         className="ss-ride-header"
         style={{
           textAlign: "center",
-          display: "flex",
+          display: "var(--ss-ride-header-display, flex)",
           flexDirection: "column",
           alignItems: "center",
           gap: "var(--ss-ride-heading-gap, 8px)",
@@ -221,6 +253,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
           justifySelf: "center",
         }}
       >
+        <div className="ss-ride-status-group">
         {(recording.error || recording.status?.message || endError) && <p className="ss-ride-error" role="alert">{endError || recording.error || recording.status?.message}</p>}
         {policeNearby && <div
           className="ss-police-nearby"
@@ -252,14 +285,26 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
             textShadow: "none",
           }}
         >
-          {policeNearby && "Aircraft · "}{statusLabel.toUpperCase()}
+          {policeNearby && !speedExpanded && "Aircraft · "}{statusLabel.toUpperCase()}
         </div>
         {nearest && <AircraftDistance distanceNm={nearest.distanceNm} color={statusColor} placement="landscape" />}
+        </div>
+        {!policeNearby && locationCopy && <div
+          style={{
+            color: "rgb(var(--ss-ui-f5f2e8, 245, 242, 232))",
+            fontSize: "clamp(15px, 4.5vw, 18px)",
+            lineHeight: 1.12,
+            fontWeight: 850,
+            maxWidth: 420,
+          }}
+        >
+          {locationCopy}
+        </div>}
         </div>
         {nearest && <div
           className="ss-ride-aircraft-bar"
           style={{
-            width: "min(100%, 460px)",
+            width: "var(--ss-ride-aircraft-width, min(100%, 460px))",
             marginTop: "var(--ss-ride-aircraft-gap, clamp(12px, 4dvh, 36px))",
             minHeight: 54,
             boxSizing: "border-box",
@@ -299,20 +344,9 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
             </div>
           </div>
         </div>}
-        {!policeNearby && locationCopy && <div
-          style={{
-            color: "#f5f2e8",
-            fontSize: "clamp(15px, 4.5vw, 18px)",
-            lineHeight: 1.12,
-            fontWeight: 850,
-            maxWidth: 420,
-          }}
-        >
-          {locationCopy}
-        </div>}
       </header>
 
-      <div className="ss-ride-instruments">
+      <div className="ss-ride-instruments" hidden={speedExpanded}>
         {showSpeedometer && !speedExpanded ? <RiderSpeedBadge speedMps={riderPos?.speedMps ?? null}
           buttonRef={speedButton} controls={rideViewId} onClick={toggleSpeed} disabled={ending} /> : <span aria-hidden="true" />}
         {nearest ? <AircraftDistance distanceNm={nearest.distanceNm} color={statusColor} placement="portrait" />
@@ -323,32 +357,33 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
       <div
         className="ss-ride-panel"
         style={{
-          display: "flex",
+          display: "var(--ss-ride-panel-display, flex)",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "var(--ss-ride-panel-justify, center)",
           gap: 10,
-          width: "min(100%, 500px)",
+          width: "var(--ss-ride-panel-width, min(100%, 500px))",
           alignSelf: `var(--ss-ride-panel-align, ${nearest ? "start" : "center"})`,
           justifySelf: "center",
           minHeight: 0,
         }}
       >
         <div id={rideViewId} className="ss-ride-view" {...rideViewSwipe}
-          role="group" tabIndex={0} aria-label="Ride views. Swipe or use arrow keys for map and G-force."
+          role="group" tabIndex={speedExpanded ? -1 : 0}
+          aria-label={speedExpanded ? "Ride map and speedometer" : `Ride views. Swipe or use arrow keys for map and ${rideGauge === "lean" ? "Lean arc" : rideGauge === "pitch" ? "Moving horizon" : "G-force"}.`}
           onKeyDown={event => {
-            if (!ending && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+            if (!ending && !speedExpanded && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
               event.preventDefault();
               switchRideView();
             }
           }}>
-          <div className="ss-ride-view__map" aria-hidden={showStats || showGForce || speedExpanded}>
+          <div className="ss-ride-view__map" aria-hidden={showStats || showGauge}>
             <Link
               href={mockOn ? "/map?mock=1" : "/map"}
               prefetch={false}
               className="ss-ride-map-link"
               aria-label="Open map, keep ride active"
-              tabIndex={showStats || showGForce || speedExpanded ? -1 : undefined}
+              tabIndex={showStats || showGauge ? -1 : undefined}
               style={{
                 display: "block",
                 position: "relative",
@@ -366,12 +401,22 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
               />
             </Link>
           </div>
-          {speedExpanded && <RiderSpeedBadge speedMps={riderPos?.speedMps ?? null} expanded
-            buttonRef={speedButton} controls={rideViewId} color={statusColor} onClick={toggleSpeed} disabled={ending} />}
-          {showGForce && !showStats && <RideGForceView
+          {speedExpanded && <div className="ss-ride-view__speed">
+            <RiderSpeedBadge speedMps={riderPos?.speedMps ?? null} expanded
+              buttonRef={speedButton} controls={rideViewId} color={statusColor} onClick={toggleSpeed} disabled={ending} />
+          </div>}
+          {showGauge && !showStats && rideGauge === "gforce" && <RideGForceView
             onReset={() => void resetGForce()} resetting={resettingGForce}
             resetDisabled={ending || calibrating || resettingAngles || !recording.status?.active}
             resetError={resetGForceError} />}
+          {showGauge && !showStats && rideGauge === "lean" && <RideLeanArcView
+            onReset={() => void resetAngles()} resetting={resettingAngles}
+            resetDisabled={ending || calibrating || resettingGForce || !recording.status?.active}
+            resetError={resetAnglesError} />}
+          {showGauge && !showStats && rideGauge === "pitch" && <RidePitchHorizonView
+            onReset={() => void resetAngles()} resetting={resettingAngles}
+            resetDisabled={ending || calibrating || resettingGForce || !recording.status?.active}
+            resetError={resetAnglesError} />}
           {showStats && <section className="ss-ride-live-stats" aria-label="Current ride stats">
             <RideStatistics ride={recording.status?.active ?? null} showAngles={showRideAngles} live
               calibrated={recording.status?.motion?.calibrated ?? false}
@@ -384,6 +429,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
 
       <footer
         className="ss-ride-footer"
+        hidden={speedExpanded}
       >
         {(calibrationError || orientationError) && <p className="ss-ride-error" role="alert" style={{ margin: 0, maxWidth: 420, textAlign: "center", fontSize: 12 }}>
           {calibrationError || orientationError}
@@ -418,7 +464,7 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
               disabled={ending}
               onClick={() => {
                 setExpandedSpeed(false);
-                if (showStats) setShowGForce(false);
+                if (showStats) setShowGauge(false);
                 setShowStats(current => !current);
               }}
             >
@@ -457,6 +503,8 @@ export function RideModeShell({ initial, mockOn = false }: Props) {
           {ending ? "Saving Ride…" : "End Ride"}
         </button>
       </footer>
+      </div>
+      {speedTransition && <RideSpeedTransition onCovered={revealExpandedSpeed} onComplete={completeSpeedTransition} />}
     </main>
   );
 }
@@ -545,8 +593,10 @@ function formatNearestAircraftSummary(contact: RideContact | null): RideSummary 
 function AircraftDistance({ distanceNm, color, placement }: { distanceNm: number; color: string; placement: "portrait" | "landscape" }) {
   return <div className={`ss-ride-distance ss-ride-distance--${placement}`} aria-live="polite"
     aria-label={`Distance to nearest aircraft: ${distanceNm.toFixed(1)} nm`}>
-    <span className="ss-ride-distance__unit">Nm</span>
-    <span className="ss-ride-distance__value ss-mono" style={{ color }}>{distanceNm.toFixed(1)}</span>
+    <span className="ss-ride-distance__reading">
+      <span className="ss-ride-distance__value ss-mono" style={{ color }}>{distanceNm.toFixed(1)}</span>
+      <span className="ss-ride-distance__unit">nm</span>
+    </span>
   </div>;
 }
 
@@ -573,7 +623,7 @@ function RideSummaryMetric({
     >
       <div
         style={{
-          color: "#f5f2e8",
+          color: "rgb(var(--ss-ui-f5f2e8, 245, 242, 232))",
           fontSize: "clamp(15px, 4.4vw, 22px)",
           fontWeight: 950,
           letterSpacing: 0,
@@ -615,8 +665,8 @@ function RiderSpeedBadge({ speedMps, expanded = false, onClick, buttonRef, contr
       aria-expanded={expanded}
       aria-controls={controls}
       aria-live="polite"
-      aria-label={`Your speed: ${mph == null ? "unavailable" : `${mph} miles per hour`}. ${expanded ? "Shrink" : "Expand"} speedometer.`}
-      style={expanded && color ? { borderColor: `color-mix(in srgb, ${color} 78%, #f5f2e8)` } : undefined}
+      aria-label={`Your speed: ${mph == null ? "unavailable" : `${mph} miles per hour`}. ${expanded ? "Restore ride controls" : "Expand speedometer"}.`}
+      style={expanded && color ? { borderColor: `color-mix(in srgb, ${color} 78%, rgb(var(--ss-ui-f5f2e8, 245, 242, 232)))` } : undefined}
     >
       <span className="ss-ride-speedometer__unit">MPH</span>
       <span className="ss-mono ss-ride-speedometer__value">

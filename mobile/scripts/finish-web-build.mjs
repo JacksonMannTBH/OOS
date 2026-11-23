@@ -5,7 +5,6 @@ import { createHash } from "node:crypto";
 
 const mobile = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(mobile, "www");
-fs.copyFileSync(path.join(mobile, "frontend/offline.html"), path.join(output, "offline.html"));
 const manifest = fs.readFileSync(path.join(output, ".vite/manifest.json"));
 fs.writeFileSync(path.join(output, "bundle-info.json"), JSON.stringify({
   interface: "bundled", backend: JSON.parse(fs.readFileSync(path.join(mobile, "backend.json"), "utf8")).url,

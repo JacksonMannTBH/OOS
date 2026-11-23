@@ -17,19 +17,19 @@ type SettingsLink = {
 
 const SETTINGS_GROUPS: { label: string; links: SettingsLink[] }[] = [
   { label: "Ride stats", links: [
-    { href: "/settings/stats", title: "Stats", icon: "stats", accent: "#f6c431" },
-    ...(MEMBERSHIP_PREVIEW_ENABLED ? [{ href: "/settings/elite", title: "Elite Settings", icon: "elite" as const, accent: "#f6c431" }] : []),
+    { href: "/settings/stats", title: "Stats", icon: "stats", accent: "rgb(var(--ss-ui-f6c431, 246, 196, 49))" },
+    ...(MEMBERSHIP_PREVIEW_ENABLED ? [{ href: "/settings/elite", title: "Elite Settings", icon: "elite" as const, accent: "rgb(var(--ss-ui-f6c431, 246, 196, 49))" }] : []),
   ] },
   { label: "Ride and tracking", links: [
-    { href: "/settings/alerts", title: "Notifications & state", icon: "bell", accent: "#f6c431" },
-    { href: "/settings/display", title: "Ride mode & display", icon: "ride", accent: "#f6c431" },
-    { href: "/aircraft", title: "Tracked aircraft", icon: "aircraft", accent: "#f6c431" },
+    { href: "/settings/alerts", title: "Notifications & state", icon: "bell", accent: "rgb(var(--ss-ui-f6c431, 246, 196, 49))" },
+    { href: "/settings/display", title: "Ride mode & display", icon: "ride", accent: "rgb(var(--ss-ui-f6c431, 246, 196, 49))" },
+    { href: "/aircraft", title: "Tracked aircraft", icon: "aircraft", accent: "rgb(var(--ss-ui-f6c431, 246, 196, 49))" },
   ] },
   { label: "Information and support", links: [
-    { href: "/help", title: "Help & support", icon: "help", accent: "#f6c431" },
-    { href: "/about", title: "About", icon: "about", accent: "#f6c431" },
-    { href: "/legal", title: "Legal & privacy", icon: "legal", accent: "#f6c431" },
-    { href: "/store", title: "Store", icon: "store", accent: "#f6c431" },
+    { href: "/help", title: "Help & support", icon: "help", accent: "rgb(var(--ss-ui-f6c431, 246, 196, 49))" },
+    { href: "/about", title: "About", icon: "about", accent: "rgb(var(--ss-ui-f6c431, 246, 196, 49))" },
+    { href: "/legal", title: "Legal & privacy", icon: "legal", accent: "rgb(var(--ss-ui-f6c431, 246, 196, 49))" },
+    { href: "/store", title: "Store", icon: "store", accent: "rgb(var(--ss-ui-f6c431, 246, 196, 49))" },
   ] },
 ];
 

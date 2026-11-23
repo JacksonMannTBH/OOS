@@ -100,7 +100,7 @@ export function AlertsOptInCard() {
           padding: "24px 22px 20px",
           borderRadius: 24,
           border: 0,
-          background: "rgba(13, 14, 11, 0.98)",
+          background: "rgba(var(--ss-ui-0d0e0b, 13, 14, 11), 0.98)",
           boxShadow: "none",
           color: SS_TOKENS.fg0,
         }}
@@ -152,7 +152,7 @@ export function AlertsOptInCard() {
             borderRadius: 16,
             border: 0,
             background: SS_TOKENS.alert,
-            color: "#050607",
+            color: "rgb(var(--ss-ui-050607, 5, 6, 7))",
             boxShadow: "none",
             fontFamily: "var(--font-brand)",
             fontSize: 16,
