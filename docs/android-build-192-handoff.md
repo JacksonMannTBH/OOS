@@ -1,4 +1,4 @@
-# Android handoff — source through phone build 220
+# Android handoff — source through phone build 222
 
 Updated November 23, 2026. Continue using **`android/build-145`**. The existing
 Android checkout can pull this branch without changing branches. This document
@@ -6,12 +6,10 @@ keeps its original filename so existing handoff links continue to work; it
 supersedes the shared-source baseline through builds 192–194 and the
 [145/147 handoff](android-build-145-handoff.md).
 
-The latest tested phone baseline is **Out Of Sight 1.0.3 (220)**. The signed app
-and widget were installed and launched on the owner's iPhone, with all ten saved
-rides, lifetime statistics, and saved preferences preserved. This is a phone
-installation record. The same source is now submitted as App Store version
-**1.0.4 (220)**, with only app/widget version metadata changed; see the
-[release record](app-store-submission.md). It is not an Android release.
+The latest tested phone baseline is **Out Of Sight 1.0.4 (222)**. The signed app
+and widget were installed and launched on the owner's iPhone. The same source
+now replaces build 220 in App Store review; see the
+[release record](app-store-submission.md). This is not an Android release.
 
 This branch carries the shared screens and iPhone behavior references needed
 for the Android update. Android recording, motion sensors, and ongoing aircraft
@@ -48,6 +46,12 @@ Android version against the current Play Console release before signing.
   including negative readings and vertical/inverted poses, with a 68px pitch
   value and no “nose up” caption. Both live displays work when peak recording
   is switched off.
+- **Calibration** accepts gentle movement without a GPS speed limit. It averages
+  ten recent gravity samples (about 0.4 seconds at 25 Hz), while abrupt movement,
+  stale/invalid readings, and sensor gaps defer calibration. The reference is
+  only set on request. Stopping upright on level ground is recommended; a lean
+  or slope at calibration can offset readings. The successful calibration icon
+  and border use the selected distance palette's Clear color.
 - **Live tracking colors** follow the distance palette, including existing
   sessions. The iPhone implementation applies them to the Lock Screen, Dynamic
   Island, and CarPlay. Its light CarPlay presentation darkens text to preserve
@@ -144,13 +148,10 @@ for the existing key password. It writes
 `mobile/android/out-of-sight-capacitor-release.aab`.
 
 Before packaging, set an Android version code greater than the last uploaded
-Play build and choose its version name. Do not copy iPhone build 220 into the
-Android version fields by assumption. The iOS project now declares **1.0.4 (220)**
-for App Store packaging because 1.0.3 is already released. The reviewed phone
-baseline remains 1.0.3 (220), with identical interface and native behavior;
-only app/widget version metadata changed. No Android version, signing
-configuration, Play listing, or production release is changed by this source
-handoff.
+Play build and choose its version name. Do not copy iPhone build 222 into the
+Android version fields by assumption. The iOS project and reviewed phone build
+both report **1.0.4 (222)**. No Android version, signing configuration, Play
+listing, or production release is changed by this source handoff.
 
 ## Membership and backend scope
 
@@ -174,6 +175,18 @@ backend source, backend scripts/configuration, local diagnostics, private device
 data, and unrelated store artwork on the Mac are outside this handoff.
 
 ## Validation record
+
+Build 222 passed release interface packaging, signed app/widget checks, and
+installation/launch on the iPhone. Chromium and WebKit checks verified that the
+calibration icon and border match all five palettes' Clear colors, with the
+waiting presentation retained. Its unchanged sensor code passed 25 motion and
+16 G-force tests in build 221, along with calibration retry/cancellation and
+peak-reset screen checks in both browsers. The App Store archive/export match
+all 214 phone interface files. Evidence is in `.local/relaxed-calibration-221/`,
+`.local/calibration-palette-222/`, and `.local/appstore-222/`.
+
+The following clean-export and Android-sync checks are the prior build 220
+baseline. They were not rerun for the later iPhone calibration changes.
 
 Phone build 220 passed mobile type checking, the production web build, signed
 app/widget verification, and installation/launch checks. Chromium and WebKit
