@@ -99,3 +99,22 @@ test("voting requires a target and an explicit choice; new reports require confi
   assert.equal(calls.at(-1)?.args.p_require_new, true);
   assert.equal(calls.at(-1)?.args.p_sighting, null);
 });
+
+test("pig reports carry a per-sighting icon through the shared API without changing normal reports", async () => {
+  calls.length = 0;
+  await handler(makeRequest("POST", { ...report(), action: "report", icon: "pig" }));
+  assert.equal(calls.at(-1)?.name, "oos_police_submit_icon");
+  assert.equal(calls.at(-1)?.args.p_icon, "pig");
+  assert.equal(calls.at(-1)?.args.p_require_new, true);
+  await handler(makeRequest("POST", { ...report(), action: "vote", icon: "pig", sightingId: "11111111-1111-4111-8111-111111111111", vote: "still_here" }));
+  assert.equal(calls.at(-1)?.args.p_icon, "pig");
+  assert.equal(calls.at(-1)?.args.p_require_new, false);
+  await handler(makeRequest("POST", { ...report(), action: "report" }));
+  assert.equal(calls.at(-1)?.name, "oos_police_submit");
+  assert.equal(calls.at(-1)?.args.p_icon, undefined);
+  for (const extra of [{ action: "report", icon: "other" }, { action: "report", icon: { pig: true } }, { action: "prepare", icon: "pig" }, { icon: "pig" }]) {
+    calls.length = 0;
+    assert.equal((await handler(makeRequest("POST", { ...report(), ...extra }))).status, 400);
+    assert.equal(calls.length, 0);
+  }
+});

@@ -1,7 +1,7 @@
 # Android handoff source — updated through build 147
 
 **Superseded November 23, 2026:** the same `android/build-145` branch now carries
-the shared source through phone build 220. Start with
+the shared source through phone build 234. Start with
 [`android-build-192-handoff.md`](android-build-192-handoff.md) for the current
 release, membership exclusions, Android implementation gaps, and build steps.
 The build 145/147 details below are retained as history.

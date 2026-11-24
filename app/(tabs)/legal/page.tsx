@@ -224,6 +224,10 @@ export default function LegalPage() {
         </p>
       </LegalSection>
 
+      <LegalSection id="credits" title="Credits">
+        <p>Pig sound: <a href="https://commons.wikimedia.org/wiki/File:Mudchute_pig_3.ogg" target="_blank" rel="noopener noreferrer">Mudchute pig 3</a> by <a href="https://commons.wikimedia.org/wiki/User:Secretlondon" target="_blank" rel="noopener noreferrer">Secretlondon</a>, licensed under <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 3.0</a>. Converted from Ogg to WAV for playback; no other changes.</p>
+        <p>This recording remains available to copy, share and adapt under its license. <a href="https://upload.wikimedia.org/wikipedia/commons/6/65/Mudchute_pig_3.ogg" target="_blank" rel="noopener noreferrer">Download the original sound</a>. OOS restrictions do not apply to this recording.</p>
+      </LegalSection>
     </SettingsPageShell>
   );
 }

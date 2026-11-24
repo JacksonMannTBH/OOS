@@ -1,4 +1,4 @@
-# Android handoff — source through phone build 222
+# Android handoff — source through phone build 234
 
 Updated November 23, 2026. Continue using **`android/build-145`**. The existing
 Android checkout can pull this branch without changing branches. This document
@@ -6,9 +6,10 @@ keeps its original filename so existing handoff links continue to work; it
 supersedes the shared-source baseline through builds 192–194 and the
 [145/147 handoff](android-build-145-handoff.md).
 
-The latest tested phone baseline is **Out Of Sight 1.0.4 (222)**. The signed app
+The latest tested phone baseline is **Out Of Sight 1.0.4 (234)**. The signed app
 and widget were installed and launched on the owner's iPhone. The same source
-now replaces build 220 in App Store review; see the
+now replaces build 222 in App Store review, with automatic release after
+approval enabled; see the
 [release record](app-store-submission.md). This is not an Android release.
 
 This branch carries the shared screens and iPhone behavior references needed
@@ -17,7 +18,44 @@ notifications still require native implementation and device testing. Android
 source versioning remains **versionCode 7 / versionName 1.1.5**; select the next
 Android version against the current Play Console release before signing.
 
-## Changes since the previous handoff
+## New since the build 222 handoff
+
+- **Map movement and performance:** `lib/aircraft-map-motion.ts` interpolates
+  only between received positions. There is no forward prediction. A new fix
+  starts from the position currently on screen; older observations cannot
+  rewind the aircraft, and repeated fixes do not restart its motion. The final
+  glide lasts 900–2400 ms according to on-screen distance, easing to the new
+  point without overshooting. `lib/radar-aircraft-markers.ts` keeps name labels
+  and helicopter rotors separate from the map canvas so the blades keep
+  spinning independently of aircraft movement. Trail refreshes keep the current
+  line visible while new path data loads, with flight-session checks retained.
+- **Portrait expanded MPH view (Demon mode):** status and nautical-mile distance
+  sit below the map circle. Landscape keeps its map-left/speed-right layout.
+- **Ride mode & display order:** Distance bands, Wake mode, Speedometer,
+  Swipe gauge, Lean and Pitch, Color Mode, Distance colors, 12/24-hour choice,
+  then Reset. Color Mode remains a left-label/right-value menu.
+- **Shared pig sightings:** a normal police-button tap reports normally. Hold
+  for 700 ms to play the selected oink, then release to report that sighting
+  with the new round pig marker. Both maps show the server-provided icon to
+  updated clients; this never switches all police markers. For a nearby
+  sighting, a newly accepted Still Here vote from a hold makes only that target
+  a pig. Not Seen, duplicates, cooldowns and failed requests cannot change its
+  icon. Old or unknown icon values render as police. See
+  [pig-sighting behavior and backend reference](pig-police-sightings.md).
+- **Hold and sound handling:** touch selection/callouts are suppressed on the
+  police button. Short taps, keyboard/accessibility activation, cancelled drags
+  and multitouch keep their distinct behavior. Android currently uses the
+  bundled WAV through Web Audio; the iPhone-only `OOSSoundEffects` plugin is a
+  playback reference, not an Android plugin. Verify the first hold after a cold
+  launch, repeated holds, media volume, other audio, background/resume and text
+  selection on a physical Android device.
+- **Legal credits:** Settings > Legal & privacy > Credits contains the sound's
+  title, creator, source, CC BY-SA 3.0 license, conversion notice and original
+  download link. Keep `public/audio/mudchute-pig-3.ogg`,
+  `mudchute-pig-3.wav` and `pig-sound-credit.txt` bundled and available offline.
+  About no longer contains the credits.
+
+## Retained appearance, gauges and calibration
 
 - **Space Grotesk** is bundled throughout the app, map labels, offline page, and
   iPhone widget/Live Activity. Retain both
@@ -110,6 +148,7 @@ platform checks only after they are available and tested:
 | Immediate gauge readings | Implement `OOSRideRecorder.leanStatus` as used by `lib/ride-recording.ts` and `lib/hooks/useRideLean.ts`, exposing signed `rollDegrees`, `pitchDegrees`, timestamp, calibration/receiving flags, and peaks. The iPhone reference withholds readings after 300 ms without a fresh sample. Ignore stale async results after pause/unmount; keep live angles available with peak recording off. |
 | G-force compatibility | Braking up, acceleration down, left turns right, right turns left. Peaks describe load direction. Preserve peak confirmation and the one-time `lateralReference: "load"` migration for older summaries. |
 | Orientation/wake | `ScreenAwakePlugin.swift`, `lib/device-ride-orientation.ts`, and `lib/device-screen-wake.ts`; retain the existing unsupported-device fallback until Android bridges work. |
+| Pig sound | `lib/pig-sound.ts` uses Web Audio on Android with the offline WAV. `SoundEffectsPlugin.swift` is the iPhone media-playback reference. Verify audible playback and gesture handling on Android; do not claim the iPhone native plugin is available there. |
 | Ongoing aircraft notification | `LiveTrackingPlugin.swift`, `RideTrackingData.swift`, `HomeWidgetStore.swift`, and `LiveTrackingWidget.swift`: current state, distance in nautical miles, aircraft details, update time, direction from the user, and the selected distance palette. Persist/recover the latest measured result without making old readings fresh. |
 
 Apply the map's four-minute timeout to each aircraft's original observation;
@@ -148,10 +187,11 @@ for the existing key password. It writes
 `mobile/android/out-of-sight-capacitor-release.aab`.
 
 Before packaging, set an Android version code greater than the last uploaded
-Play build and choose its version name. Do not copy iPhone build 222 into the
-Android version fields by assumption. The iOS project and reviewed phone build
-both report **1.0.4 (222)**. No Android version, signing configuration, Play
-listing, or production release is changed by this source handoff.
+Play build and choose its version name. Do not copy iPhone build 234 into the
+Android version fields by assumption. The reviewed phone app and widget report
+**1.0.4 (234)**; that release used build-time overrides while the checked-in iOS
+project metadata remains at 222. No Android version, signing configuration,
+Play listing, or production release is changed by this source handoff.
 
 ## Membership and backend scope
 
@@ -170,11 +210,40 @@ remain available without a membership requirement. The saved
 remains separate.
 
 Keep the production backend, **ADSB.fi** supplier, credentials, and schedules
-unchanged. This branch update deploys no functions or migrations. Pending rider
-backend source, backend scripts/configuration, local diagnostics, private device
-data, and unrelated store artwork on the Mac are outside this handoff.
+unchanged. The pig-sighting support was already deployed during build 231:
+`oos-police` version 3 and migration `20261123232346_police_sighting_pig_icon`.
+Its CLI-created source file is
+`cloud-backend/supabase/migrations/20261123231933_police_sighting_pig_icon.sql`.
+These are the same change with different local/live migration identities;
+do not reapply the source migration to the already-updated production database.
+The existing live endpoint supports the Android client after its assets update.
+This branch update deploys no functions or migrations. Pending rider backend
+source, backend scripts/configuration, local diagnostics, private device data,
+and unrelated store artwork on the Mac are outside this handoff.
 
 ## Validation record
+
+Build 234 passed mobile type checking, production interface packaging, signed
+app/widget checks, and installation/launch on the iPhone. Its App Store archive
+and export match all **217 packaged interface files** and Apple accepted the
+build for review. Earlier Chromium/WebKit checks cover both maps, shared pig
+markers, audio/hold behavior and native sound routing; these do not verify an
+Android speaker or native Android lifecycle.
+
+For this handoff, the selected branch source was exported into a clean folder
+without pending rider backend work or private configuration. All **268 shared
+automated checks**, mobile type checking, the release web build and **Capacitor
+Android sync** passed. All **215 generated web files** match their Android
+copies; two Capacitor compatibility scripts bring the Android package to
+**217 files**. Runtime assets match the phone-installed build 234. Only build
+metadata differs because the clean export resolves dependencies through a
+different relative path; the normalized manifest matches. The offline Ogg,
+WAV and credit notice match the source files, and both membership flags are
+false. Local evidence is in `.local/android-handoff-234/`.
+
+Native Gradle packaging, Android installation, native sensor/audio testing,
+signing and Play upload were not performed. Complete the device checks above
+and choose the next Android version before uploading a signed AAB.
 
 Build 222 passed release interface packaging, signed app/widget checks, and
 installation/launch on the iPhone. Chromium and WebKit checks verified that the

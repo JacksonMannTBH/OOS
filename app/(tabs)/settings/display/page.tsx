@@ -1,4 +1,5 @@
 import { ResetPreferencesButton } from "@/components/ResetPreferencesButton";
+import { DistanceColorSetting } from "@/components/DistanceColorSetting";
 import { ColorModeSetting } from "@/components/ColorModeSetting";
 import { RideSettings } from "@/components/RideSettings";
 import { SettingsPageShell } from "@/components/SettingsPageShell";
@@ -22,6 +23,7 @@ export default function DisplaySettingsPage() {
     >
       <RideSettings />
       <ColorModeSetting />
+      <DistanceColorSetting />
       <TimeFormatSetting current={timeFormat} />
       <ResetPreferencesButton />
     </SettingsPageShell>

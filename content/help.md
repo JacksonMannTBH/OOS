@@ -118,6 +118,12 @@ The police button in Ride Mode lets you report police you see on the road. The
 first tap explains the feature; **Got it** closes that explanation without
 submitting a report. Tap again when you want to report.
 
+Hold the police button for a moment to play an oink and report that sighting
+with a pig icon. Everyone using a version with pig markers sees that sighting
+as a pig; other sightings keep their police icons. Nearby sightings still ask
+for **Still Here** or **Not Seen**. A positive confirmation from a hold makes
+only that nearby sighting a pig. A regular tap reports as usual.
+
 Within a quarter mile of an existing sighting, the button asks **Are police
 still here?** Choose **Still Here** or **Not Seen**, or close it without voting.
 Each phone counts once per sighting. The original report counts as Still Here;

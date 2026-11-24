@@ -11,6 +11,10 @@ export function helicopterFrameSrc(frame: number): string {
   return `${HELICOPTER_ASSET_ROOT}/frame-${frame}.png?v=${HELICOPTER_ASSET_VERSION}`;
 }
 
+export function helicopterAnimatedSrc(): string {
+  return `${HELICOPTER_ASSET_ROOT}/animated.png?v=${HELICOPTER_ASSET_VERSION}`;
+}
+
 export function helicopterIconKeyFor(frame: number): string {
   return `aircraft-helicopter-${frame}`;
 }

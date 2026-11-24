@@ -8,6 +8,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { subscribeLiveState } from "@/lib/live-data-client";
+import type { LiveState } from "@/lib/live-data-protocol";
 import { useSelectedStateId } from "@/lib/hooks/useSelectedStateId";
 import { isStateCode, stateCodeForId, type StateCode } from "@/lib/app-states";
 import type { Map as MaplibreMap, GeoJSONSource } from "maplibre-gl";
@@ -24,7 +25,6 @@ const START_DOT_LAYER_ID = "aircraft-trail-start-dot";
 const END_DOT_LAYER_ID = "aircraft-trail-end-dot";
 const AIRCRAFT_LAYER_ID = "aircraft";
 const AIRCRAFT_ROTOR_LAYER_ID = "aircraft-heli-rotor";
-const PULSE_PERIOD_MS = 1600;
 const TRAIL_OPACITY = 0.9;
 const HALO_OPACITY = 0.28;
 const TRAIL_LAYER_IDS = [
@@ -35,7 +35,6 @@ const TRAIL_LAYER_IDS = [
 ] as const;
 
 type TrailPoint = { lat: number; lon: number; ts: number };
-type TrailsResponse = { trails: Record<string, TrailPoint[]> };
 type TrailProps = {
   tail: string;
   color: string;
@@ -130,17 +129,36 @@ export function AircraftTrailLayer({
   const tailsKey = [...aircraftMapTails(airborne)].sort().join(",");
   const currentTails = useRef(new Set<string>());
   currentTails.current = new Set(tailsKey.split(",").filter(Boolean));
-  const currentTrails = useRef<Record<string, TrailPoint[]>>({});
-  const pulseRef = useRef<number | null>(null);
+  const received = useRef(new Map<StateCode, LiveState>());
+  const currentSessions = useRef(new Map<string, string | null | undefined>());
+  currentSessions.current = new Map(airborne.map(plane => [plane.tail, plane.flight_session_id]));
+  const sessionsKey = airborne.map(plane => `${plane.tail}:${plane.flight_session_id ?? ""}`).sort().join(",");
   const visible = enabled || selectedTail !== null;
   const enabledRef = useRef(visible);
   enabledRef.current = visible;
   const selectedTailRef = useRef(selectedTail);
   selectedTailRef.current = selectedTail;
 
-  const renderTrails = useCallback((trails: Record<string, TrailPoint[]>) => {
-    const filtered = Object.fromEntries(Object.entries(trails).filter(([tail]) => currentTails.current.has(tail)));
-    currentTrails.current = filtered;
+  const stateCode = stateCodeForId(useSelectedStateId());
+  const trailStateKeys = [...new Set(airborne
+    .filter(plane => !selectedTail || plane.tail === selectedTail)
+    .map(plane => isStateCode(plane.home_state_code) ? plane.home_state_code : stateCode))].sort().join(",");
+  const requestedStates = useRef(new Set<string>());
+  requestedStates.current = new Set(trailStateKeys.split(",").filter(Boolean));
+
+  const renderTrails = useCallback(() => {
+    const filtered: Record<string, TrailPoint[]> = {};
+    for (const [state, update] of received.current) {
+      if (!requestedStates.current.has(state)) { received.current.delete(state); continue; }
+      const sessions = update.sessions ?? Object.fromEntries(update.snapshot.aircraft.map(plane => [plane.tail, plane.flight_session_id]));
+      for (const [tail, points] of Object.entries(update.trails)) {
+        if (!currentTails.current.has(tail)) continue;
+        const currentSession = currentSessions.current.get(tail);
+        if (currentSession && sessions[tail] && currentSession !== sessions[tail]) continue;
+        const previous = filtered[tail];
+        if (!previous || (points.at(-1)?.ts ?? 0) >= (previous.at(-1)?.ts ?? 0)) filtered[tail] = points;
+      }
+    }
     if (!map || !map.getStyle()) return;
     (map.getSource(SOURCE_ID) as GeoJSONSource | undefined)?.setData(buildFeatureCollection(filtered));
     (map.getSource(ENDPOINTS_SOURCE_ID) as GeoJSONSource | undefined)?.setData(buildEndpointCollection(filtered));
@@ -257,6 +275,7 @@ export function AircraftTrailLayer({
           "circle-stroke-width": 1.5,
         },
       });
+      // A steady endpoint avoids repainting the entire map for a pulse.
       map.addLayer({
         id: END_DOT_LAYER_ID,
         type: "circle",
@@ -275,7 +294,7 @@ export function AircraftTrailLayer({
       // the stack (visible immediately) and the next fetch poll
       // re-runs the reorder once the chevron mounts.
       applyTrailSelection();
-      renderTrails(currentTrails.current);
+      renderTrails();
       reorderTrailLayers(map);
       console.debug("[trail] attach: complete", {
         layers: map.getStyle()?.layers?.map((l) => l.id) ?? [],
@@ -287,43 +306,10 @@ export function AircraftTrailLayer({
     map.on("styledata", attach);
     map.on("data", attach);
 
-    // Pulse the end dot every animation frame. setPaintProperty is
-    // cheap; the radius expression covers every airborne tail in a
-    // single layer (filter handles which features show).
-    const startedAt = Date.now();
-    let cancelled = false;
-    const tick = () => {
-      if (cancelled) return;
-      try {
-        if (!map.getLayer(END_DOT_LAYER_ID)) {
-          pulseRef.current = requestAnimationFrame(tick);
-          return;
-        }
-      } catch {
-        return;
-      }
-      const phase =
-        ((Date.now() - startedAt) % PULSE_PERIOD_MS) / PULSE_PERIOD_MS;
-      const radius = 6 + 2 * Math.sin(phase * Math.PI * 2);
-      try {
-        map.setPaintProperty(END_DOT_LAYER_ID, "circle-radius", radius);
-      } catch {
-        if (!cancelled) {
-          pulseRef.current = requestAnimationFrame(tick);
-        }
-        return;
-      }
-      pulseRef.current = requestAnimationFrame(tick);
-    };
-    pulseRef.current = requestAnimationFrame(tick);
-
     return () => {
-      cancelled = true;
       map.off("load", attach);
       map.off("styledata", attach);
       map.off("data", attach);
-      if (pulseRef.current != null) cancelAnimationFrame(pulseRef.current);
-      pulseRef.current = null;
       try {
         if (map.getLayer(END_DOT_LAYER_ID)) map.removeLayer(END_DOT_LAYER_ID);
         if (map.getLayer(START_DOT_LAYER_ID)) map.removeLayer(START_DOT_LAYER_ID);
@@ -343,30 +329,27 @@ export function AircraftTrailLayer({
     applyTrailSelection();
   }, [map, visible, selectedTail, applyTrailSelection]);
 
-  const stateCode = stateCodeForId(useSelectedStateId());
-  const trailStateKeys = [...new Set(airborne
-    .filter(plane => !selectedTail || plane.tail === selectedTail)
-    .map(plane => isStateCode(plane.home_state_code) ? plane.home_state_code : stateCode))].sort().join(",");
+  // Refilter existing data when the roster changes without blanking other
+  // flights or reconnecting their shared stream. New flight sessions are pruned.
+  useEffect(() => {
+    renderTrails();
+  }, [tailsKey, sessionsKey, trailStateKeys, visible, renderTrails]);
+
   // Normally one shared state channel. Nationwide markers can select a flight
   // from another state without changing the user's notification state.
   useEffect(() => {
-    if (!map) return;
-    const render = (trails: Record<string, TrailPoint[]>) => {
-      renderTrails(trails);
-      reorderTrailLayers(map);
-    };
-    render({});
-    if (!visible || !tailsKey) return;
+    if (!map || !visible || !trailStateKeys) return;
     let cancelled = false;
-    const tails = new Set(tailsKey.split(","));
-    const byState = new Map<string, Record<string, TrailPoint[]>>();
     const unsubscribe: Array<() => void> = [];
     const timers: ReturnType<typeof setTimeout>[] = [];
     for (const [index, state] of trailStateKeys.split(",").filter(Boolean).entries()) {
       const connect = () => unsubscribe.push(subscribeLiveState(state as StateCode, update => {
         if (cancelled) return;
-        byState.set(state, Object.fromEntries(Object.entries(update.trails).filter(([tail]) => tails.has(tail))));
-        render(Object.assign({}, ...byState.values()));
+        // A received snapshot replaces this state's paths, including an empty
+        // result. Only UI subscription changes preserve the previous data.
+        received.current.set(state as StateCode, update);
+        renderTrails();
+        reorderTrailLayers(map);
       }));
       // Spread joins when all flight paths are enabled across several states.
       if (index === 0) connect();
@@ -376,9 +359,8 @@ export function AircraftTrailLayer({
       cancelled = true;
       timers.forEach(clearTimeout);
       unsubscribe.forEach(close => close());
-      renderTrails({});
     };
-  }, [map, tailsKey, visible, trailStateKeys, renderTrails]);
+  }, [map, visible, trailStateKeys, renderTrails]);
 
   return null;
 }

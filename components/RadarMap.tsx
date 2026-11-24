@@ -25,13 +25,13 @@ import {
 import { glyphRoleFor } from "@/lib/brand/aircraft-glyphs";
 import {
   HELICOPTER_ICON_SIZE,
-  HELICOPTER_ICON_FRAMES,
   helicopterFrameSrc,
   helicopterIconKeyFor,
-  helicopterFrameAt,
   isHelicopterRole,
 } from "@/lib/brand/helicopter-sprite";
 import { aircraftColorForTail } from "@/lib/aircraft-colors";
+import { RadarAircraftMarkers, type RadarMarkerFrame } from "@/lib/radar-aircraft-markers";
+import { normalizeHeading, shortestHeadingDelta, sampleAircraftMotion, updateAircraftMotion, type AircraftMapMotion } from "@/lib/aircraft-map-motion";
 import { type StateCode } from "@/lib/app-states";
 import { formatAircraftAltitude } from "@/lib/aircraft-altitude";
 
@@ -80,16 +80,6 @@ const AIRCRAFT_TAG_PIXEL_RATIO = 3;
 const AIRCRAFT_LABEL_ZOOM_OPACITY: ExpressionSpecification = [
   "interpolate", ["linear"], ["zoom"], 4.5, 0, 5.5, 1,
 ];
-
-function setHelicopterFrame(map: MaplibreMap, activeFrame: number) {
-  if (!map.getLayer("aircraft")) return;
-  map.setLayoutProperty("aircraft", "icon-image", [
-    "case",
-    ["==", ["get", "iconFamily"], "helicopter"],
-    helicopterIconKeyFor(activeFrame),
-    ["get", "icon"],
-  ]);
-}
 
 const RIDER_COLOR = "#8bd2ff";
 const RIDER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><circle cx="24" cy="24" r="6" fill="${RIDER_COLOR}" stroke="white" stroke-width="2"/></svg>`;
@@ -372,16 +362,13 @@ function applyCustomRadarLayerTheme(map: MaplibreMap, darkMode: boolean) {
 }
 
 type Snapshot = {
-  fromByTail: Map<string, [number, number]>;
   toByTail: Map<string, [number, number]>;
   metaByTail: Map<
     string,
     {
       icon: string;
       iconFamily: "helicopter" | "plane";
-      fromTrack: number;
-      toTrack: number;
-      observedAtMs: number;
+      motion: AircraftMapMotion;
       nickname: string | null;
       color: string;
       labelIcon: string;
@@ -389,19 +376,13 @@ type Snapshot = {
       labelOrder: number;
     }
   >;
-  startedAt: number;
 };
 
 const EMPTY_SNAPSHOT: Snapshot = {
-  fromByTail: new Map(),
   toByTail: new Map(),
   metaByTail: new Map(),
-  startedAt: 0,
 };
 
-// Reconcile each update quickly while keeping marker movement smooth.
-const ANIM_MS = 3_000;
-const POSITION_FRESHNESS_MS = 30_000;
 const MAX_TURN_BANK_DEG = 6;
 
 function setAltitudeCardTail(map: MaplibreMap, tail: string | null): void {
@@ -413,46 +394,12 @@ function setAltitudeCardTail(map: MaplibreMap, tail: string | null): void {
   ]);
 }
 
-function normalizeHeading(degrees: number): number {
-  return ((degrees % 360) + 360) % 360;
-}
-
-function shortestHeadingDelta(from: number, to: number): number {
-  return ((to - from + 540) % 360) - 180;
-}
-
-function interpolateHeading(from: number, to: number, t: number): number {
-  return normalizeHeading(from + shortestHeadingDelta(from, to) * t);
-}
-
-function smoothstep(t: number): number {
-  return t * t * (3 - 2 * t);
-}
-
-function projectedPosition(
-  lon: number,
-  lat: number,
-  headingDeg: number,
-  groundSpeedKt: number | null | undefined,
-): [number, number] {
-  const speedKt = Math.max(0, Math.min(450, groundSpeedKt ?? 0));
-  if (speedKt < 5) return [lon, lat];
-  const distanceNm = speedKt * (ANIM_MS / 3_600_000);
-  const radians = (normalizeHeading(headingDeg) * Math.PI) / 180;
-  const latDelta = (distanceNm / 60) * Math.cos(radians);
-  const lonScale = Math.max(0.01, Math.cos((lat * Math.PI) / 180));
-  const lonDelta = ((distanceNm / 60) * Math.sin(radians)) / lonScale;
-  return [lon + lonDelta, lat + latDelta];
-}
-
-function observationTimeMs(aircraft: Aircraft, now: number): number {
-  const timestamp = aircraft.position_observed_at ?? aircraft.observed_at;
-  const parsed = timestamp ? Date.parse(timestamp) : Number.NaN;
-  if (Number.isFinite(parsed)) return parsed;
-  if (typeof aircraft.last_seen_min === "number") {
-    return now - Math.max(0, aircraft.last_seen_min) * 60_000;
+function observationTimeMs(aircraft: Aircraft): number | null {
+  for (const timestamp of [aircraft.position_observed_at, aircraft.observed_at]) {
+    const parsed = timestamp ? Date.parse(timestamp) : Number.NaN;
+    if (Number.isFinite(parsed)) return parsed;
   }
-  return aircraft.observed === false ? now - POSITION_FRESHNESS_MS : now;
+  return null;
 }
 
 // Re-center the map on the followed plane when EITHER:
@@ -500,9 +447,7 @@ export default function RadarMap({
   onSelectedTailChangeRef.current = onSelectedTailChange;
   function updateSelectedTail(map: MaplibreMap, tail: string | null) {
     setAltitudeCardTail(map, tail);
-    if (map.getLayer("aircraft-labels")) {
-      map.setLayoutProperty("aircraft-labels", "symbol-sort-key", ["case", ["==", ["get", "tail"], tail ?? ""], 1, ["get", "labelOrder"]]);
-    }
+    aircraftMarkersRef.current?.select(tail);
     onSelectedTailChangeRef.current?.(tail);
   }
 
@@ -512,9 +457,9 @@ export default function RadarMap({
   const lastRegionRef = useRef(region);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MaplibreMap | null>(null);
+  const aircraftMarkersRef = useRef<RadarAircraftMarkers | null>(null);
   const readyRef = useRef(false);
   const animRef = useRef<number | null>(null);
-  const aircraftAnimationRef = useRef<number | null>(null);
   const stateRef = useRef<Snapshot>(EMPTY_SNAPSHOT);
   const aircraftRef = useRef<Aircraft[]>(aircraft);
   const riderRef = useRef<RiderPos | null>(rider);
@@ -526,8 +471,6 @@ export default function RadarMap({
   );
   const showAltitudeRef = useRef<boolean>(showAltitude);
   const darkModeRef = useRef<boolean>(darkMode);
-  const reducedMotionRef = useRef(false);
-  const lastHelicopterFrameRef = useRef<number | null>(null);
   const originalPaintRef = useRef<ThemePaintStore>(new Map());
   // Tracks whether we've done the one-time zoom-to-rider on first
   // geolocation resolve. Subsequent rider changes only recenter
@@ -588,25 +531,11 @@ export default function RadarMap({
     map.on("styledata", collapseAttributionPreset);
     collapseAttributionPreset();
     mapRef.current = map;
+    aircraftMarkersRef.current = new RadarAircraftMarkers(map, createAircraftNameTag, focusTailOnMap);
     const stopColorMode = setMapDisplayStyle(map, "radar");
-    const motionQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)") ?? null;
-    reducedMotionRef.current = Boolean(motionQuery?.matches);
-    const onMotionPreferenceChange = (event: MediaQueryListEvent) => {
-      reducedMotionRef.current = event.matches;
-      if (event.matches) {
-        setHelicopterFrame(map, 0);
-        lastHelicopterFrameRef.current = 0;
-      }
-    };
-    motionQuery?.addEventListener("change", onMotionPreferenceChange);
-
     const onLoad = async () => {
-      const helicopterEntries = Array.from(
-        { length: HELICOPTER_ICON_FRAMES },
-        (_, frame) => ({ key: helicopterIconKeyFor(frame), frame }),
-      );
       await document.fonts.load('400 10px "Space Grotesk"').catch(() => []);
-      const [riderImg, planeImg, ...iconImgs] = await Promise.all([
+      const [riderImg, planeImg, helicopterImg] = await Promise.all([
         loadSvgBitmap(RIDER_SVG, 48),
         loadImageBitmap(
           `/icons/plane/cessna-body.png?v=${PLANE_ASSET_VERSION}`,
@@ -614,15 +543,12 @@ export default function RadarMap({
         ),
         // Frames are normalized north-up so MapLibre's track rotation maps
         // 0 degrees to north without an artwork-specific heading offset.
-        ...helicopterEntries.map(({ frame }) =>
-          loadImageBitmap(
-            helicopterFrameSrc(frame),
-            HELICOPTER_ICON_SIZE,
-          ),
-        ),
+        loadImageBitmap(helicopterFrameSrc(0), HELICOPTER_ICON_SIZE),
       ]);
-      const helicopterImgs = iconImgs.slice(0, helicopterEntries.length);
-      if (!mapRef.current) return; // guard - unmounted while loading
+      if (mapRef.current !== map) {
+        [riderImg, planeImg, helicopterImg].forEach(image => image.close());
+        return;
+      }
       map.addImage("rider-dot", riderImg);
       map.addImage(PLANE_ICON_KEY, planeImg);
       map.addImage(AIRCRAFT_LABEL_BG_KEY, createAircraftLabelPill(), {
@@ -630,9 +556,10 @@ export default function RadarMap({
         stretchY: [[7, 11]],
         content: [3, 1, 29, 17],
       });
-      helicopterEntries.forEach(({ key }, i) => {
-        map.addImage(key, helicopterImgs[i]!);
-      });
+      // Decorative animation must not keep the full map rendering or rebucket
+      // aircraft labels. Position and heading still follow the live aircraft.
+      map.addImage(helicopterIconKeyFor(0), helicopterImg);
+      [riderImg, planeImg, helicopterImg].forEach(image => image.close());
       applyMapDetailBudget(map);
       applyRadarMapTheme(map, darkModeRef.current, originalPaintRef.current);
 
@@ -733,7 +660,7 @@ export default function RadarMap({
           "icon-size": 0.95,
         },
         paint: {
-          "icon-opacity": 1,
+          "icon-opacity": ["case", ["==", ["get", "iconFamily"], "helicopter"], 0, 1],
         },
       });
       map.addLayer({
@@ -741,6 +668,7 @@ export default function RadarMap({
         type: "symbol",
         source: "aircraft",
         layout: {
+          visibility: "none",
           // One image contains both the pill and its text, so a front tag
           // covers the complete tag behind it without changing either position.
           "icon-image": ["get", "labelIcon"],
@@ -845,7 +773,6 @@ export default function RadarMap({
           duration: 1000,
         });
       }
-      startAircraftAnimation();
       onMapReadyRef.current?.(map);
     };
     map.on("load", onLoad);
@@ -898,8 +825,9 @@ export default function RadarMap({
 
     return () => {
       readyRef.current = false;
+      aircraftMarkersRef.current?.remove();
+      aircraftMarkersRef.current = null;
       if (animRef.current) cancelAnimationFrame(animRef.current);
-      if (aircraftAnimationRef.current) cancelAnimationFrame(aircraftAnimationRef.current);
       map.off("load", onLoad);
       map.off("styledata", collapseAttributionPreset);
       map.off("dragstart", onUserInteract);
@@ -908,7 +836,6 @@ export default function RadarMap({
       map.off("mouseleave", "aircraft", onMouseLeave);
       map.off("click", "aircraft", onClick);
       map.off("click", onMapClick);
-      motionQuery?.removeEventListener("change", onMotionPreferenceChange);
       popupRef.current?.remove();
       popupRef.current = null;
       onMapReadyRef.current?.(null);
@@ -1024,6 +951,8 @@ export default function RadarMap({
       if (followedTailRef.current) return;
       const r = riderRef.current;
       if (!r) return;
+      const center = mapRef.current.getCenter();
+      if (Math.abs(center.lng - r.lon) < 1e-7 && Math.abs(center.lat - r.lat) < 1e-7) return;
       mapRef.current.easeTo({
         center: [r.lon, r.lat],
         duration: 800,
@@ -1097,28 +1026,6 @@ export default function RadarMap({
     return true;
   }
 
-  function startAircraftAnimation() {
-    const map = mapRef.current;
-    if (!map) return;
-    const start = Date.now();
-    const tick = () => {
-      const elapsedMs = Date.now() - start;
-      const helicopterFrame = reducedMotionRef.current
-        ? 0
-        : helicopterFrameAt(elapsedMs);
-      try {
-        if (helicopterFrame !== lastHelicopterFrameRef.current) {
-          setHelicopterFrame(map, helicopterFrame);
-          lastHelicopterFrameRef.current = helicopterFrame;
-        }
-      } catch {
-        // Layer may not exist yet; ignore.
-      }
-      aircraftAnimationRef.current = requestAnimationFrame(tick);
-    };
-    aircraftAnimationRef.current = requestAnimationFrame(tick);
-  }
-
   function applyDistanceRings(pos: RiderPos | null) {
     const map = mapRef.current;
     if (!map) return;
@@ -1182,110 +1089,54 @@ export default function RadarMap({
     if (readyRef.current) applyAircraft(aircraft);
   }, [aircraft]);
 
-  // Compute new from/to and start a 3s linear interp.
+  // Each aircraft catches up to its latest fix on its own short timeline.
   function applyAircraft(list: Aircraft[]) {
     const map = mapRef.current;
     if (!map) return;
     const source = map.getSource("aircraft") as GeoJSONSource | undefined;
     if (!source) return;
 
-    const now = Date.now();
+    const now = performance.now();
     const prev = stateRef.current;
-    const t = prev.startedAt
-      ? Math.min(1, (now - prev.startedAt) / ANIM_MS)
-      : 1;
-
-    // Snapshot: where each plane visually is right now.
-    const newFrom = new Map<string, [number, number]>();
-    const newFromTrack = new Map<string, number>();
-    for (const [tail, to] of prev.toByTail) {
-      const from = prev.fromByTail.get(tail) ?? to;
-      const lon = from[0] + (to[0] - from[0]) * t;
-      const lat = from[1] + (to[1] - from[1]) * t;
-      newFrom.set(tail, [lon, lat]);
-      const previousMeta = prev.metaByTail.get(tail);
-      if (previousMeta) {
-        newFromTrack.set(
-          tail,
-          interpolateHeading(
-            previousMeta.fromTrack,
-            previousMeta.toTrack,
-            smoothstep(t),
-          ),
-        );
-      }
-    }
-
     const newTo = new Map<string, [number, number]>();
-    const newMeta = new Map<
-      string,
-      {
-        icon: string;
-        iconFamily: "helicopter" | "plane";
-        fromTrack: number;
-        toTrack: number;
-        observedAtMs: number;
-        nickname: string | null;
-        color: string;
-        labelIcon: string;
-        label: string;
-        labelOrder: number;
-      }
-    >();
+    const newMeta: Snapshot["metaByTail"] = new Map();
+    const screenDistance = (from: [number, number], to: [number, number]) => {
+      const start = map.project(from);
+      const end = map.project(to);
+      return Math.hypot(end.x - start.x, end.y - start.y);
+    };
     const orderedAircraft = [...list].sort((a, b) => a.tail.localeCompare(b.tail));
     for (const [index, a] of orderedAircraft.entries()) {
       if (a.lat == null || a.lon == null) continue;
       const color = aircraftColorForTail(a.tail);
       const label = a.tail.toUpperCase();
       const labelIcon = `aircraft-name-tag-${label}`;
-      if (!map.hasImage(labelIcon)) {
-        map.addImage(labelIcon, createAircraftNameTag(label, color), { pixelRatio: AIRCRAFT_TAG_PIXEL_RATIO });
-      }
       const glyphRole = glyphRoleFor(a.role);
       const iconFamily = isHelicopterRole(glyphRole) ? "helicopter" : "plane";
-      const observedAtMs = observationTimeMs(a, now);
-      const isFresh =
-        a.observed !== false && now - observedAtMs <= POSITION_FRESHNESS_MS;
-      const targetTrack = normalizeHeading(
-        a.heading ?? newFromTrack.get(a.tail) ?? 0,
-      );
-      newTo.set(
-        a.tail,
-        isFresh
-          ? projectedPosition(
-              a.lon,
-              a.lat,
-              targetTrack,
-              a.ground_speed_kt,
-            )
-          : [a.lon, a.lat],
-      );
+      const previousMotion = prev.metaByTail.get(a.tail)?.motion;
+      const motion = updateAircraftMotion(previousMotion, {
+        position: [a.lon, a.lat],
+        heading: a.heading ?? previousMotion?.toHeading ?? 0,
+        observedAtMs: observationTimeMs(a),
+      }, now, screenDistance);
+      newTo.set(a.tail, motion.to);
       newMeta.set(a.tail, {
         icon: iconFamily === "helicopter"
           ? helicopterIconKeyFor(0)
           : PLANE_ICON_KEY,
         iconFamily,
-        fromTrack: newFromTrack.get(a.tail) ?? targetTrack,
-        toTrack: targetTrack,
-        observedAtMs,
+        motion,
         nickname: null,
         color,
         labelIcon,
         label,
         labelOrder: (index + 1) / (orderedAircraft.length + 1),
       });
-      if (!newFrom.has(a.tail)) {
-        // First time we see this plane — render it at its current position
-        // immediately (no fly-in animation from undefined).
-        newFrom.set(a.tail, [a.lon, a.lat]);
-      }
     }
 
     stateRef.current = {
-      fromByTail: newFrom,
       toByTail: newTo,
       metaByTail: newMeta,
-      startedAt: now,
     };
 
     // A notification can open the map before its first aircraft snapshot arrives.
@@ -1329,23 +1180,22 @@ export default function RadarMap({
 
     if (animRef.current) cancelAnimationFrame(animRef.current);
     const tick = () => {
-      const elapsed = (Date.now() - stateRef.current.startedAt) / ANIM_MS;
-      const tt = Math.min(1, elapsed);
+      const frameTime = performance.now();
+      let moving = false;
       const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
-      for (const [tail, to] of stateRef.current.toByTail) {
-        const from = stateRef.current.fromByTail.get(tail)!;
-        const meta = stateRef.current.metaByTail.get(tail)!;
-        const lon = from[0] + (to[0] - from[0]) * tt;
-        const lat = from[1] + (to[1] - from[1]) * tt;
-        const headingT = smoothstep(tt);
-        const track = interpolateHeading(meta.fromTrack, meta.toTrack, headingT);
-        const turnDelta = shortestHeadingDelta(meta.fromTrack, meta.toTrack);
+      const markers: RadarMarkerFrame[] = [];
+      for (const [tail, meta] of stateRef.current.metaByTail) {
+        const frame = sampleAircraftMotion(meta.motion, frameTime);
+        const [lon, lat] = frame.position;
+        const track = frame.heading;
+        moving ||= frame.active;
+        const turnDelta = shortestHeadingDelta(meta.motion.fromHeading, meta.motion.toHeading);
         const bank =
           meta.iconFamily === "plane"
             ? Math.max(
                 -MAX_TURN_BANK_DEG,
                 Math.min(MAX_TURN_BANK_DEG, turnDelta * 0.22),
-              ) * Math.sin(Math.PI * headingT)
+              ) * Math.sin(Math.PI * frame.progress)
             : 0;
         const props: Record<string, string | number> = {
           tail,
@@ -1367,9 +1217,12 @@ export default function RadarMap({
           geometry: { type: "Point", coordinates: [lon, lat] },
           properties: props,
         });
+        markers.push({ tail, position: [lon, lat], heading: track,
+          helicopter: meta.iconFamily === "helicopter", label: meta.label, color: meta.color, order: meta.labelOrder });
       }
+      aircraftMarkersRef.current?.update(markers);
       source.setData({ type: "FeatureCollection", features });
-      if (tt < 1) {
+      if (moving) {
         animRef.current = requestAnimationFrame(tick);
       } else {
         animRef.current = null;
@@ -1381,10 +1234,12 @@ export default function RadarMap({
   return (
     <div
       ref={containerRef}
+      className="ss-radar-map"
       role="region"
       aria-label={`Aircraft map, showing ${aircraft.filter((plane) => plane.airborne).length} live flights and ${aircraft.filter((plane) => plane.last_known_airborne).length} last known flights`}
       style={{
         position: "absolute",
+        zIndex: 0,
         inset: 0,
         background: "var(--ss-bg0)",
       }}

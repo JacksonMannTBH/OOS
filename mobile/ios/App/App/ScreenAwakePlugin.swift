@@ -143,6 +143,7 @@ class OOSBridgeViewController: CAPBridgeViewController {
         #endif
         bridge?.registerPluginInstance(SharedLocationPlugin())
         bridge?.registerPluginInstance(ScreenAwakePlugin())
+        bridge?.registerPluginInstance(SoundEffectsPlugin())
         bridge?.registerPluginInstance(LiveTrackingPlugin())
         bridge?.registerPluginInstance(RideRecorderPlugin())
         bridge?.registerPluginInstance(NotificationSetupPlugin())

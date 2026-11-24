@@ -6,14 +6,18 @@ project remains in `../android` as a recoverable fallback.
 ## Current Android handoff — November 23, 2026
 
 The `android/build-145` branch carries the shared source through tested iPhone
-build **1.0.4 (222)**: Space Grotesk, Color Mode, five distance palettes with
-swatch previews, the G-force/Lean arc/Moving horizon selector, and relaxed
-calibration with a palette-matched success indicator. Memberships
+build **1.0.4 (234)**: smoother aircraft movement without forward prediction,
+retained flight paths, animated helicopter blades, the portrait expanded-MPH
+layout, shared pig sightings with hold-to-oink, and sound credits under Legal.
+It also retains Space Grotesk, Color Mode, five distance palettes, the three
+swipe gauges, and relaxed calibration with a palette-matched success indicator.
+Android currently plays the oink through Web Audio and still needs physical
+device checks; the iPhone native sound plugin is included as a reference. Memberships
 remain excluded from normal mobile builds. Start with the [current Android handoff](../docs/android-build-192-handoff.md)
 for build steps, saved membership references, Android versioning, and the
 native recording/motion/notification work still required. No Android APK/AAB
 has been built or uploaded by this handoff. The iPhone package is now
-**1.0.4 (222)** and submitted for App Store review; see the
+**1.0.4 (234)** and submitted for App Store review; see the
 [release record](../docs/app-store-submission.md).
 
 ## Firebase setup required

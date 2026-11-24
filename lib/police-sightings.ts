@@ -7,6 +7,7 @@ export const POLICE_GROUP_METERS = POLICE_NEARBY_METERS;
 export const POLICE_REPORT_LIFETIME_MS = 30 * 60_000;
 export const POLICE_REPORT_COOLDOWN_MS = 30_000;
 export const POLICE_COLOR = "#4da3ff";
+export type PoliceSightingIcon = "police" | "pig";
 export type PoliceSighting = {
   id: string;
   stateCode: StateCode;
@@ -15,6 +16,7 @@ export type PoliceSighting = {
   reportCount: number;
   lastReportedAt: number;
   expiresAt: number;
+  icon?: PoliceSightingIcon;
 };
 
 export function activePoliceSightings(sightings: PoliceSighting[], state: StateCode, now: number) {

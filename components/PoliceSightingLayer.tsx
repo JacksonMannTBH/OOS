@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import maplibregl, { type Map as MaplibreMap } from "maplibre-gl";
 import { POLICE_COLOR, POLICE_ICON_PATH, policeReportAge, type PoliceSighting } from "@/lib/police-sightings";
+import { PIG_COLOR, PIG_ICON_SVG } from "@/lib/police-marker-icons";
 
 type Entry = { marker: maplibregl.Marker; popup?: maplibregl.Popup; details?: HTMLDivElement; count?: HTMLElement; age?: HTMLElement };
 // Show sightings two zoom levels farther out than the previous city view.
@@ -65,6 +66,16 @@ export function PoliceSightingLayer({ map, sightings, interactive = false }: { m
           });
         }
         entries.current.set(sighting.id, entry);
+      }
+      const pigMode = sighting.icon === "pig";
+      const element = entry.marker.getElement();
+      element.style.color = pigMode ? PIG_COLOR : POLICE_COLOR;
+      const icon = pigMode ? "pig" : "police";
+      if (element.dataset.icon !== icon) {
+        element.dataset.icon = icon;
+        // Change only the badge contents, retaining the marker, touch target and popup.
+        element.querySelector(".oos-police-marker__badge")!.innerHTML = pigMode ? PIG_ICON_SVG
+          : `<svg width="100%" height="100%" viewBox="0 0 24 26" aria-hidden="true"><path d="${POLICE_ICON_PATH}" fill="currentColor"/></svg>`;
       }
       entry.marker.setLngLat([sighting.lon, sighting.lat]);
       setMarkerVisibility(entry, !interactive || map.getZoom() >= MAIN_MAP_POLICE_MIN_ZOOM);

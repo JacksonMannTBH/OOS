@@ -51,6 +51,7 @@ export function createPoliceHandler(env: Env, rpc: Rpc, lookup: StateLookup = lo
       const { lat, lon, accuracy, capturedAt } = body;
       const action = body.action ?? "legacy_report";
       if (!["legacy_report", "prepare", "report", "vote"].includes(String(action))) return reply({ error: "invalid_action" }, 400);
+      if (body.icon !== undefined && (body.icon !== "police" && body.icon !== "pig" || !["report", "vote"].includes(String(action)))) return reply({ error: "invalid_icon" }, 400);
       if (action === "vote" && (typeof body.sightingId !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(body.sightingId) || !["still_here", "not_seen"].includes(String(body.vote)))) return reply({ error: "invalid_vote" }, 400);
       if (typeof lat !== "number" || typeof lon !== "number" || !validCoordinates(lat, lon) || typeof accuracy !== "number" || !Number.isFinite(accuracy) || accuracy < 0 || accuracy > 100 || typeof capturedAt !== "number" || !Number.isFinite(capturedAt) || Date.now() - capturedAt > 30_000 || capturedAt > Date.now() + 10_000) {
         return reply({ error: "fresh_location_required" }, 400);
@@ -61,10 +62,11 @@ export function createPoliceHandler(env: Env, rpc: Rpc, lookup: StateLookup = lo
       const state = await lookup(lat, lon);
       if (!state || !isSupportedStateCode(state)) return reply({ error: "unsupported_location" }, 422);
       if (action === "prepare") return reply(await rpc("oos_police_prepare", { p_state: state, p_lat: lat, p_lon: lon }));
-      if (action === "report" || action === "vote") return reply(await rpc("oos_police_submit", {
+      if (action === "report" || action === "vote") return reply(await rpc(body.icon === "pig" ? "oos_police_submit_icon" : "oos_police_submit", {
         p_reporter: reporter, p_state: state, p_lat: lat, p_lon: lon,
         p_sighting: action === "vote" ? body.sightingId : null,
         p_vote: action === "vote" ? body.vote : "still_here", p_require_new: action === "report",
+        ...(body.icon === "pig" ? { p_icon: "pig" } : {}),
       }));
       return reply(await rpc("oos_police_report", { p_reporter: reporter, p_state: state, p_lat: lat, p_lon: lon }));
     } catch {

@@ -47,6 +47,7 @@
 		A01500000000000000000004 /* SharedLocationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01500000000000000000003 /* SharedLocationPolicy.swift */; };
 		A01700000000000000000002 /* ProSubscriptionPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01700000000000000000001 /* ProSubscriptionPlugin.swift */; };
 		A01800000000000000000002 /* RiderSharingPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01800000000000000000001 /* RiderSharingPlugin.swift */; };
+		A01900000000000000000002 /* SoundEffectsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01900000000000000000001 /* SoundEffectsPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -113,6 +114,7 @@
 		A01500000000000000000003 /* SharedLocationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedLocationPolicy.swift; sourceTree = "<group>"; };
 		A01700000000000000000001 /* ProSubscriptionPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProSubscriptionPlugin.swift; sourceTree = "<group>"; };
 		A01800000000000000000001 /* RiderSharingPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiderSharingPlugin.swift; sourceTree = "<group>"; };
+		A01900000000000000000001 /* SoundEffectsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundEffectsPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -160,6 +162,7 @@
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				A00500000000000000000002 /* ScreenAwakePlugin.swift */,
+				A01900000000000000000001 /* SoundEffectsPlugin.swift */,
 				A00700000000000000000001 /* NotificationSetupPlugin.swift */,
 				A01100000000000000000001 /* PrivacyInfo.xcprivacy */,
 				A00800000000000000000001 /* oos_radar_ping.wav */,
@@ -335,6 +338,7 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				A00500000000000000000001 /* ScreenAwakePlugin.swift in Sources */,
+				A01900000000000000000002 /* SoundEffectsPlugin.swift in Sources */,
 				A00700000000000000000002 /* NotificationSetupPlugin.swift in Sources */,
 				A00600000000000000000002 /* LiveTrackingPlugin.swift in Sources */,
 				A01400000000000000000002 /* RideHistory.swift in Sources */,

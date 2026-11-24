@@ -2,6 +2,7 @@
 import { getDevicePreference, initializeDevicePreferences, updateDevicePreferences } from "./device-preferences";
 import { getCurrentDevicePosition } from "./device-location";
 import { POLICE_REFRESH_EVENT } from "./hooks/usePoliceSightings";
+import type { PoliceSightingIcon } from "./police-sightings";
 
 let identity: Promise<string> | null = null;
 async function reporterToken(): Promise<string> {
@@ -38,5 +39,5 @@ async function locatedRequest(body: Record<string, unknown>): Promise<PoliceRepo
 }
 
 export const preparePoliceReport = () => locatedRequest({ action: "prepare" });
-export const reportPolice = () => locatedRequest({ action: "report" });
-export const votePolice = (sightingId: string, vote: PoliceVote) => locatedRequest({ action: "vote", sightingId, vote });
+export const reportPolice = (icon: PoliceSightingIcon = "police") => locatedRequest({ action: "report", ...(icon === "pig" ? { icon } : {}) });
+export const votePolice = (sightingId: string, vote: PoliceVote, icon: PoliceSightingIcon = "police") => locatedRequest({ action: "vote", sightingId, vote, ...(vote === "still_here" && icon === "pig" ? { icon } : {}) });
